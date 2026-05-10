@@ -1,0 +1,133 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.tsx';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
+  --font-sans: 'Inter', 'Instrument Sans', system-ui, sans-serif;
+}
+
+:root {
+  --radius: 1rem;
+
+  --background: oklch(0.16 0.015 50);
+  --foreground: oklch(0.97 0.01 80);
+  --card: oklch(0.21 0.02 50);
+  --card-foreground: oklch(0.97 0.01 80);
+  --popover: oklch(0.21 0.02 50);
+  --popover-foreground: oklch(0.97 0.01 80);
+  --primary: oklch(0.74 0.19 45);
+  --primary-foreground: oklch(0.18 0.02 50);
+  --secondary: oklch(0.27 0.03 60);
+  --secondary-foreground: oklch(0.97 0.01 80);
+  --muted: oklch(0.24 0.02 55);
+  --muted-foreground: oklch(0.72 0.02 80);
+  --accent: oklch(0.85 0.18 110);
+  --accent-foreground: oklch(0.18 0.02 50);
+  --destructive: oklch(0.62 0.24 27);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.3 0.02 55);
+  --input: oklch(0.28 0.02 55);
+  --ring: oklch(0.74 0.19 45);
+
+  --sidebar: oklch(0.13 0.015 50);
+  --sidebar-foreground: oklch(0.95 0.01 80);
+  --sidebar-primary: oklch(0.74 0.19 45);
+  --sidebar-primary-foreground: oklch(0.18 0.02 50);
+  --sidebar-accent: oklch(0.22 0.02 50);
+  --sidebar-accent-foreground: oklch(0.95 0.01 80);
+  --sidebar-border: oklch(0.28 0.02 55);
+  --sidebar-ring: oklch(0.74 0.19 45);
+
+  --gradient-hero: linear-gradient(135deg, oklch(0.74 0.19 45) 0%, oklch(0.65 0.22 25) 50%, oklch(0.55 0.2 350) 100%);
+  --gradient-warm: linear-gradient(120deg, oklch(0.74 0.19 45), oklch(0.82 0.17 75));
+  --gradient-radial: radial-gradient(ellipse at top, oklch(0.74 0.19 45 / 0.25), transparent 60%);
+  --shadow-glow: 0 20px 60px -15px oklch(0.74 0.19 45 / 0.5);
+  --shadow-card: 0 10px 40px -10px oklch(0 0 0 / 0.5);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  html { font-family: var(--font-sans); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.025em; }
+}
+
+@layer utilities {
+  .bg-gradient-hero { background-image: var(--gradient-hero); }
+  .bg-gradient-warm { background-image: var(--gradient-warm); }
+  .bg-gradient-radial { background-image: var(--gradient-radial); }
+  .text-gradient-warm {
+    background-image: var(--gradient-warm);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .glass {
+    background: oklch(0.21 0.02 50 / 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid oklch(1 0 0 / 0.08);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('https://fonts.gstatic.com/s/bricolagegrotesque/v3/3y9U6as8bTXq_nANBjzKo3IeZx8z6up5BeSl5jBNz_19PpbpMXuMNTXDMXqz0g.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
