@@ -20,7 +20,7 @@ export default function Login() {
 
                 {/* ── Panel izquierdo: hero ── */}
                 <div className="hidden lg:flex w-1/2 flex-col justify-between p-12
-                                bg-gradient-to-br from-[oklch(0.18_0.04_45)] via-[oklch(0.22_0.06_40)] to-[oklch(0.14_0.03_30)]
+                                bg-linear-to-br from-[oklch(0.18_0.04_45)] via-[oklch(0.22_0.06_40)] to-[oklch(0.14_0.03_30)]
                                 border-r border-border relative overflow-hidden">
 
                     {/* Círculos decorativos */}
@@ -82,14 +82,14 @@ export default function Login() {
                             </div>
                         </div>
 
-                        <div>
+                        <div className="text-center">
                             <h2 className="font-display text-2xl font-bold text-foreground">Bienvenido de vuelta</h2>
                             <p className="text-muted-foreground text-sm mt-1">Ingresa tus credenciales para continuar</p>
                         </div>
 
                         <form onSubmit={submit} className="space-y-5">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-foreground">Correo electrónico</label>
+                                <label className="block text-sm font-medium text-foreground text-center">Correo electrónico</label>
                                 <input
                                     type="email"
                                     value={data.email}
@@ -97,14 +97,14 @@ export default function Login() {
                                     placeholder="tu@restaurante.com"
                                     autoComplete="email"
                                     className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm
-                                               text-foreground placeholder:text-muted-foreground
+                                               text-foreground placeholder:text-muted-foreground text-center
                                                focus:outline-none focus:ring-2 focus:ring-primary/60 transition"
                                 />
-                                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                                {errors.email && <p className="text-xs text-destructive text-center">{errors.email}</p>}
                             </div>
 
                             <div className="space-y-1.5">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-center gap-2">
                                     <label className="text-sm font-medium text-foreground">Contraseña</label>
                                     <Link href="/forgot-password" className="text-xs text-primary hover:underline">
                                         ¿Olvidaste la contraseña?
@@ -117,13 +117,13 @@ export default function Login() {
                                     placeholder="••••••••"
                                     autoComplete="current-password"
                                     className="w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm
-                                               text-foreground placeholder:text-muted-foreground
+                                               text-foreground placeholder:text-muted-foreground text-center
                                                focus:outline-none focus:ring-2 focus:ring-primary/60 transition"
                                 />
-                                {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+                                {errors.password && <p className="text-xs text-destructive text-center">{errors.password}</p>}
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-center gap-2">
                                 <input
                                     id="remember"
                                     type="checkbox"

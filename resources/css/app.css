@@ -43,6 +43,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
   --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
   --font-sans: 'Inter', 'Instrument Sans', system-ui, sans-serif;
@@ -85,6 +90,11 @@
   --gradient-radial: radial-gradient(ellipse at top, oklch(0.74 0.19 45 / 0.25), transparent 60%);
   --shadow-glow: 0 20px 60px -15px oklch(0.74 0.19 45 / 0.5);
   --shadow-card: 0 10px 40px -10px oklch(0 0 0 / 0.5);
+  --chart-1: oklch(0.74 0.19 45);
+  --chart-2: oklch(0.85 0.18 110);
+  --chart-3: oklch(0.65 0.2 25);
+  --chart-4: oklch(0.7 0.15 200);
+  --chart-5: oklch(0.78 0.15 80);
 }
 
 @layer base {
@@ -110,6 +120,19 @@
   }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-card { box-shadow: var(--shadow-card); }
+  .input-base {
+    width: 100%;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: box-shadow 0.15s;
+  }
+  .input-base:focus {
+    box-shadow: 0 0 0 2px oklch(0.74 0.19 45 / 0.3);
+  }
   .glass {
     background: oklch(0.21 0.02 50 / 0.6);
     backdrop-filter: blur(16px);
@@ -124,10 +147,4 @@
 }
 .animate-float { animation: float 6s ease-in-out infinite; }
 
-@font-face {
-  font-family: 'Bricolage Grotesque';
-  src: url('https://fonts.gstatic.com/s/bricolagegrotesque/v3/3y9U6as8bTXq_nANBjzKo3IeZx8z6up5BeSl5jBNz_19PpbpMXuMNTXDMXqz0g.woff2') format('woff2');
-  font-weight: 400 800;
-  font-style: normal;
-  font-display: swap;
-}
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
