@@ -1,0 +1,993 @@
+import { Head, router } from '@inertiajs/react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock } from 'lucide-react';
+
+// ── Íconos de redes sociales (SVG inline) ─────────────────────────────────────
+
+function IgIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="17.5" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
+
+function FbIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+        </svg>
+    );
+}
+
+function WaIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
+        </svg>
+    );
+}
+
+function TkIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.74a4.85 4.85 0 0 1-1.01-.05z" />
+        </svg>
+    );
+}
+
+function XIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+    );
+}
+
+function YtIcon() {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+        </svg>
+    );
+}
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+interface Dish {
+    id:          number;
+    name:        string;
+    description: string | null;
+    price:       number;
+    image_url:   string | null;
+}
+
+interface Category {
+    id:          number;
+    name:        string;
+    description: string | null;
+    dishes:      Dish[];
+}
+
+interface SocialLinks {
+    instagram?: string;
+    facebook?:  string;
+    whatsapp?:  string;
+    tiktok?:    string;
+    twitter?:   string;
+    youtube?:   string;
+}
+
+interface CartaSettings {
+    primary_color:   string;
+    bg_color:        string;
+    text_color:      string;
+    logo_size:       string;
+    name_size:       string;
+    slogan:          string | null;
+    slogan_size:     string;
+    banner_url:      string | null;
+    payment_methods: string[];
+    social_links:    SocialLinks;
+}
+
+interface Table {
+    id:     number;
+    number: string;
+}
+
+interface Props {
+    categories:  Category[];
+    tenant_name: string;
+    settings:    CartaSettings;
+    tables:      Table[];
+}
+
+interface CartItem {
+    dish:     Dish;
+    quantity: number;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmt(n: number) {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency', currency: 'COP', maximumFractionDigits: 0,
+    }).format(n);
+}
+
+const LOGO_SIZES: Record<string, string> = {
+    sm: 'h-8', md: 'h-10', lg: 'h-14', xl: 'h-20',
+};
+const NAME_SIZES: Record<string, string> = {
+    sm: 'text-lg', md: 'text-xl', lg: 'text-2xl', xl: 'text-3xl', '2xl': 'text-4xl',
+};
+const SLOGAN_SIZES: Record<string, string> = {
+    xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg',
+};
+const PAYMENT_LABELS: Record<string, string> = {
+    efectivo:      'Efectivo',
+    pse:           'PSE',
+    nequi:         'Nequi',
+    daviplata:     'Daviplata',
+    tarjeta:       'Tarjeta',
+    transferencia: 'Transferencia',
+};
+
+const ORDER_TIMEOUT = 600; // 10 minutes in seconds
+
+function fmtTimer(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+function timerColor(s: number, primary: string): string {
+    if (s > 300) return primary;   // > 5 min: brand color
+    if (s > 120) return '#f59e0b'; // 2–5 min: amber
+    return '#ef4444';              // < 2 min: red
+}
+
+type Screen = 'menu' | 'cart' | 'checkout';
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
+export default function PublicMenu({ categories, tenant_name, settings, tables }: Props) {
+    const s = {
+        primary: settings?.primary_color ?? '#e85d04',
+        bg:      settings?.bg_color      ?? '#ffffff',
+        text:    settings?.text_color    ?? '#1a1a1a',
+    };
+
+    const logoClass   = LOGO_SIZES[settings?.logo_size]    ?? 'h-10';
+    const nameClass   = NAME_SIZES[settings?.name_size]    ?? 'text-xl';
+    const sloganClass = SLOGAN_SIZES[settings?.slogan_size] ?? 'text-sm';
+    const payMethods  = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
+
+    // ── Cart state ─────────────────────────────────────────────────────────────
+    const [cart,       setCart]       = useState<CartItem[]>([]);
+    const [screen,     setScreen]     = useState<Screen>('menu');
+    const [submitting, setSubmitting] = useState(false);
+    const [errors,     setErrors]     = useState<Record<string, string>>({});
+    const [success,    setSuccess]    = useState<{ name: string; total: number } | null>(null);
+
+    // ── Session timer (10 min) ─────────────────────────────────────────────────
+    const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [timedOut, setTimedOut] = useState(false);
+
+    // Start timer on first item; stop when cart empties
+    useEffect(() => {
+        if (cart.length > 0 && timerRef.current === null) {
+            setTimeLeft(ORDER_TIMEOUT);
+            timerRef.current = setInterval(() => {
+                setTimeLeft(t => (t !== null && t > 1) ? t - 1 : 0);
+            }, 1000);
+        }
+        if (cart.length === 0 && timerRef.current !== null) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+            setTimeLeft(null);
+        }
+    }, [cart.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Handle timeout
+    useEffect(() => {
+        if (timeLeft !== 0 || timerRef.current === null) return;
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setCart([]);
+        setScreen('menu');
+        setTimedOut(true);
+        setTimeLeft(null);
+    }, [timeLeft]);
+
+    // ── Checkout form ──────────────────────────────────────────────────────────
+    const [form, setForm] = useState({
+        customer_name:    '',
+        customer_phone:   '',
+        type:             'mesa' as 'mesa' | 'domicilio',
+        table_id:         '',
+        delivery_address: '',
+        payment_method:   payMethods[0],
+        notes:            '',
+    });
+
+    function setField<K extends keyof typeof form>(key: K, value: typeof form[K]) {
+        setForm(f => ({ ...f, [key]: value }));
+        if (errors[key]) setErrors(e => { const n = { ...e }; delete n[key]; return n; });
+    }
+
+    // ── Cart helpers ───────────────────────────────────────────────────────────
+    function cartQty(dishId: number) {
+        return cart.find(i => i.dish.id === dishId)?.quantity ?? 0;
+    }
+
+    function addItem(dish: Dish) {
+        setCart(c => {
+            const idx = c.findIndex(i => i.dish.id === dish.id);
+            if (idx >= 0) return c.map((i, j) => j === idx ? { ...i, quantity: i.quantity + 1 } : i);
+            return [...c, { dish, quantity: 1 }];
+        });
+    }
+
+    function removeItem(dish: Dish) {
+        setCart(c => {
+            const idx = c.findIndex(i => i.dish.id === dish.id);
+            if (idx < 0) return c;
+            if (c[idx].quantity === 1) return c.filter((_, j) => j !== idx);
+            return c.map((i, j) => j === idx ? { ...i, quantity: i.quantity - 1 } : i);
+        });
+    }
+
+    function deleteItem(dishId: number) {
+        setCart(c => c.filter(i => i.dish.id !== dishId));
+    }
+
+    const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
+    const totalPrice = cart.reduce((s, i) => s + i.dish.price * i.quantity, 0);
+
+    // ── Submit ─────────────────────────────────────────────────────────────────
+    function submitOrder() {
+        setSubmitting(true);
+        setErrors({});
+        const snapshotTotal = totalPrice;
+        const snapshotName  = form.customer_name;
+        router.post('/carta/pedido', {
+            customer_name:    form.customer_name,
+            customer_phone:   form.customer_phone,
+            type:             form.type,
+            table_id:         form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
+            delivery_address: form.type === 'domicilio' ? form.delivery_address || null : null,
+            payment_method:   form.payment_method,
+            notes:            form.notes || null,
+            items:            cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
+        }, {
+            onError: (errs) => { setErrors(errs); setSubmitting(false); },
+            onSuccess: () => {
+                setSuccess({ name: snapshotName, total: snapshotTotal });
+                setCart([]);
+                setScreen('menu');
+                setForm({
+                    customer_name: '', customer_phone: '', type: 'mesa',
+                    table_id: '', delivery_address: '',
+                    payment_method: payMethods[0], notes: '',
+                });
+                setSubmitting(false);
+            },
+        });
+    }
+
+    return (
+        <div className="min-h-screen" style={{ backgroundColor: s.bg, color: s.text }}>
+            <Head title={`Carta — ${tenant_name}`} />
+
+            {/* ── Banner ── */}
+            {settings?.banner_url && (
+                <div className="w-full aspect-3/1 overflow-hidden">
+                    <img src={settings.banner_url} alt={`${tenant_name} banner`} className="w-full h-full object-cover" />
+                </div>
+            )}
+
+            {/* ── Cabecera sticky ── */}
+            <header
+                className="sticky top-0 z-10 backdrop-blur-md border-b"
+                style={{ backgroundColor: `${s.bg}f0`, borderColor: `${s.text}18` }}
+            >
+                <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+                    <img src="/logo-trans.png" alt={tenant_name} className={`${logoClass} w-auto shrink-0`} />
+                    <div className="min-w-0">
+                        <h1 className={`font-display font-bold leading-tight truncate ${nameClass}`} style={{ color: s.text }}>
+                            {tenant_name}
+                        </h1>
+                        {settings?.slogan ? (
+                            <p className={`${sloganClass} truncate opacity-70 mt-0.5`} style={{ color: s.text }}>
+                                {settings.slogan}
+                            </p>
+                        ) : (
+                            <p className="text-xs opacity-50" style={{ color: s.text }}>Nuestra carta</p>
+                        )}
+                    </div>
+                </div>
+            </header>
+
+            {/* ── Índice de categorías ── */}
+            {categories.length > 1 && (
+                <div
+                    className="sticky top-18.25 z-10 backdrop-blur border-b"
+                    style={{ backgroundColor: `${s.bg}f5`, borderColor: `${s.text}15` }}
+                >
+                    <div className="max-w-2xl mx-auto px-4">
+                        <div className="flex gap-2 overflow-x-auto py-3 scrollbar-none">
+                            {categories.map(cat => (
+                                <a
+                                    key={cat.id}
+                                    href={`#cat-${cat.id}`}
+                                    className="shrink-0 h-8 px-4 rounded-full text-xs font-medium transition-colors border"
+                                    style={{ borderColor: `${s.text}25`, color: s.text }}
+                                    onMouseEnter={e => {
+                                        (e.currentTarget as HTMLAnchorElement).style.backgroundColor = `${s.primary}18`;
+                                        (e.currentTarget as HTMLAnchorElement).style.color = s.primary;
+                                        (e.currentTarget as HTMLAnchorElement).style.borderColor = `${s.primary}50`;
+                                    }}
+                                    onMouseLeave={e => {
+                                        (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '';
+                                        (e.currentTarget as HTMLAnchorElement).style.color = s.text;
+                                        (e.currentTarget as HTMLAnchorElement).style.borderColor = `${s.text}25`;
+                                    }}
+                                >
+                                    {cat.name}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Contenido ── */}
+            <main className="max-w-2xl mx-auto px-4 py-8 space-y-12 pb-28">
+                {categories.length === 0 ? (
+                    <div className="text-center py-20" style={{ color: `${s.text}70` }}>
+                        <p className="text-lg font-medium">La carta está siendo preparada.</p>
+                        <p className="text-sm mt-1">Vuelve pronto.</p>
+                    </div>
+                ) : (
+                    categories.map(cat => (
+                        <section key={cat.id} id={`cat-${cat.id}`}>
+                            <div className="mb-5">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
+                                    <h2 className="font-display text-lg font-bold uppercase tracking-widest px-1" style={{ color: s.primary }}>
+                                        {cat.name}
+                                    </h2>
+                                    <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
+                                </div>
+                                {cat.description && (
+                                    <p className="text-sm text-center mt-1 opacity-60" style={{ color: s.text }}>
+                                        {cat.description}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="space-y-3">
+                                {cat.dishes.map(dish => {
+                                    const qty = cartQty(dish.id);
+                                    return (
+                                        <div
+                                            key={dish.id}
+                                            className="flex items-start gap-4 rounded-2xl p-4 border"
+                                            style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-base leading-snug" style={{ color: s.text }}>
+                                                    {dish.name}
+                                                </div>
+                                                {dish.description && (
+                                                    <p className="text-sm mt-1 leading-relaxed opacity-65" style={{ color: s.text }}>
+                                                        {dish.description}
+                                                    </p>
+                                                )}
+                                                <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                                                    <div className="font-display text-lg font-bold" style={{ color: s.primary }}>
+                                                        {fmt(dish.price)}
+                                                    </div>
+                                                    {qty === 0 ? (
+                                                        <button
+                                                            onClick={() => addItem(dish)}
+                                                            className="flex items-center gap-1.5 h-8 px-4 rounded-full text-sm font-semibold"
+                                                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                                        >
+                                                            <Plus className="h-3.5 w-3.5" /> Agregar
+                                                        </button>
+                                                    ) : (
+                                                        <div
+                                                            className="flex items-center gap-1 rounded-full border"
+                                                            style={{ borderColor: `${s.primary}50` }}
+                                                        >
+                                                            <button
+                                                                onClick={() => removeItem(dish)}
+                                                                className="h-8 w-8 flex items-center justify-center rounded-full"
+                                                                style={{ color: s.primary }}
+                                                            >
+                                                                <Minus className="h-3.5 w-3.5" />
+                                                            </button>
+                                                            <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
+                                                                {qty}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => addItem(dish)}
+                                                                className="h-8 w-8 flex items-center justify-center rounded-full"
+                                                                style={{ color: s.primary }}
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {dish.image_url && (
+                                                <img
+                                                    src={dish.image_url}
+                                                    alt={dish.name}
+                                                    className="shrink-0 h-20 w-20 rounded-xl object-cover"
+                                                    style={{ border: `1px solid ${s.text}20` }}
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    ))
+                )}
+            </main>
+
+            {/* ── Footer ── */}
+            <footer className="border-t mt-12 pb-8" style={{ borderColor: `${s.text}15` }}>
+                {/* Redes sociales */}
+                {(() => {
+                    const sl = settings?.social_links ?? {};
+
+                    type SocialEntry = {
+                        key:    string;
+                        href:   string;
+                        icon:   React.ReactNode;
+                        label:  string;
+                        bg:     string;
+                        glow:   string;
+                    };
+
+                    const links: SocialEntry[] = ([
+                        sl.instagram && {
+                            key: 'instagram', href: sl.instagram,
+                            icon: <IgIcon />, label: 'Instagram',
+                            bg:   'linear-gradient(135deg,#833ab4 0%,#fd1d1d 50%,#fcb045 100%)',
+                            glow: 'rgba(253,29,29,0.45)',
+                        },
+                        sl.facebook && {
+                            key: 'facebook', href: sl.facebook,
+                            icon: <FbIcon />, label: 'Facebook',
+                            bg:   '#1877F2',
+                            glow: 'rgba(24,119,242,0.45)',
+                        },
+                        sl.whatsapp && {
+                            key: 'whatsapp',
+                            href: `https://wa.me/${sl.whatsapp.replace(/\D/g, '')}`,
+                            icon: <WaIcon />, label: 'WhatsApp',
+                            bg:   'linear-gradient(135deg,#128C7E 0%,#25D366 100%)',
+                            glow: 'rgba(37,211,102,0.45)',
+                        },
+                        sl.tiktok && {
+                            key: 'tiktok', href: sl.tiktok,
+                            icon: <TkIcon />, label: 'TikTok',
+                            bg:   'linear-gradient(135deg,#010101 0%,#2d2d2d 100%)',
+                            glow: 'rgba(238,29,82,0.40)',
+                        },
+                        sl.twitter && {
+                            key: 'twitter', href: sl.twitter,
+                            icon: <XIcon />, label: 'X',
+                            bg:   'linear-gradient(135deg,#1a1a1a 0%,#333 100%)',
+                            glow: 'rgba(0,0,0,0.35)',
+                        },
+                        sl.youtube && {
+                            key: 'youtube', href: sl.youtube,
+                            icon: <YtIcon />, label: 'YouTube',
+                            bg:   'linear-gradient(135deg,#c4302b 0%,#ff0000 100%)',
+                            glow: 'rgba(255,0,0,0.45)',
+                        },
+                    ] as (SocialEntry | false)[]).filter((x): x is SocialEntry => Boolean(x));
+
+                    if (links.length === 0) return null;
+
+                    return (
+                        <div className="pt-8 pb-5">
+                            <p className="text-center text-[11px] font-semibold uppercase tracking-widest mb-5 opacity-40"
+                               style={{ color: s.text }}>
+                                Seguinos
+                            </p>
+                            <div className="flex justify-center gap-4 flex-wrap">
+                                {links.map(({ key, href, icon, label, bg, glow }) => (
+                                    <a
+                                        key={key}
+                                        href={href}
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                        aria-label={label}
+                                        className="flex flex-col items-center gap-2"
+                                        style={{ textDecoration: 'none' }}
+                                        onMouseEnter={e => {
+                                            const chip = e.currentTarget.querySelector<HTMLSpanElement>('.social-chip');
+                                            if (chip) {
+                                                chip.style.transform  = 'translateY(-3px) scale(1.12)';
+                                                chip.style.boxShadow  = `0 8px 22px ${glow}`;
+                                            }
+                                        }}
+                                        onMouseLeave={e => {
+                                            const chip = e.currentTarget.querySelector<HTMLSpanElement>('.social-chip');
+                                            if (chip) {
+                                                chip.style.transform  = '';
+                                                chip.style.boxShadow  = `0 4px 12px ${glow}`;
+                                            }
+                                        }}
+                                    >
+                                        <span
+                                            className="social-chip h-13 w-13 flex items-center justify-center rounded-2xl"
+                                            style={{
+                                                background:  bg,
+                                                boxShadow:   `0 4px 12px ${glow}`,
+                                                color:       '#ffffff',
+                                                transition:  'transform 0.2s ease, box-shadow 0.2s ease',
+                                                width:  '52px',
+                                                height: '52px',
+                                            }}
+                                        >
+                                            {icon}
+                                        </span>
+                                        <span className="text-[10px] font-medium opacity-45" style={{ color: s.text }}>
+                                            {label}
+                                        </span>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                <p className="text-center text-xs opacity-35 pt-2" style={{ color: s.text }}>
+                    {tenant_name} · Carta digital por{' '}
+                    <span className="font-semibold" style={{ color: s.primary }}>MenuGo</span>
+                </p>
+            </footer>
+
+            {/* ── Barra flotante del carrito ── */}
+            {cart.length > 0 && screen === 'menu' && (
+                <div className="fixed bottom-0 left-0 right-0 z-20 p-4">
+                    <div className="max-w-2xl mx-auto">
+                        <button
+                            onClick={() => setScreen('cart')}
+                            className="w-full flex items-center justify-between px-5 py-4 rounded-2xl shadow-xl font-semibold"
+                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                        >
+                            <span className="flex items-center gap-2.5">
+                                <span
+                                    className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+                                    style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}
+                                >
+                                    {totalItems}
+                                </span>
+                                Ver pedido
+                            </span>
+                            <span className="flex items-center gap-3">
+                                {timeLeft !== null && (
+                                    <span className="flex items-center gap-1 text-sm font-mono font-bold opacity-90">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {fmtTimer(timeLeft)}
+                                    </span>
+                                )}
+                                <span className="text-lg font-bold">{fmt(totalPrice)}</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Hoja: carrito ── */}
+            {screen === 'cart' && (
+                <div className="fixed inset-0 z-30 flex flex-col" style={{ backgroundColor: s.bg }}>
+                    <div
+                        className="flex items-center justify-between px-4 py-4 border-b shrink-0"
+                        style={{ borderColor: `${s.text}15` }}
+                    >
+                        <button onClick={() => setScreen('menu')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
+                            <ChevronLeft className="h-6 w-6" />
+                        </button>
+                        <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Tu pedido</h2>
+                        {timeLeft !== null ? (
+                            <span
+                                className="flex items-center gap-1 text-xs font-mono font-bold px-2 py-1 rounded-full"
+                                style={{
+                                    color:           timerColor(timeLeft, s.primary),
+                                    backgroundColor: `${timerColor(timeLeft, s.primary)}18`,
+                                }}
+                            >
+                                <Clock className="h-3 w-3" /> {fmtTimer(timeLeft)}
+                            </span>
+                        ) : <div className="w-9" />}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                        {cart.map(item => (
+                            <div
+                                key={item.dish.id}
+                                className="flex items-center gap-3 rounded-2xl p-3 border"
+                                style={{ borderColor: `${s.text}12`, backgroundColor: `${s.text}04` }}
+                            >
+                                {item.dish.image_url && (
+                                    <img
+                                        src={item.dish.image_url}
+                                        alt={item.dish.name}
+                                        className="h-14 w-14 rounded-xl object-cover shrink-0"
+                                    />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-sm leading-snug truncate" style={{ color: s.text }}>
+                                        {item.dish.name}
+                                    </p>
+                                    <p className="text-sm font-bold mt-0.5" style={{ color: s.primary }}>
+                                        {fmt(item.dish.price * item.quantity)}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1 rounded-full border shrink-0" style={{ borderColor: `${s.primary}40` }}>
+                                    <button
+                                        onClick={() => removeItem(item.dish)}
+                                        className="h-7 w-7 flex items-center justify-center rounded-full"
+                                        style={{ color: s.primary }}
+                                    >
+                                        <Minus className="h-3 w-3" />
+                                    </button>
+                                    <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
+                                        {item.quantity}
+                                    </span>
+                                    <button
+                                        onClick={() => addItem(item.dish)}
+                                        className="h-7 w-7 flex items-center justify-center rounded-full"
+                                        style={{ color: s.primary }}
+                                    >
+                                        <Plus className="h-3 w-3" />
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => deleteItem(item.dish.id)}
+                                    className="p-1.5 rounded-xl shrink-0"
+                                    style={{ color: s.text, opacity: 0.4 }}
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="px-4 py-4 border-t space-y-3 shrink-0" style={{ borderColor: `${s.text}15` }}>
+                        <div className="flex items-center justify-between">
+                            <span className="font-medium opacity-70" style={{ color: s.text }}>Total</span>
+                            <span className="font-display text-xl font-bold" style={{ color: s.primary }}>
+                                {fmt(totalPrice)}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => setScreen('checkout')}
+                            className="w-full py-3.5 rounded-2xl text-sm font-semibold"
+                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                        >
+                            Hacer pedido
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Hoja: checkout ── */}
+            {screen === 'checkout' && (
+                <div className="fixed inset-0 z-30 flex flex-col" style={{ backgroundColor: s.bg }}>
+                    <div
+                        className="flex items-center justify-between px-4 py-4 border-b shrink-0"
+                        style={{ borderColor: `${s.text}15` }}
+                    >
+                        <button onClick={() => setScreen('cart')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
+                            <ChevronLeft className="h-6 w-6" />
+                        </button>
+                        <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Datos del pedido</h2>
+                        {timeLeft !== null ? (
+                            <span
+                                className="flex items-center gap-1 text-xs font-mono font-bold px-2 py-1 rounded-full"
+                                style={{
+                                    color:           timerColor(timeLeft, s.primary),
+                                    backgroundColor: `${timerColor(timeLeft, s.primary)}18`,
+                                }}
+                            >
+                                <Clock className="h-3 w-3" /> {fmtTimer(timeLeft)}
+                            </span>
+                        ) : <div className="w-9" />}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+
+                        {/* Nombre */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium" style={{ color: s.text }}>
+                                Nombre completo <span style={{ color: s.primary }}>*</span>
+                            </label>
+                            <input
+                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                style={{
+                                    borderColor:     errors.customer_name ? '#ef4444' : `${s.text}25`,
+                                    backgroundColor: `${s.text}06`,
+                                    color:           s.text,
+                                }}
+                                placeholder="Tu nombre completo"
+                                value={form.customer_name}
+                                onChange={e => setField('customer_name', e.target.value)}
+                            />
+                            {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
+                        </div>
+
+                        {/* Teléfono */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium" style={{ color: s.text }}>
+                                Teléfono de contacto <span style={{ color: s.primary }}>*</span>
+                            </label>
+                            <input
+                                type="tel"
+                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                style={{
+                                    borderColor:     errors.customer_phone ? '#ef4444' : `${s.text}25`,
+                                    backgroundColor: `${s.text}06`,
+                                    color:           s.text,
+                                }}
+                                placeholder="3001234567"
+                                value={form.customer_phone}
+                                onChange={e => setField('customer_phone', e.target.value)}
+                            />
+                            {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
+                        </div>
+
+                        {/* Tipo de servicio */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de servicio</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {([
+                                    { val: 'mesa'      as const, Icon: UtensilsCrossed, label: 'Mesa' },
+                                    { val: 'domicilio' as const, Icon: Bike,            label: 'Domicilio' },
+                                ]).map(({ val, Icon, label }) => (
+                                    <button
+                                        key={val}
+                                        type="button"
+                                        onClick={() => setField('type', val)}
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors"
+                                        style={{
+                                            borderColor:     form.type === val ? s.primary : `${s.text}20`,
+                                            backgroundColor: form.type === val ? `${s.primary}15` : 'transparent',
+                                            color:           form.type === val ? s.primary : s.text,
+                                        }}
+                                    >
+                                        <Icon className="h-4 w-4" /> {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Mesa */}
+                        {form.type === 'mesa' && (
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>Mesa</label>
+                                {tables.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {tables.map(t => (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => setField('table_id', String(t.id))}
+                                                className="h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
+                                                style={{
+                                                    borderColor:     form.table_id === String(t.id) ? s.primary : `${s.text}20`,
+                                                    backgroundColor: form.table_id === String(t.id) ? `${s.primary}20` : 'transparent',
+                                                    color:           form.table_id === String(t.id) ? s.primary : s.text,
+                                                }}
+                                            >
+                                                {t.number}
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs opacity-50" style={{ color: s.text }}>
+                                        No hay mesas registradas.
+                                    </p>
+                                )}
+                                {errors.table_id && <p className="text-xs text-red-500">{errors.table_id}</p>}
+                            </div>
+                        )}
+
+                        {/* Dirección domicilio */}
+                        {form.type === 'domicilio' && (
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>
+                                    Dirección de entrega
+                                </label>
+                                <textarea
+                                    rows={2}
+                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none resize-none"
+                                    style={{
+                                        borderColor:     errors.delivery_address ? '#ef4444' : `${s.text}25`,
+                                        backgroundColor: `${s.text}06`,
+                                        color:           s.text,
+                                    }}
+                                    placeholder="Calle, barrio, referencias..."
+                                    value={form.delivery_address}
+                                    onChange={e => setField('delivery_address', e.target.value)}
+                                />
+                                {errors.delivery_address && (
+                                    <p className="text-xs text-red-500">{errors.delivery_address}</p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Método de pago */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium" style={{ color: s.text }}>Método de pago</label>
+                            <div className="flex flex-wrap gap-2">
+                                {payMethods.map(method => (
+                                    <button
+                                        key={method}
+                                        type="button"
+                                        onClick={() => setField('payment_method', method)}
+                                        className="h-9 px-4 rounded-full border text-sm font-medium transition-colors"
+                                        style={{
+                                            borderColor:     form.payment_method === method ? s.primary : `${s.text}20`,
+                                            backgroundColor: form.payment_method === method ? `${s.primary}15` : 'transparent',
+                                            color:           form.payment_method === method ? s.primary : s.text,
+                                        }}
+                                    >
+                                        {PAYMENT_LABELS[method] ?? method}
+                                    </button>
+                                ))}
+                            </div>
+                            {errors.payment_method && <p className="text-xs text-red-500">{errors.payment_method}</p>}
+                        </div>
+
+                        {/* Notas */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium opacity-70" style={{ color: s.text }}>
+                                Notas <span className="font-normal opacity-60">(opcional)</span>
+                            </label>
+                            <textarea
+                                rows={2}
+                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none resize-none"
+                                style={{
+                                    borderColor:     `${s.text}20`,
+                                    backgroundColor: `${s.text}06`,
+                                    color:           s.text,
+                                }}
+                                placeholder="Alergias, instrucciones especiales..."
+                                value={form.notes}
+                                onChange={e => setField('notes', e.target.value)}
+                            />
+                        </div>
+
+                        {/* Resumen */}
+                        <div
+                            className="rounded-2xl border p-4 space-y-2"
+                            style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}
+                        >
+                            <p className="text-xs font-semibold uppercase tracking-wide opacity-55" style={{ color: s.text }}>
+                                Resumen
+                            </p>
+                            {cart.map(item => (
+                                <div key={item.dish.id} className="flex items-center justify-between text-sm gap-2">
+                                    <span className="truncate" style={{ color: s.text }}>
+                                        {item.quantity}× {item.dish.name}
+                                    </span>
+                                    <span className="font-semibold shrink-0" style={{ color: s.text }}>
+                                        {fmt(item.dish.price * item.quantity)}
+                                    </span>
+                                </div>
+                            ))}
+                            <div
+                                className="border-t pt-2 flex items-center justify-between"
+                                style={{ borderColor: `${s.text}15` }}
+                            >
+                                <span className="font-semibold" style={{ color: s.text }}>Total</span>
+                                <span className="font-display font-bold text-base" style={{ color: s.primary }}>
+                                    {fmt(totalPrice)}
+                                </span>
+                            </div>
+                        </div>
+
+                        {errors.items && (
+                            <p className="text-xs text-red-500 text-center">{errors.items}</p>
+                        )}
+                    </div>
+
+                    <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: `${s.text}15` }}>
+                        <button
+                            onClick={submitOrder}
+                            disabled={submitting}
+                            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-60"
+                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                        >
+                            {submitting ? 'Enviando pedido...' : `Confirmar pedido · ${fmt(totalPrice)}`}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal de tiempo agotado ── */}
+            {timedOut && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-6"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl"
+                        style={{ backgroundColor: s.bg }}
+                    >
+                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
+                            <Clock className="h-8 w-8 text-red-500" />
+                        </div>
+                        <h2 className="font-display text-2xl font-bold mb-3" style={{ color: s.text }}>
+                            Tiempo agotado
+                        </h2>
+                        <p className="text-sm leading-relaxed mb-6" style={{ color: s.text, opacity: 0.65 }}>
+                            Tu sesión de pedido expiró luego de <strong style={{ opacity: 1 }}>10 minutos</strong> de inactividad.
+                            Los productos seleccionados fueron removidos del carrito.
+                            Puedes volver a hacer tu selección cuando quieras.
+                        </p>
+                        <button
+                            onClick={() => setTimedOut(false)}
+                            className="w-full py-3 rounded-2xl text-sm font-semibold"
+                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                        >
+                            Volver a la carta
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal de éxito ── */}
+            {success && (
+                <div
+                    className="fixed inset-0 z-40 flex items-center justify-center p-6"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl"
+                        style={{ backgroundColor: s.bg }}
+                    >
+                        <div
+                            className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full"
+                            style={{ backgroundColor: `${s.primary}20` }}
+                        >
+                            <Check className="h-8 w-8" style={{ color: s.primary }} />
+                        </div>
+                        <h2 className="font-display text-2xl font-bold mb-1" style={{ color: s.text }}>
+                            ¡Pedido enviado!
+                        </h2>
+                        <p className="text-sm opacity-65 mb-4" style={{ color: s.text }}>
+                            Gracias, {success.name}. Tu pedido ha sido recibido.
+                        </p>
+                        <p className="font-display text-3xl font-bold mb-7" style={{ color: s.primary }}>
+                            {fmt(success.total)}
+                        </p>
+                        <button
+                            onClick={() => setSuccess(null)}
+                            className="w-full py-3 rounded-2xl text-sm font-semibold"
+                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                        >
+                            Ver la carta
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

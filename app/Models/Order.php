@@ -2,25 +2,37 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
+    use Auditable;
+
+    protected static function auditLabel(): string { return 'Pedido'; }
+    protected function auditDescription(): string  { return "Pedido #{$this->id}"; }
+
+    protected array $auditHidden = ['closed_at_eod'];
+
     protected $fillable = [
         'customer_name', 'customer_phone',
         'type', 'table_id',
         'delivery_address', 'delivery_phone',
-        'status', 'total', 'notes',
+        'payment_method',
+        'status', 'total', 'amount_paid', 'notes',
         'cashier_id', 'cook_id', 'delivery_user_id',
-        'ready_at', 'delivered_at',
+        'ready_at', 'delivered_at', 'closed_at_eod',
     ];
 
     protected $casts = [
-        'total'        => 'decimal:2',
-        'ready_at'     => 'datetime',
-        'delivered_at' => 'datetime',
+        'total'          => 'decimal:2',
+        'amount_paid'    => 'decimal:2',
+        'ready_at'       => 'datetime',
+        'delivered_at'   => 'datetime',
+        'closed_at_eod'  => 'datetime',
     ];
 
     // ── Relaciones ─────────────────────────────────────────────────────────────
@@ -66,7 +78,7 @@ class Order extends Model
 
     public function recalculateTotal(): void
     {
-        $this->total = $this->items()->sum(\DB::raw('quantity * unit_price'));
+        $this->total = $this->items()->sum(DB::raw('quantity * unit_price'));
         $this->save();
     }
 }

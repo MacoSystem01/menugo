@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import { LoginSearch } from '@/components/LoginSearch';
 import {
     ArrowRight, Sparkles, Store, BarChart3, Truck, Utensils, ShieldCheck,
     Zap, Globe2, Star, Check, X,
@@ -131,7 +132,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                                     </div>
                                 ) : (
                                     /* Espacio reservado para alinear las cards */
-                                    <div className="mb-1.5 h-[26px]" />
+                                    <div className="mb-1.5 h-6.5" />
                                 )}
 
                                 {/* Tarjeta — clickeable */}
@@ -178,19 +179,18 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                     </div>
 
                     {/* CTA */}
-                    <button
-                        type="button"
+                    <Button
+                        variant="hero"
+                        size="lg"
+                        className="mt-4 w-full max-w-xs rounded-full text-base font-semibold group"
                         onClick={() => selectPlan('semestral')}
-                        className="mt-4 w-full max-w-xs"
                     >
-                        <Button variant="hero" size="lg" className="w-full rounded-full text-base font-semibold group pointer-events-none">
-                            Registrarme ahora
-                            <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" />
-                        </Button>
-                    </button>
+                        Registrarme ahora
+                        <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" />
+                    </Button>
 
                     <p className="text-xs text-muted-foreground">
-                        14 días de prueba gratis · Sin tarjeta de crédito
+                        15 días de prueba gratis
                     </p>
                 </div>
             </div>
@@ -230,7 +230,7 @@ export default function Welcome() {
 /* ─────────────────────────────────────────────
    Header — botón "Ver planes" abre el modal
 ───────────────────────────────────────────── */
-function SiteHeader() {
+function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
     return (
         <header className="sticky top-0 z-40 glass">
             <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-8">
@@ -256,12 +256,10 @@ function SiteHeader() {
 
                 {/* Botones más grandes */}
                 <div className="flex items-center gap-4">
-                    <Link href="/login">
-                        <Button variant="ghost" size="default" className="text-base">Iniciar sesión</Button>
-                    </Link>
-                    <Link href="/register">
-                        <Button variant="hero" size="lg">Empezar gratis</Button>
-                    </Link>
+                    <LoginSearch triggerClass="flex items-center gap-1.5 text-base font-medium text-muted-foreground hover:text-foreground transition-colors" />
+                    <Button variant="hero" size="lg" onClick={onOpenPlans}>
+                        Empezar gratis
+                    </Button>
                 </div>
             </div>
         </header>
@@ -456,11 +454,9 @@ function CTA({ onOpenPlans }: { onOpenPlans: () => void }) {
                             Crear cuenta gratis <ArrowRight className="h-4 w-4" />
                         </Button>
                     </Link>
-                    <button type="button" onClick={onOpenPlans}>
-                        <Button size="xl" variant="ghost" className="text-primary-foreground hover:bg-white/10 pointer-events-none">
-                            Ver planes
-                        </Button>
-                    </button>
+                    <Button size="xl" variant="ghost" className="text-primary-foreground hover:bg-white/10" onClick={onOpenPlans}>
+                        Ver planes
+                    </Button>
                 </div>
             </div>
         </section>

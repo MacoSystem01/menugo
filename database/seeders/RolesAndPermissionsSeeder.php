@@ -12,20 +12,23 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // ── Permisos por módulo ──────────────────────────────────────────
-        $permissions = [
+        $all = [
             // Usuarios
-            'usuarios.ver', 'usuarios.crear', 'usuarios.editar', 'usuarios.eliminar',
-            // Menú
+            'usuarios.ver', 'usuarios.crear', 'usuarios.editar', 'usuarios.eliminar', 'usuarios.roles',
+            // Carta
+            'carta.ver', 'carta.editar',
+            // Categorías
             'categorias.ver', 'categorias.crear', 'categorias.editar', 'categorias.eliminar',
-            'platos.ver',     'platos.crear',     'platos.editar',     'platos.eliminar',
+            // Platos
+            'platos.ver', 'platos.crear', 'platos.editar', 'platos.eliminar',
             // Caja
-            'caja.ver', 'caja.gestionar',
+            'caja.ver', 'caja.gestionar', 'caja.historial',
             // Pedidos
-            'pedidos.ver', 'pedidos.crear', 'pedidos.cancelar',
+            'pedidos.ver', 'pedidos.crear', 'pedidos.editar', 'pedidos.cancelar',
             // Cocina
             'cocina.ver', 'cocina.gestionar',
-            'novedades.ver', 'novedades.crear',
+            // Novedades
+            'novedades.ver', 'novedades.crear', 'novedades.gestionar',
             // Mesa
             'mesa.ver', 'mesa.gestionar',
             // Domicilio
@@ -34,27 +37,56 @@ class RolesAndPermissionsSeeder extends Seeder
             'inventario.ver', 'inventario.crear', 'inventario.editar', 'inventario.eliminar',
             // Reporte
             'reporte.ver',
-            // Config técnica
-            'config.tecnica',
         ];
 
-        foreach ($permissions as $perm) {
+        foreach ($all as $perm) {
             Permission::firstOrCreate(['name' => $perm]);
         }
 
-        // ── Roles y sus permisos ─────────────────────────────────────────
         $roles = [
-            'administrador' => array_diff($permissions, []),   // acceso total
-            'gerente'       => array_diff($permissions, ['config.tecnica']),
-            'caja'          => ['caja.ver', 'caja.gestionar', 'pedidos.ver', 'pedidos.crear', 'pedidos.cancelar', 'mesa.ver'],
-            'cocina'        => ['cocina.ver', 'cocina.gestionar', 'novedades.ver', 'novedades.crear', 'pedidos.ver'],
-            'mesa'          => ['pedidos.ver', 'mesa.ver', 'mesa.gestionar'],
-            'domicilio'     => ['domicilio.ver', 'domicilio.gestionar', 'pedidos.ver'],
+            // Gerente: acceso total
+            'gerente' => $all,
+
+            // Administrador: todo excepto crear/eliminar usuarios, cambiar roles,
+            // historial de caja, cancelar pedidos, eliminar inventario y reportes
+            'administrador' => array_values(array_diff($all, [
+                'usuarios.crear', 'usuarios.eliminar', 'usuarios.roles',
+                'caja.historial',
+                'pedidos.cancelar',
+                'inventario.eliminar',
+                'reporte.ver',
+            ])),
+
+            // Caja: gestión completa de cobros
+            'caja' => [
+                'caja.ver', 'caja.gestionar', 'caja.historial',
+                'pedidos.ver',
+            ],
+
+            // Cocina: pedidos de cocina + novedades + inventario lectura
+            'cocina' => [
+                'cocina.ver', 'cocina.gestionar',
+                'novedades.ver', 'novedades.crear',
+                'inventario.ver',
+            ],
+
+            // Mesa: pedidos propios + mesas + ver cocina (lectura)
+            'mesa' => [
+                'pedidos.ver', 'pedidos.crear',
+                'mesa.ver', 'mesa.gestionar',
+                'cocina.ver',
+            ],
+
+            // Domicilio: sus domicilios + ver pedidos propios
+            'domicilio' => [
+                'domicilio.ver', 'domicilio.gestionar',
+                'pedidos.ver',
+            ],
         ];
 
-        foreach ($roles as $roleName => $rolePerms) {
-            $role = Role::firstOrCreate(['name' => $roleName]);
-            $role->syncPermissions($rolePerms);
+        foreach ($roles as $name => $perms) {
+            $role = Role::firstOrCreate(['name' => $name]);
+            $role->syncPermissions($perms);
         }
     }
 }

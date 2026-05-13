@@ -103,6 +103,12 @@ class TenancyServiceProvider extends ServiceProvider
         $this->mapRoutes();
 
         $this->makeTenancyMiddlewareHighestPriority();
+
+        // Flush Spatie Permission cache every time a tenant DB connection is activated,
+        // so roles/permissions from a previous tenant (or stale cache) never bleed through.
+        Event::listen(Events\TenancyInitialized::class, function () {
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        });
     }
 
     protected function bootEvents()

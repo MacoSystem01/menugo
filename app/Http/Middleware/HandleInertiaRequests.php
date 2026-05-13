@@ -44,6 +44,7 @@ class HandleInertiaRequests extends Middleware
                     'email'       => $request->user()->email,
                     'phone'       => $request->user()->phone,
                     'active'      => $request->user()->active,
+                    'role'        => $request->user()->getRoleNames()->first() ?? 'desconocido',
                     'roles'       => $request->user()->getRoleNames(),
                     'permissions' => $request->user()->getAllPermissions()->pluck('name'),
                 ] : null,

@@ -1,8 +1,8 @@
-import { Link, usePage } from '@inertiajs/react';
-import { ReactNode, useState } from 'react';
-import { PageProps } from '@/types';
+import { Link, router, usePage } from '@inertiajs/react';
+import { ReactNode, useEffect, useState } from 'react';
+import { PageProps, Role } from '@/types';
 
-// ── Icono SVG inline ───────────────────────────────────────────────────────────
+// ── Iconos SVG inline ──────────────────────────────────────────────────────────
 const paths: Record<string, string> = {
     'home':             '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
     'users':            '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -16,18 +16,18 @@ const paths: Record<string, string> = {
     'file-bar-chart':   '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18v-2"/><path d="M12 18v-4"/><path d="M16 18v-6"/>',
     'chevron-down':     '<path d="m6 9 6 6 6-6"/>',
     'log-out':          '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
-    'sparkles':         '<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>',
-    'layout-admin':     '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    'lock':             '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    'menu':             '<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>',
+    'x':                '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     'building-2':       '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>',
     'bar-chart-3':      '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
     'credit-card':      '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
+    'shield-check':     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
 };
 
 function Icon({ name, className = 'h-4 w-4' }: { name: string; className?: string }) {
     return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24" height="24" viewBox="0 0 24 24"
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" strokeWidth="2"
             strokeLinecap="round" strokeLinejoin="round"
             className={className}
@@ -37,36 +37,91 @@ function Icon({ name, className = 'h-4 w-4' }: { name: string; className?: strin
 }
 
 // ── Tipos de navegación ────────────────────────────────────────────────────────
-type NavChild = { href: string; label: string };
+type NavChild = { href: string; label: string; readOnly?: boolean };
 type NavItem =
-    | { href: string; label: string; icon: string; children?: never }
-    | { label: string; icon: string; children: NavChild[]; href?: never };
+    | { href: string; label: string; icon: string; readOnly?: boolean; children?: never }
+    | { label: string; icon: string; children: NavChild[]; href?: never; readOnly?: boolean };
 
-const restaurantNav: NavItem[] = [
-    { href: '/dashboard',        label: 'Inicio',     icon: 'home' },
-    { href: '/usuarios',         label: 'Usuarios',   icon: 'users' },
-    { label: 'Menú', icon: 'utensils', children: [
-        { href: '/menu/categorias', label: 'Categoría' },
-        { href: '/menu/platos',     label: 'Plato' },
-    ]},
-    { href: '/caja',             label: 'Caja',       icon: 'dollar-sign' },
-    { href: '/pedidos',          label: 'Pedidos',    icon: 'shopping-bag' },
-    { label: 'Cocina', icon: 'flame', children: [
-        { href: '/cocina',           label: 'Cocina' },
-        { href: '/cocina/novedades', label: 'Novedades' },
-    ]},
-    { href: '/tables',           label: 'Mesa',       icon: 'layout-dashboard' },
-    { href: '/domicilio',        label: 'Domicilio',  icon: 'map-pin' },
-    { href: '/inventario',       label: 'Inventario', icon: 'package' },
-    { href: '/reporte',          label: 'Reporte',    icon: 'file-bar-chart' },
-];
+// ── Badge de rol ───────────────────────────────────────────────────────────────
+const ROLE_BADGE: Record<Role, { label: string; className: string }> = {
+    gerente:       { label: 'Gerente',       className: 'bg-amber-400/15 text-amber-400 border-amber-400/20' },
+    administrador: { label: 'Administrador', className: 'bg-orange-400/15 text-orange-400 border-orange-400/20' },
+    caja:          { label: 'Caja',          className: 'bg-blue-400/15 text-blue-400 border-blue-400/20' },
+    cocina:        { label: 'Cocina',        className: 'bg-red-400/15 text-red-400 border-red-400/20' },
+    mesa:          { label: 'Mesa',          className: 'bg-green-400/15 text-green-400 border-green-400/20' },
+    domicilio:     { label: 'Domicilio',     className: 'bg-purple-400/15 text-purple-400 border-purple-400/20' },
+    superadmin:    { label: 'SuperAdmin',    className: 'bg-muted text-muted-foreground border-border' },
+};
 
-const adminNav: NavItem[] = [
-    { href: '/admin',            label: 'Global',      icon: 'layout-dashboard' },
-    { href: '/admin/tenants',    label: 'Locales',     icon: 'building-2' },
-    { href: '/admin/analytics',  label: 'Analítica',   icon: 'bar-chart-3' },
-    { href: '/admin/billing',    label: 'Facturación', icon: 'credit-card' },
-];
+// ── Navegación por rol ─────────────────────────────────────────────────────────
+const menuGroup: NavItem = { label: 'Menú', icon: 'utensils', children: [
+    { href: '/menu/carta',      label: 'Carta' },
+    { href: '/menu/categorias', label: 'Categorías' },
+    { href: '/menu/platos',     label: 'Platos' },
+]};
+
+const cocinaGroup: NavItem = { label: 'Cocina', icon: 'flame', children: [
+    { href: '/cocina',           label: 'Cocina' },
+    { href: '/cocina/novedades', label: 'Novedades' },
+]};
+
+const cocinaReadOnly: NavItem = { label: 'Cocina', icon: 'flame', readOnly: true, children: [
+    { href: '/cocina', label: 'Cocina', readOnly: true },
+]};
+
+const NAV_BY_ROLE: Record<Role, NavItem[]> = {
+    gerente: [
+        { href: '/dashboard', label: 'Inicio', icon: 'home' },
+        { href: '/usuarios',  label: 'Usuarios', icon: 'users' },
+        menuGroup,
+        { href: '/caja',      label: 'Caja',      icon: 'dollar-sign' },
+        { href: '/pedidos',   label: 'Pedidos',   icon: 'shopping-bag' },
+        cocinaGroup,
+        { href: '/tables',    label: 'Mesa',      icon: 'layout-dashboard' },
+        { href: '/domicilio', label: 'Domicilio', icon: 'map-pin' },
+        { href: '/inventario',label: 'Inventario',icon: 'package' },
+        { href: '/reporte',   label: 'Reporte',   icon: 'file-bar-chart' },
+        { href: '/auditoria', label: 'Auditoría', icon: 'shield-check' },
+    ],
+    administrador: [
+        { href: '/dashboard', label: 'Inicio',    icon: 'home' },
+        { href: '/usuarios',  label: 'Usuarios',  icon: 'users' },
+        menuGroup,
+        { href: '/caja',      label: 'Caja',      icon: 'dollar-sign' },
+        { href: '/pedidos',   label: 'Pedidos',   icon: 'shopping-bag' },
+        cocinaGroup,
+        { href: '/tables',    label: 'Mesa',      icon: 'layout-dashboard' },
+        { href: '/domicilio', label: 'Domicilio', icon: 'map-pin' },
+        { href: '/inventario',label: 'Inventario',icon: 'package' },
+    ],
+    caja: [
+        { href: '/dashboard', label: 'Inicio',  icon: 'home' },
+        { href: '/caja',      label: 'Caja',    icon: 'dollar-sign' },
+        { href: '/pedidos',   label: 'Pedidos', icon: 'shopping-bag' },
+    ],
+    cocina: [
+        { href: '/dashboard',  label: 'Inicio',    icon: 'home' },
+        cocinaGroup,
+        { href: '/inventario', label: 'Inventario', icon: 'package', readOnly: true },
+    ],
+    mesa: [
+        { href: '/dashboard', label: 'Inicio',  icon: 'home' },
+        { href: '/pedidos',   label: 'Pedidos', icon: 'shopping-bag' },
+        { href: '/tables',    label: 'Mesa',    icon: 'layout-dashboard' },
+        cocinaReadOnly,
+    ],
+    domicilio: [
+        { href: '/dashboard', label: 'Inicio',    icon: 'home' },
+        { href: '/domicilio', label: 'Domicilio', icon: 'map-pin' },
+        { href: '/pedidos',   label: 'Pedidos',   icon: 'shopping-bag' },
+    ],
+    superadmin: [
+        { href: '/admin',           label: 'Global',      icon: 'layout-dashboard' },
+        { href: '/admin/tenants',   label: 'Locales',     icon: 'building-2' },
+        { href: '/admin/analytics', label: 'Analítica',   icon: 'bar-chart-3' },
+        { href: '/admin/billing',   label: 'Facturación', icon: 'credit-card' },
+    ],
+};
 
 // ── Submenú desplegable ────────────────────────────────────────────────────────
 function SubMenu({
@@ -90,8 +145,10 @@ function SubMenu({
             >
                 <Icon name={item.icon} className="h-4 w-4 shrink-0" />
                 <span className="flex-1 text-left">{item.label}</span>
-                <Icon
-                    name="chevron-down"
+                {item.readOnly && (
+                    <Icon name="lock" className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                )}
+                <Icon name="chevron-down"
                     className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                 />
             </button>
@@ -109,13 +166,98 @@ function SubMenu({
                                         : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}
                             >
                                 <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${active ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
-                                {child.label}
+                                <span className="flex-1">{child.label}</span>
+                                {child.readOnly && (
+                                    <Icon name="lock" className="h-3 w-3 text-muted-foreground/50" />
+                                )}
                             </Link>
                         );
                     })}
                 </div>
             )}
         </div>
+    );
+}
+
+// ── Sidebar content (reutilizado en desktop y mobile) ─────────────────────────
+function SidebarContent({
+    nav, currentPath, openIndex, setOpenIndex, user, badge, onNavigate,
+}: {
+    nav: NavItem[];
+    currentPath: string;
+    openIndex: number | null;
+    setOpenIndex: (i: number | null) => void;
+    user: { name: string; role: string };
+    badge: { label: string; className: string };
+    onNavigate?: () => void;
+}) {
+    return (
+        <>
+            {/* Logo + badge */}
+            <div className="px-4 py-4 border-b border-sidebar-border">
+                <Link href="/" className="flex items-center gap-2" onClick={onNavigate}>
+                    <img src="/logo-trans.png" alt="MenuGo" className="h-10 w-auto" />
+                </Link>
+                <span className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.className}`}>
+                    {badge.label}
+                </span>
+            </div>
+
+            {/* Navegación */}
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+                {nav.map((item, idx) => {
+                    if (item.children) {
+                        return (
+                            <SubMenu
+                                key={item.label}
+                                item={item as NavItem & { children: NavChild[] }}
+                                currentPath={currentPath}
+                                isOpen={openIndex === idx}
+                                onToggle={() => setOpenIndex(openIndex === idx ? null : idx)}
+                            />
+                        );
+                    }
+
+                    const active = currentPath === item.href || currentPath.startsWith((item.href ?? '') + '/');
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href!}
+                            onClick={onNavigate}
+                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+                                ${active
+                                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                                    : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}
+                        >
+                            <Icon name={item.icon} className="h-4 w-4 shrink-0" />
+                            <span className="flex-1">{item.label}</span>
+                            {item.readOnly && (
+                                <Icon name="lock" className="h-3 w-3 text-muted-foreground/50" />
+                            )}
+                        </Link>
+                    );
+                })}
+            </nav>
+
+            {/* Pie: usuario + logout */}
+            <div className="border-t border-sidebar-border px-3 py-3 space-y-1">
+                <div className="px-3 py-2">
+                    <div className="text-xs font-semibold text-sidebar-foreground truncate">{user.name}</div>
+                    <div className="text-[10px] text-muted-foreground capitalize">{user.role}</div>
+                </div>
+                <Link
+                    href="/logout"
+                    method="post"
+                    as="button"
+                    onClick={() => { if (onNavigate) onNavigate(); }}
+                    className="w-full flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground
+                               hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                >
+                    <Icon name="log-out" className="h-4 w-4" />
+                    Cerrar sesión
+                </Link>
+            </div>
+        </>
     );
 }
 
@@ -128,86 +270,80 @@ interface Props {
 }
 
 export default function AppShell({ title, subtitle, variant = 'restaurant', children }: Props) {
-    const { url } = usePage();
-    const nav = variant === 'admin' ? adminNav : restaurantNav;
+    const { url, props } = usePage<PageProps>();
+    const user  = props.auth.user;
+    const role  = user?.role ?? 'gerente';
+    const flash = props.flash;
 
-    // Accordion: solo un submenú abierto a la vez se controla dentro de cada SubMenu
-    // con el estado local; para accordion real necesitamos coordinar desde aquí.
-    // Usamos un índice del item abierto.
-    const [openIndex, setOpenIndex] = useState<number | null>(() => {
-        return nav.findIndex(item =>
-            item.children?.some(c => url.startsWith(c.href))
-        );
-    });
+    const nav   = variant === 'admin' ? NAV_BY_ROLE['superadmin'] : (NAV_BY_ROLE[role] ?? NAV_BY_ROLE['gerente']);
+    const badge = ROLE_BADGE[role] ?? ROLE_BADGE['gerente'];
+
+    const [openIndex, setOpenIndex] = useState<number | null>(() =>
+        nav.findIndex(item => item.children?.some(c => url.startsWith(c.href)))
+    );
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Cerrar sidebar móvil al cambiar de URL
+    useEffect(() => { setMobileOpen(false); }, [url]);
+
+    const sidebarProps = {
+        nav, currentPath: url, openIndex, setOpenIndex,
+        user: { name: user?.name ?? '', role },
+        badge,
+    };
 
     return (
         <div className="min-h-screen flex bg-background">
 
-            {/* ══ Sidebar ══ */}
+            {/* ══ Sidebar desktop ══ */}
             <aside className="hidden lg:flex w-64 flex-col bg-sidebar border-r border-sidebar-border">
-
-                {/* Logo */}
-                <Link href="/" className="flex items-center gap-2 px-4 py-4 border-b border-sidebar-border">
-                    <img src="/logo-trans.png" alt="MenuGo" className="h-10 w-auto" />
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                        {variant === 'admin' ? 'SuperAdmin' : 'Restaurante'}
-                    </span>
-                </Link>
-
-                {/* Navegación */}
-                <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-                    {nav.map((item, idx) => {
-                        if (item.children) {
-                            return (
-                                <SubMenu
-                                    key={item.label}
-                                    item={item as NavItem & { children: NavChild[] }}
-                                    currentPath={url}
-                                    isOpen={openIndex === idx}
-                                    onToggle={() => setOpenIndex(openIndex === idx ? null : idx)}
-                                />
-                            );
-                        }
-
-                        const active = url === item.href || url.startsWith(item.href + '/');
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href!}
-                                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-                                    ${active
-                                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                                        : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}
-                            >
-                                <Icon name={item.icon} className="h-4 w-4 shrink-0" />
-                                {item.label}
-                            </Link>
-                        );
-                    })}
-                </nav>
-
-                {/* Pie */}
-                <div className="border-t border-sidebar-border px-3 py-4">
-                    <Link
-                        href="/logout"
-                        method="post"
-                        as="button"
-                        className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground
-                                   hover:bg-red-500/10 hover:text-red-400 transition-colors"
-                    >
-                        <Icon name="log-out" className="h-4 w-4" />
-                        Cerrar sesión
-                    </Link>
-                </div>
+                <SidebarContent {...sidebarProps} />
             </aside>
 
+            {/* ══ Sidebar móvil (overlay) ══ */}
+            {mobileOpen && (
+                <div className="fixed inset-0 z-40 lg:hidden">
+                    {/* Fondo oscuro */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setMobileOpen(false)}
+                    />
+                    {/* Panel */}
+                    <aside className="absolute left-0 top-0 bottom-0 w-72 flex flex-col bg-sidebar border-r border-sidebar-border shadow-2xl">
+                        <SidebarContent {...sidebarProps} onNavigate={() => setMobileOpen(false)} />
+                    </aside>
+                </div>
+            )}
+
             {/* ══ Contenido ══ */}
-            <main className="flex-1 overflow-x-hidden">
-                <header className="sticky top-0 z-10 glass border-b border-border px-6 lg:px-10 py-5">
-                    <h1 className="font-display text-2xl font-bold">{title}</h1>
-                    {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+            <main className="flex-1 overflow-x-hidden min-w-0">
+                {/* Header */}
+                <header className="sticky top-0 z-10 glass border-b border-border px-4 lg:px-10 py-4 lg:py-5 flex items-center gap-4">
+                    {/* Botón hamburguesa (solo móvil) */}
+                    <button
+                        onClick={() => setMobileOpen(true)}
+                        className="lg:hidden grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground hover:bg-accent/10 hover:text-foreground transition-colors"
+                        aria-label="Abrir menú"
+                    >
+                        <Icon name="menu" />
+                    </button>
+                    <div className="min-w-0">
+                        <h1 className="font-display text-xl lg:text-2xl font-bold truncate">{title}</h1>
+                        {subtitle && <p className="text-sm text-muted-foreground mt-0.5 truncate">{subtitle}</p>}
+                    </div>
                 </header>
-                <div className="px-6 lg:px-10 py-8">
+
+                {/* Flash messages */}
+                {(flash?.error || flash?.success) && (
+                    <div className={`mx-4 lg:mx-10 mt-4 rounded-xl px-4 py-3 text-sm font-medium border
+                        ${flash.error
+                            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                            : 'bg-accent/10 border-accent/20 text-accent'}`}>
+                        {flash.error ?? flash.success}
+                    </div>
+                )}
+
+                <div className="px-4 lg:px-10 py-6 lg:py-8">
                     {children}
                 </div>
             </main>

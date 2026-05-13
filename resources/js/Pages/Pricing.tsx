@@ -1,38 +1,56 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Check, Sparkles, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoginSearch } from '@/components/LoginSearch';
 
 const plans = [
     {
-        key: 'starter',
-        name: 'Starter',
-        price: 'Gratis',
-        period: 'para siempre',
-        desc: 'Perfecto para puestos callejeros que están empezando.',
-        features: ['1 local', 'Hasta 50 productos', 'Menú QR', 'Pedidos básicos', 'Soporte por email'],
-        cta: 'Empezar gratis',
+        key: 'mensual',
+        name: 'Mensual',
+        price: '$30.000',
+        period: 'COP / mes',
+        desc: 'Pago mes a mes, sin ataduras.',
+        features: ['Locales ilimitados', 'Productos ilimitados', 'Menú QR', 'Pedidos y mesas', 'KDS de cocina', 'Inventario y reportes', 'Soporte estándar'],
+        cta: 'Elegir Mensual',
         variant: 'outline' as const,
+        popular: false,
+        savings: null,
     },
     {
-        key: 'pro',
-        name: 'Pro',
-        price: '$29',
-        period: '/mes por local',
-        desc: 'Para restaurantes que crecen y necesitan más control.',
-        features: ['Locales ilimitados', 'Productos ilimitados', 'KDS de cocina', 'Reservas y mesas', 'Reportes avanzados', 'Inventario', 'Soporte prioritario'],
-        cta: 'Probar 14 días',
+        key: 'trimestral',
+        name: 'Trimestral',
+        price: '$80.000',
+        period: 'COP / 3 meses',
+        desc: 'Ideal para estabilizar la operación.',
+        features: ['Todo lo del mensual', 'Ahorro del 11%', 'Soporte prioritario'],
+        cta: 'Elegir Trimestral',
+        variant: 'outline' as const,
+        popular: false,
+        savings: 'Ahorras 11%',
+    },
+    {
+        key: 'semestral',
+        name: 'Semestral',
+        price: '$220.000',
+        period: 'COP / 6 meses',
+        desc: 'Nuestra opción más equilibrada y popular.',
+        features: ['Todo lo del mensual', 'Ahorro del 39%', 'Soporte prioritario', 'Asesoría inicial'],
+        cta: 'Elegir Semestral',
         variant: 'hero' as const,
         popular: true,
+        savings: 'Ahorras 39%',
     },
     {
-        key: 'enterprise',
-        name: 'Enterprise',
-        price: 'A medida',
-        period: '',
-        desc: 'Para cadenas y franquicias con necesidades específicas.',
-        features: ['Todo en Pro', 'Panel SuperAdmin global', 'API y webhooks', 'Integraciones a medida', 'SLA dedicado', 'Onboarding 1:1'],
-        cta: 'Contactar ventas',
+        key: 'anual',
+        name: 'Anual',
+        price: '$350.000',
+        period: 'COP / año',
+        desc: 'Maximiza tu rentabilidad todo el año.',
+        features: ['Todo lo del mensual', 'Ahorro del 51%', 'Soporte VIP 24/7', 'Asesoría 1:1', 'Nuevas funciones anticipadas'],
+        cta: 'Elegir Anual',
         variant: 'outline' as const,
+        popular: false,
+        savings: 'Ahorras 51%',
     },
 ];
 
@@ -58,9 +76,7 @@ export default function Pricing() {
                             </span>
                         </Link>
                         <div className="flex items-center gap-3">
-                            <Link href="/login">
-                                <Button variant="ghost" size="sm">Iniciar sesión</Button>
-                            </Link>
+                            <LoginSearch triggerClass="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" />
                             <Link href="/register">
                                 <Button variant="hero" size="sm">Empezar gratis</Button>
                             </Link>
@@ -86,12 +102,12 @@ export default function Pricing() {
                     <h1 className="mt-6 font-display text-5xl sm:text-6xl font-bold">
                         Elige tu plan.<br /><span className="text-gradient-warm">Crece sin límites.</span>
                     </h1>
-                    <p className="mt-4 text-muted-foreground max-w-xl mx-auto">Sin contratos. Sin sorpresas. Cancela cuando quieras.</p>
+                    <p className="mt-4 text-muted-foreground max-w-xl mx-auto">Acceso completo a todas las funciones. Sin comisiones ocultas.</p>
 
-                    <div className="mt-16 grid gap-6 md:grid-cols-3 text-left">
+                    <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4 text-left">
                         {plans.map(p => (
                             <div key={p.name}
-                                className={`relative rounded-3xl border p-8 ${p.popular ? 'border-primary bg-card shadow-glow' : 'border-border bg-card'}`}>
+                                className={`relative flex flex-col rounded-3xl border p-8 ${p.popular ? 'border-primary bg-card shadow-glow scale-[1.02]' : 'border-border bg-card hover:border-primary/50 transition-colors'}`}>
                                 {p.popular && (
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-warm px-3 py-1 text-xs font-semibold text-primary-foreground">
                                         Más popular
@@ -99,10 +115,19 @@ export default function Pricing() {
                                 )}
                                 <h3 className="font-display text-2xl font-bold">{p.name}</h3>
                                 <div className="mt-4 flex items-baseline gap-1">
-                                    <span className="font-display text-5xl font-bold">{p.price}</span>
-                                    <span className="text-sm text-muted-foreground">{p.period}</span>
+                                    <span className="font-display text-4xl font-bold tracking-tight">{p.price}</span>
                                 </div>
-                                <p className="mt-3 text-sm text-muted-foreground">{p.desc}</p>
+                                <span className="text-sm font-medium text-muted-foreground mt-1">{p.period}</span>
+                                
+                                {p.savings && (
+                                    <div className="mt-2">
+                                        <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent border border-accent/20">
+                                            {p.savings}
+                                        </span>
+                                    </div>
+                                )}
+                                
+                                <p className="mt-4 text-sm text-muted-foreground leading-relaxed flex-grow">{p.desc}</p>
 
                                 {/* ── Redirecciona a /register?plan=KEY ── */}
                                 <button
@@ -118,7 +143,7 @@ export default function Pricing() {
 
                                 <ul className="mt-8 space-y-3">
                                     {p.features.map(f => (
-                                        <li key={f} className="flex items-start gap-2 text-sm">
+                                        <li key={f} className="flex items-start gap-2 text-sm text-foreground/90">
                                             <Check className="h-4 w-4 text-accent shrink-0 mt-0.5" /> {f}
                                         </li>
                                     ))}

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -11,7 +12,10 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, Auditable;
+
+    protected static function auditLabel(): string { return 'Usuario'; }
+    protected function auditDescription(): string  { return "{$this->name} ({$this->email})"; }
 
     protected $fillable = [
         'name',
@@ -19,6 +23,7 @@ class User extends Authenticatable
         'password',
         'phone',
         'active',
+        'is_system',
     ];
 
     protected $hidden = [
@@ -32,6 +37,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'active'            => 'boolean',
+            'is_system'         => 'boolean',
         ];
     }
 }
