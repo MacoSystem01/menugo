@@ -19,10 +19,30 @@ class RoleMiddleware
             return redirect('/login');
         }
 
-        foreach ($permissions as $permission) {
-            if ($request->user()->hasPermissionTo($permission)) {
+        // Support 'perm:a|b' notation — each param may contain '|'-separated alternatives
+        $flat = [];
+        foreach ($permissions as $p) {
+            foreach (explode('|', $p) as $part) {
+                $flat[] = trim($part);
+            }
+        }
+
+        try {
+            foreach ($flat as $permission) {
+                if ($request->user()->hasPermissionTo($permission)) {
+                    return $next($request);
+                }
+            }
+        } catch (\Throwable) {
+            // Las tablas de Spatie aún no están seeded en este tenant.
+            // Permitir el acceso únicamente si el usuario tiene el flag is_system,
+            // de lo contrario redirigir con mensaje.
+            if ($request->user()->is_system ?? false) {
                 return $next($request);
             }
+
+            return redirect('/dashboard')
+                ->with('error', 'El sistema de permisos no está configurado. Contacta al administrador.');
         }
 
         return redirect('/dashboard')

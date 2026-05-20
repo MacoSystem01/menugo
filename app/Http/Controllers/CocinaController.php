@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Dish;
 use App\Models\KitchenNote;
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -20,23 +21,36 @@ class CocinaController extends Controller
             ->whereIn('status', ['pending', 'in_kitchen', 'cooking', 'ready'])
             ->oldest()
             ->get()
-            ->map(fn($o) => [
-                'id'             => $o->id,
-                'customer_name'  => $o->customer_name,
-                'customer_phone' => $o->customer_phone,
-                'tipo'           => $o->type,
-                'mesa'           => $o->table?->number,
-                'status'         => $o->status,
-                'notas'          => $o->notes,
-                'payment_method' => $o->payment_method,
-                'items'          => $o->items->map(fn($i) => [
-                    'dish'     => $i->dish?->name,
-                    'quantity' => $i->quantity,
-                    'notes'    => $i->notes,
-                ]),
-                'tiempo'         => $o->created_at->diffForHumans(short: true),
-                'created_at'     => $o->created_at->format('H:i'),
-            ]);
+            ->map(function ($o) {
+                // Solo los ítems que aún no han sido cocinados/entregados.
+                // is_cooked se marca true en markDelivered(), de modo que adiciones
+                // posteriores arrancan con is_cooked = false y nunca se repiten.
+                $itemsParaCocina = $o->items->where('is_cooked', false)->values();
+
+                // Es una adición si el pedido ya tiene ítems cocinados anteriormente.
+                $esAdicion = $o->items->where('is_cooked', true)->isNotEmpty();
+
+                return [
+                    'id'             => $o->id,
+                    'customer_name'  => $o->customer_name,
+                    'tipo'           => $o->type,
+                    'mesa'           => $o->table?->number,
+                    'status'         => $o->status,
+                    'notas'          => $o->notes,
+                    'payment_method' => $o->payment_method,
+                    'es_adicion'     => $esAdicion,
+                    'items'          => $itemsParaCocina->map(fn($i) => [
+                        'id'          => $i->id,
+                        'dish'        => $i->dish?->name,
+                        'quantity'    => $i->quantity,
+                        'notes'       => $i->notes,
+                        'is_addition' => (bool) $i->is_addition,
+                        'is_prepared' => (bool) $i->is_prepared,
+                    ]),
+                    'tiempo'         => $o->created_at->diffForHumans(short: true),
+                    'created_at'     => $o->created_at->format('H:i'),
+                ];
+            });
 
         // Pedidos entregados en los últimos 15 minutos
         $recientes = Order::with(['items.dish', 'table'])
@@ -100,6 +114,16 @@ class CocinaController extends Controller
             return back()->withErrors(['error' => 'Estado incorrecto.']);
         }
 
+        $pendingItems = $order->items()
+            ->where('is_prepared', false)
+            ->count();
+
+        if ($pendingItems > 0) {
+            return back()->withErrors([
+                'error' => "Faltan {$pendingItems} ítem(s) por marcar como preparado(s).",
+            ]);
+        }
+
         $order->update(['status' => 'ready', 'ready_at' => now()]);
 
         AuditLog::registrar('status', 'Pedido', $order->id, "Pedido #{$order->id} listo para entregar", [
@@ -109,12 +133,45 @@ class CocinaController extends Controller
         return back();
     }
 
+    // ── Marcar ítem como preparado (toggle desde el KDS) ─────────────────────
+
+    public function marcarItemPreparado(Request $request, int $item)
+    {
+        $orderItem = OrderItem::find($item);
+        if (!$orderItem) {
+            return back()->with('warning', 'El ítem no fue encontrado. El pedido puede haber sido actualizado.');
+        }
+        $orderItem->update(['is_prepared' => $request->boolean('is_prepared', true)]);
+        return back();
+    }
+
     // ── Marcar entregado: ready → delivered ───────────────────────────────────
 
-    public function markDelivered(Order $order)
+    public function markDelivered(Request $request, Order $order)
     {
         if ($order->status !== 'ready') {
-            return back()->withErrors(['error' => 'Estado incorrecto.']);
+            $to = in_array($request->input('redirect_to'), ['tables', 'cocina'])
+                ? $request->input('redirect_to') : 'cocina';
+            return redirect('/' . $to)->withErrors(['error' => 'Estado incorrecto.']);
+        }
+
+        $to = in_array($request->input('redirect_to'), ['tables', 'cocina'])
+            ? $request->input('redirect_to') : 'cocina';
+
+        // Solo se marcan cocinados los ítems que el cocinero confirmó explícitamente como preparados.
+        $order->items()->where('is_cooked', false)->where('is_prepared', true)->update(['is_cooked' => true]);
+
+        // Si quedaron ítems sin preparar, reabrir el pedido para que vuelvan a cocina.
+        $pendingItems = $order->items()->where('is_cooked', false)->where('is_prepared', false)->count();
+
+        if ($pendingItems > 0) {
+            $order->update(['status' => 'pending']);
+
+            AuditLog::registrar('status', 'Pedido', $order->id, "Pedido #{$order->id} entregado parcialmente — {$pendingItems} ítem(s) pendiente(s)", [
+                'from' => 'ready', 'to' => 'pending',
+            ]);
+
+            return redirect('/' . $to)->with('warning', "Pedido #{$order->id} entregado parcialmente. Quedan {$pendingItems} producto(s) por preparar en cocina.");
         }
 
         $order->update(['status' => 'delivered', 'delivered_at' => now()]);
@@ -123,7 +180,34 @@ class CocinaController extends Controller
             'from' => 'ready', 'to' => 'delivered',
         ]);
 
-        return back();
+        return redirect('/' . $to);
+    }
+
+    // ── Cancelar pedido desde cocina ─────────────────────────────────────────
+
+    public function cancelarPedido(Order $order)
+    {
+        if (in_array($order->status, ['delivered', 'cancelled'])) {
+            return back()->withErrors(['error' => 'Este pedido no se puede cancelar.']);
+        }
+
+        $prevStatus = $order->status;
+        $order->update(['status' => 'cancelled']);
+
+        // Registro automático de novedad en cocina
+        KitchenNote::create([
+            'type'        => 'cancelado',
+            'description' => "Pedido #{$order->id} cancelado desde cocina (estado previo: {$prevStatus})",
+            'order_id'    => $order->id,
+            'created_by'  => auth()->id(),
+        ]);
+
+        AuditLog::registrar('cancel', 'Pedido', $order->id, "Pedido #{$order->id} cancelado desde cocina", [
+            'prev_status' => $prevStatus,
+            'table_id'    => $order->table_id,
+        ]);
+
+        return back()->with('warning', "Pedido #{$order->id} cancelado. Registrado en novedades de cocina.");
     }
 
     // ── Novedades ─────────────────────────────────────────────────────────────

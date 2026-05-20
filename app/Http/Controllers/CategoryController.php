@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -40,11 +41,15 @@ class CategoryController extends Controller
         // Make room: shift every row at or after the desired position down by 1
         Category::where('sort_order', '>=', $desired)->increment('sort_order');
 
-        Category::create([
+        $category = Category::create([
             'name'        => $data['name'],
             'description' => $data['description'] ?? null,
             'sort_order'  => $desired,
             'active'      => true,
+        ]);
+
+        AuditLog::registrar('create', 'Categoría', $category->id, "Categoría '{$category->name}' creada", [
+            'sort_order' => $category->sort_order,
         ]);
 
         return back()->with('success', "Categoría '{$data['name']}' creada.");
@@ -76,11 +81,17 @@ class CategoryController extends Controller
             }
         }
 
+        $old = $category->getAttributes();
         $category->update([
             'name'        => $data['name'],
             'description' => $data['description'] ?? null,
             'sort_order'  => $newOrder,
             'active'      => array_key_exists('active', $data) ? $data['active'] : $category->active,
+        ]);
+
+        AuditLog::registrar('update', 'Categoría', $category->id, "Categoría '{$category->name}' actualizada", [
+            'old' => array_intersect_key($old, $data),
+            'new' => $data,
         ]);
 
         return back()->with('success', 'Categoría actualizada.');
@@ -109,7 +120,11 @@ class CategoryController extends Controller
             return back()->withErrors(['error' => 'No se puede eliminar: tiene platos asociados.']);
         }
 
+        $name = $category->name;
+        $id   = $category->id;
         $category->delete();
+
+        AuditLog::registrar('delete', 'Categoría', $id, "Categoría '{$name}' eliminada");
 
         return back()->with('success', 'Categoría eliminada.');
     }

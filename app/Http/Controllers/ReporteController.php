@@ -97,6 +97,7 @@ class ReporteController extends Controller
             'caja'       => $this->reporteCaja($desde, $hasta),
             'pedidos'    => $this->reportePedidos($desde, $hasta),
             'cocina'     => $this->reporteCocina($desde, $hasta),
+            'novedades'  => $this->reporteNovedades($desde, $hasta),
             'mesa'       => $this->reporteMesa($desde, $hasta),
             'domicilio'  => $this->reporteDomicilio($desde, $hasta),
             'inventario' => $this->reporteInventario($desde, $hasta),
@@ -213,6 +214,48 @@ class ReporteController extends Controller
 
     private function reporteCocina(string $desde, string $hasta): array
     {
+        $orders = Order::with(['table', 'items.dish'])
+            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->orderBy('created_at')
+            ->get();
+
+        $statusLabel = [
+            'pending' => 'Pendiente', 'at_cash' => 'En caja', 'in_kitchen' => 'En cocina',
+            'cooking' => 'Cocinando', 'ready' => 'Listo', 'delivered' => 'Entregado', 'cancelled' => 'Cancelado',
+        ];
+
+        $headers = [
+            ['label' => '#Pedido',    'align' => ''],
+            ['label' => 'Mesa/Tipo',  'align' => ''],
+            ['label' => 'Productos',  'align' => ''],
+            ['label' => 'Estado',     'align' => 'center'],
+            ['label' => 'Fecha',      'align' => ''],
+            ['label' => 'Total',      'align' => 'right'],
+        ];
+
+        $rows = $orders->map(fn($o) => [
+            '#' . $o->id,
+            $o->type === 'mesa' ? ('Mesa ' . ($o->table?->number ?? '—')) : 'Domicilio',
+            $o->items->map(fn($i) => "{$i->quantity}x {$i->dish?->name}")->implode(', '),
+            $statusLabel[$o->status] ?? $o->status,
+            $o->created_at->format('d/m/Y H:i'),
+            $this->fmt((float) $o->total),
+        ])->toArray();
+
+        $totals = [
+            ['value' => 'TOTAL', 'align' => ''],
+            ['value' => $orders->count() . ' pedidos', 'align' => ''],
+            ['value' => '', 'align' => ''],
+            ['value' => '', 'align' => ''],
+            ['value' => '', 'align' => ''],
+            ['value' => $this->fmt($orders->sum('total')), 'align' => 'right'],
+        ];
+
+        return ['Reporte General de Cocina (Pedidos)', $headers, $rows, $totals];
+    }
+
+    private function reporteNovedades(string $desde, string $hasta): array
+    {
         $notes = KitchenNote::with(['verifiedBy'])
             ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
             ->orderBy('created_at')
@@ -252,7 +295,7 @@ class ReporteController extends Controller
 
     private function reporteMesa(string $desde, string $hasta): array
     {
-        $orders = Order::with('table')
+        $orders = Order::with(['table', 'items.dish'])
             ->where('type', 'mesa')
             ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
             ->orderBy('table_id')
@@ -265,21 +308,21 @@ class ReporteController extends Controller
         ];
 
         $headers = [
-            ['label' => 'Mesa',    'align' => 'center'],
-            ['label' => '#Pedido', 'align' => ''],
-            ['label' => 'Cliente', 'align' => ''],
-            ['label' => 'Teléfono','align' => ''],
-            ['label' => 'Estado',  'align' => 'center'],
-            ['label' => 'Total',   'align' => 'right'],
-            ['label' => 'Cobrado', 'align' => 'right'],
-            ['label' => 'Fecha',   'align' => ''],
+            ['label' => 'Mesa',      'align' => 'center'],
+            ['label' => '#Pedido',   'align' => ''],
+            ['label' => 'Cliente',   'align' => ''],
+            ['label' => 'Productos', 'align' => ''],
+            ['label' => 'Estado',    'align' => 'center'],
+            ['label' => 'Total',     'align' => 'right'],
+            ['label' => 'Cobrado',   'align' => 'right'],
+            ['label' => 'Fecha',     'align' => ''],
         ];
 
         $rows = $orders->map(fn($o) => [
             'Mesa ' . ($o->table?->number ?? '—'),
             '#' . $o->id,
             $o->customer_name,
-            $o->customer_phone,
+            $o->items->map(fn($i) => "{$i->quantity}x {$i->dish?->name}")->implode(', '),
             $statusLabel[$o->status] ?? $o->status,
             $this->fmt((float) $o->total),
             $this->fmt((float) $o->amount_paid),

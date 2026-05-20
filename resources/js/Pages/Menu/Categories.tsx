@@ -83,7 +83,7 @@ export default function Categories({ categories, flash }: Props) {
     const sorted = [...categories].sort((a, b) => a.sort_order - b.sort_order);
 
     return (
-        <AppShell title="Categorías" subtitle="Organiza tu menú por categorías">
+        <AppShell title="Categorías" subtitle="Organiza tu Menu por categorías">
             <Head title="Categorías" />
 
             {/* Flash */}
@@ -112,7 +112,7 @@ export default function Categories({ categories, flash }: Props) {
                 <div className="rounded-2xl border border-border bg-card p-12 text-center">
                     <Tag className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                     <p className="font-medium">Sin categorías</p>
-                    <p className="text-sm text-muted-foreground mt-1">Crea la primera categoría para empezar a organizar tu menú.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Crea la primera categoría para empezar a organizar tu Menu.</p>
                 </div>
             ) : (
                 <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -231,7 +231,7 @@ export default function Categories({ categories, flash }: Props) {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">
-                                    Posición en el menú
+                                    Posición en el Menu
                                 </label>
                                 <input
                                     type="number" min={1}

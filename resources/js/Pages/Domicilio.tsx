@@ -36,7 +36,7 @@ function fmt(n: number) {
 }
 
 function AsignarForm({ order, repartidores }: { order: DeliveryOrder; repartidores: Repartidor[] }) {
-    const form = useForm({ delivery_user_id: order.delivery_user_id ?? '' });
+    const form = useForm({ delivery_user_id: String(order.delivery_user_id ?? '') });
 
     return (
         <form
@@ -104,54 +104,79 @@ export default function Domicilio({ active, repartidores, flash }: Props) {
             ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
                     {pending.map(order => (
-                        <div key={order.id} className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="font-display text-lg font-bold">#{order.id}</span>
+                        <div key={order.id} className="rounded-2xl border border-border bg-card p-5 relative overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                            {/* Color band side */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${order.delivery_user ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]'}`} />
+                            
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-display text-lg font-bold">#{order.id}</span>
+                                    {order.delivery_user ? (
+                                        <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/50 text-xs font-bold animate-pulse">
+                                            En transporte
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/50 text-xs font-bold">
+                                            En espera
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="font-semibold text-sm">{fmt(order.total)}</span>
                             </div>
+
                             <div className="text-sm font-medium mb-1">{order.customer_name}</div>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                                 <Phone className="h-3 w-3" />{order.customer_phone}
                                 {order.delivery_phone && order.delivery_phone !== order.customer_phone && ` / ${order.delivery_phone}`}
                             </div>
                             {order.delivery_address && (
-                                <div className="flex items-start gap-1.5 text-xs text-muted-foreground mb-2">
+                                <div className="flex items-start gap-1.5 text-xs text-muted-foreground mb-3">
                                     <MapPin className="h-3 w-3 mt-0.5 shrink-0" />{order.delivery_address}
                                 </div>
                             )}
-                            <div className="text-xs text-muted-foreground mb-1">
-                                {order.items_count} ítem{order.items_count !== 1 ? 's' : ''} · {order.created_at}
-                            </div>
 
                             {/* Repartidor asignado */}
-                            {order.delivery_user && (
-                                <div className="text-xs text-accent font-medium mb-1">
-                                    Repartidor: {order.delivery_user}
+                            {order.delivery_user ? (
+                                <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500/10 border border-blue-500/30 px-3 py-2 text-xs font-bold text-blue-300">
+                                    <Bike className="h-4 w-4" /> Repartidor: {order.delivery_user}
+                                </div>
+                            ) : (
+                                <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-300">
+                                    <Bike className="h-4 w-4" /> Sin repartidor asignado
                                 </div>
                             )}
 
-                            {/* Asignar repartidor (admin/gerente) */}
-                            {isAdmin && (
-                                <AsignarForm order={order} repartidores={repartidores} />
-                            )}
+                            <div className="text-xs text-muted-foreground mb-3 border-t border-border/50 pt-2">
+                                {order.items_count} ítem{order.items_count !== 1 ? 's' : ''} · {order.created_at}
+                            </div>
 
-                            {/* Tomar pedido (personal de domicilio) */}
-                            {isRepartidor && !order.delivery_user_id && (
-                                <button
-                                    onClick={() => tomar(order.id)}
-                                    className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary/10 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
-                                >
-                                    <PackageCheck className="h-3.5 w-3.5" /> Tomar pedido
-                                </button>
-                            )}
+                            {/* Acciones */}
+                            <div className="space-y-2">
+                                {/* Asignar repartidor (admin/gerente) */}
+                                {isAdmin && !order.delivery_user && (
+                                    <AsignarForm order={order} repartidores={repartidores} />
+                                )}
 
-                            {/* Marcar entregado */}
-                            <button
-                                onClick={() => router.post(`/domicilio/${order.id}/entregar`)}
-                                className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-accent py-2 text-xs font-semibold text-accent-foreground hover:bg-accent/90 transition-colors"
-                            >
-                                <CheckCircle2 className="h-3.5 w-3.5" /> Marcar entregado
-                            </button>
+                                {/* Tomar pedido (personal de domicilio) */}
+                                {isRepartidor && !order.delivery_user_id && (
+                                    <button
+                                        onClick={() => tomar(order.id)}
+                                        className="w-full flex items-center justify-center gap-2 rounded-xl border border-blue-500/50 bg-blue-500/10 py-2.5 text-xs font-bold text-blue-400 hover:bg-blue-500/20 transition-colors"
+                                    >
+                                        <PackageCheck className="h-4 w-4" /> Tomar pedido
+                                    </button>
+                                )}
+
+                                {/* Marcar entregado (solo si tiene repartidor) */}
+                                {order.delivery_user && (
+                                    <button
+                                        onClick={() => router.post(`/domicilio/${order.id}/entregar`)}
+                                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-500 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:bg-green-400 hover:shadow-[0_0_20px_rgba(34,197,94,0.5)] transition-all"
+                                    >
+                                        <CheckCircle2 className="h-4 w-4" /> Notificar Entregado
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -168,6 +193,7 @@ export default function Domicilio({ active, repartidores, flash }: Props) {
                             <thead className="text-xs uppercase text-muted-foreground bg-muted/30 border-b border-border">
                                 <tr>
                                     <th className="text-left px-6 py-3 font-medium">#</th>
+                                    <th className="text-left px-6 py-3 font-medium">Estado</th>
                                     <th className="text-left px-6 py-3 font-medium">Cliente</th>
                                     <th className="text-left px-6 py-3 font-medium hidden md:table-cell">Dirección</th>
                                     <th className="text-left px-6 py-3 font-medium">Repartidor</th>
@@ -180,11 +206,16 @@ export default function Domicilio({ active, repartidores, flash }: Props) {
                                     <tr key={o.id} className="hover:bg-muted/20 transition-colors">
                                         <td className="px-6 py-3 font-semibold">#{o.id}</td>
                                         <td className="px-6 py-3">
-                                            <div>{o.customer_name}</div>
+                                            <span className="px-2 py-1 rounded-md bg-green-500/20 text-green-400 border border-green-500/50 text-xs font-bold">
+                                                Entregado
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-3">
+                                            <div className="font-medium">{o.customer_name}</div>
                                             <div className="text-xs text-muted-foreground">{o.customer_phone}</div>
                                         </td>
                                         <td className="px-6 py-3 hidden md:table-cell text-muted-foreground text-xs">{o.delivery_address ?? '—'}</td>
-                                        <td className="px-6 py-3 text-sm">{o.delivery_user ?? <span className="text-muted-foreground">—</span>}</td>
+                                        <td className="px-6 py-3 text-sm font-semibold text-blue-300">{o.delivery_user ?? <span className="text-muted-foreground font-normal">—</span>}</td>
                                         <td className="px-6 py-3 text-right font-semibold">{fmt(o.total)}</td>
                                         <td className="px-6 py-3 text-right text-muted-foreground">{o.delivered_at ?? o.created_at}</td>
                                     </tr>

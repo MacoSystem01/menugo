@@ -12,6 +12,9 @@ class RedirectIfAuthenticated extends BaseRedirectIfAuthenticated
     // A plain path always resolves relative to the current domain, which is correct.
     protected function defaultRedirectUri(): string
     {
+        if (auth()->check() && auth()->user()->hasRole('administrador')) {
+            return '/admin';
+        }
         return '/dashboard';
     }
 }

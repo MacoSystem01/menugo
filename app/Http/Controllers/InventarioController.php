@@ -10,13 +10,26 @@ class InventarioController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'status' => 'nullable|in:ok,bajo,agotado,vencido',
+        ]);
+
+        // Stats from full table (unfiltered) for accurate summary
+        $resumen = InventoryItem::selectRaw("
+            COUNT(*) as total,
+            SUM(status = 'ok')      as ok,
+            SUM(status = 'bajo')    as bajo,
+            SUM(status = 'agotado') as agotado,
+            SUM(status = 'vencido') as vencido
+        ")->first();
+
         $query = InventoryItem::query()->orderBy('name');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        $items = $query->get()->map(fn($i) => [
+        $items = $query->paginate(50)->through(fn($i) => [
             'id'          => $i->id,
             'name'        => $i->name,
             'quantity'    => (float) $i->quantity,
@@ -27,14 +40,6 @@ class InventarioController extends Controller
             'expiry_date' => $i->expiry_date?->format('Y-m-d'),
             'notes'       => $i->notes,
         ]);
-
-        $resumen = [
-            'total'   => $items->count(),
-            'ok'      => $items->where('status', 'ok')->count(),
-            'bajo'    => $items->where('status', 'bajo')->count(),
-            'agotado' => $items->where('status', 'agotado')->count(),
-            'vencido' => $items->where('status', 'vencido')->count(),
-        ];
 
         $porVencer = InventoryItem::whereNotNull('expiry_date')
             ->whereDate('expiry_date', '>=', today())
@@ -51,7 +56,13 @@ class InventarioController extends Controller
 
         return Inertia::render('Inventario', [
             'items'      => $items,
-            'resumen'    => $resumen,
+            'resumen'    => [
+                'total'   => (int) $resumen->total,
+                'ok'      => (int) $resumen->ok,
+                'bajo'    => (int) $resumen->bajo,
+                'agotado' => (int) $resumen->agotado,
+                'vencido' => (int) $resumen->vencido,
+            ],
             'filters'    => $request->only(['status']),
             'por_vencer' => $porVencer,
         ]);

@@ -4,7 +4,7 @@ import './bootstrap';
 import '../css/app.css';
 
 createInertiaApp({
-    title: (title) => (title ? `${title} — MenuGo` : 'MenuGo'),
+    title: (title) => (title ? `${title} — Menugo` : 'Menugo'),
     resolve: (name) => {
         const pages = import.meta.glob('./Pages/**/*.tsx', { eager: true });
         const page = pages[`./Pages/${name}.tsx`];

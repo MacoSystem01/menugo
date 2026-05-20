@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Dish;
 use Illuminate\Http\Request;
@@ -48,13 +49,18 @@ class DishController extends Controller
             'sort_order'  => 'nullable|integer|min:0',
         ]);
 
-        Dish::create([
+        $dish = Dish::create([
             'category_id' => $data['category_id'],
             'name'        => $data['name'],
             'description' => $data['description'] ?? null,
             'price'       => $data['price'],
             'sort_order'  => $data['sort_order'] ?? 0,
             'available'   => true,
+        ]);
+
+        AuditLog::registrar('create', 'Plato', $dish->id, "Plato '{$dish->name}' creado", [
+            'price' => (float) $dish->price,
+            'category_id' => $dish->category_id,
         ]);
 
         return back()->with('success', "Plato '{$data['name']}' creado.");
@@ -71,14 +77,24 @@ class DishController extends Controller
             'available'   => 'boolean',
         ]);
 
+        $old = $dish->getAttributes();
         $dish->update($data);
+
+        AuditLog::registrar('update', 'Plato', $dish->id, "Plato '{$dish->name}' actualizado", [
+            'old' => array_intersect_key($old, $data),
+            'new' => $data,
+        ]);
 
         return back()->with('success', 'Plato actualizado.');
     }
 
     public function destroy(Dish $dish)
     {
+        $name = $dish->name;
+        $id   = $dish->id;
         $dish->delete();
+
+        AuditLog::registrar('delete', 'Plato', $id, "Plato '{$name}' eliminado");
 
         return back()->with('success', 'Plato eliminado.');
     }

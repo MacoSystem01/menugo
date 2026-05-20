@@ -13,7 +13,7 @@ export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail }: 
 
     return (
         <>
-            <Head title="¡Cuenta creada! — MenuGo" />
+            <Head title="¡Cuenta creada! — Menugo" />
             <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
 
                 {/* Card central */}
@@ -74,7 +74,7 @@ export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail }: 
 
                 {/* Footer mínimo */}
                 <p className="mt-8 text-xs text-muted-foreground">
-                    © {new Date().getFullYear()} MenuGo
+                    © {new Date().getFullYear()} Menugo
                 </p>
             </div>
         </>

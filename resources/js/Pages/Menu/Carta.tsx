@@ -29,24 +29,34 @@ interface Category {
 
 interface SocialLinks {
     instagram?: string;
-    facebook?:  string;
-    whatsapp?:  string;
-    tiktok?:    string;
-    twitter?:   string;
-    youtube?:   string;
+    facebook?: string;
+    whatsapp?: string;
+    tiktok?: string;
+    twitter?: string;
+    youtube?: string;
+}
+
+interface DeliveryZone {
+    label:  string;
+    min_km: number;
+    max_km: number;
+    price:  number;
 }
 
 interface CartaSettings {
-    primary_color:   string;
-    bg_color:        string;
-    text_color:      string;
-    logo_size:       string;
-    name_size:       string;
-    slogan:          string | null;
-    slogan_size:     string;
-    banner_url:      string | null;
-    payment_methods: string[];
-    social_links:    SocialLinks;
+    primary_color:      string;
+    bg_color:           string;
+    text_color:         string;
+    logo_size:          string;
+    name_size:          string;
+    slogan:             string | null;
+    slogan_size:        string;
+    banner_url:         string | null;
+    payment_methods:    string[];
+    social_links:       SocialLinks;
+    delivery_enabled:   boolean;
+    delivery_min_order: number;
+    delivery_zones:     DeliveryZone[];
 }
 
 interface DishForm {
@@ -73,7 +83,7 @@ function fmt(n: number) {
 // ── Mapas de tamaño ───────────────────────────────────────────────────────────
 
 const LOGO_SIZES: Record<string, string> = {
-    sm: 'h-8',  md: 'h-12', lg: 'h-16', xl: 'h-24',
+    sm: 'h-8', md: 'h-12', lg: 'h-16', xl: 'h-24',
 };
 const NAME_SIZES: Record<string, string> = {
     sm: 'text-xl', md: 'text-2xl', lg: 'text-3xl', xl: 'text-4xl', '2xl': 'text-5xl',
@@ -83,11 +93,11 @@ const SLOGAN_SIZES: Record<string, string> = {
 };
 
 const ALL_PAYMENT_METHODS = [
-    { key: 'efectivo',      label: 'Efectivo' },
-    { key: 'pse',           label: 'PSE' },
-    { key: 'nequi',         label: 'Nequi' },
-    { key: 'daviplata',     label: 'Daviplata' },
-    { key: 'tarjeta',       label: 'Tarjeta' },
+    { key: 'efectivo', label: 'Efectivo' },
+    { key: 'pse', label: 'PSE' },
+    { key: 'nequi', label: 'Nequi' },
+    { key: 'daviplata', label: 'Daviplata' },
+    { key: 'tarjeta', label: 'Tarjeta' },
     { key: 'transferencia', label: 'Transferencia' },
 ];
 
@@ -127,12 +137,12 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
 // ── Tarjeta de plato ──────────────────────────────────────────────────────────
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_BYTES     = 2 * 1024 * 1024;
+const MAX_BYTES = 2 * 1024 * 1024;
 
 function DishCard({ dish, onEdit }: { dish: Dish; onEdit: (d: Dish) => void }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
-    const [imgError,  setImgError]  = useState<string | null>(null);
+    const [imgError, setImgError] = useState<string | null>(null);
 
     function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -153,7 +163,7 @@ function DishCard({ dish, onEdit }: { dish: Dish; onEdit: (d: Dish) => void }) {
         router.post(`/menu/carta/plato/${dish.id}/imagen`, fd, {
             forceFormData: true,
             onFinish: () => setUploading(false),
-            onError:  (errors) => { setUploading(false); setImgError(errors.image ?? 'No se pudo subir la imagen.'); },
+            onError: (errors) => { setUploading(false); setImgError(errors.image ?? 'No se pudo subir la imagen.'); },
         });
     }
 
@@ -195,7 +205,7 @@ function DishCard({ dish, onEdit }: { dish: Dish; onEdit: (d: Dish) => void }) {
                                 <ImagePlus className="h-8 w-8" />
                                 <span className="text-xs font-medium">Agregar imagen</span>
                                 <span className="text-[10px] text-muted-foreground/60">JPG · PNG · WebP · máx 2 MB</span>
-                              </>
+                            </>
                         }
                     </button>
                 )}
@@ -301,46 +311,49 @@ function EditModal({ dish, onClose }: { dish: Dish; onClose: () => void }) {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function Carta({ categories, public_url, tenant_name, settings: initialSettings, flash }: Props) {
-    const [copied,     setCopied]     = useState(false);
-    const [editing,    setEditing]    = useState<Dish | null>(null);
-    const [activeTab,  setActiveTab]  = useState<'builder' | 'design' | 'preview'>('builder');
-    const qrRef    = useRef<HTMLDivElement>(null);
+    const [copied, setCopied] = useState(false);
+    const [editing, setEditing] = useState<Dish | null>(null);
+    const [activeTab, setActiveTab] = useState<'builder' | 'design' | 'preview'>('builder');
+    const qrRef = useRef<HTMLDivElement>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
     // ── Formulario de diseño (local, guardado explícitamente) ─────────────────
     const design = useForm({
-        primary_color:   initialSettings.primary_color           ?? '#e85d04',
-        bg_color:        initialSettings.bg_color                ?? '#ffffff',
-        text_color:      initialSettings.text_color              ?? '#1a1a1a',
-        logo_size:       initialSettings.logo_size               ?? 'md',
-        name_size:       initialSettings.name_size               ?? '2xl',
-        slogan:          initialSettings.slogan                  ?? '',
-        slogan_size:     initialSettings.slogan_size             ?? 'sm',
+        primary_color: initialSettings.primary_color ?? '#e85d04',
+        bg_color: initialSettings.bg_color ?? '#ffffff',
+        text_color: initialSettings.text_color ?? '#1a1a1a',
+        logo_size: initialSettings.logo_size ?? 'md',
+        name_size: initialSettings.name_size ?? '2xl',
+        slogan: initialSettings.slogan ?? '',
+        slogan_size: initialSettings.slogan_size ?? 'sm',
         payment_methods: initialSettings.payment_methods?.length
             ? initialSettings.payment_methods
             : ['efectivo'],
         social_links: {
             instagram: initialSettings.social_links?.instagram ?? '',
-            facebook:  initialSettings.social_links?.facebook  ?? '',
-            whatsapp:  initialSettings.social_links?.whatsapp  ?? '',
-            tiktok:    initialSettings.social_links?.tiktok    ?? '',
-            twitter:   initialSettings.social_links?.twitter   ?? '',
-            youtube:   initialSettings.social_links?.youtube   ?? '',
+            facebook: initialSettings.social_links?.facebook ?? '',
+            whatsapp: initialSettings.social_links?.whatsapp ?? '',
+            tiktok: initialSettings.social_links?.tiktok ?? '',
+            twitter: initialSettings.social_links?.twitter ?? '',
+            youtube: initialSettings.social_links?.youtube ?? '',
         },
+        delivery_enabled:   initialSettings.delivery_enabled   ?? false,
+        delivery_min_order: initialSettings.delivery_min_order ?? 0,
+        delivery_zones:     (initialSettings.delivery_zones    ?? []) as DeliveryZone[],
     });
 
     // ── Banner ────────────────────────────────────────────────────────────────
     const bannerRef = useRef<HTMLInputElement>(null);
     const [bannerUploading, setBannerUploading] = useState(false);
-    const [bannerError,     setBannerError]     = useState<string | null>(null);
-    const [bannerUrl,       setBannerUrl]       = useState<string | null>(initialSettings.banner_url);
+    const [bannerError, setBannerError] = useState<string | null>(null);
+    const [bannerUrl, setBannerUrl] = useState<string | null>(initialSettings.banner_url);
 
     function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (bannerRef.current) bannerRef.current.value = '';
         if (!file) return;
         if (!ALLOWED_TYPES.includes(file.type)) { setBannerError('Formato no válido. Usa JPG, PNG o WebP.'); return; }
-        if (file.size > 5 * 1024 * 1024)        { setBannerError(`El archivo pesa ${(file.size/1024/1024).toFixed(1)} MB. El máximo es 5 MB.`); return; }
+        if (file.size > 5 * 1024 * 1024) { setBannerError(`El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. El máximo es 5 MB.`); return; }
         setBannerError(null);
         const fd = new FormData();
         fd.append('banner', file);
@@ -348,7 +361,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
         router.post('/menu/carta/banner', fd, {
             forceFormData: true,
             onSuccess: () => { setBannerUrl(URL.createObjectURL(file)); setBannerUploading(false); },
-            onError:   (errors) => { setBannerUploading(false); setBannerError(errors.banner ?? 'No se pudo subir el banner.'); },
+            onError: (errors) => { setBannerUploading(false); setBannerError(errors.banner ?? 'No se pudo subir el banner.'); },
         });
     }
 
@@ -360,9 +373,9 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
     }
 
     // ── Stats ─────────────────────────────────────────────────────────────────
-    const totalPlatos      = categories.reduce((a, c) => a + c.dishes.length, 0);
+    const totalPlatos = categories.reduce((a, c) => a + c.dishes.length, 0);
     const totalDisponibles = categories.reduce((a, c) => a + c.dishes.filter(d => d.available).length, 0);
-    const sinImagen        = categories.reduce((a, c) => a + c.dishes.filter(d => !d.image_url).length, 0);
+    const sinImagen = categories.reduce((a, c) => a + c.dishes.filter(d => !d.image_url).length, 0);
 
     // ── QR helpers ────────────────────────────────────────────────────────────
     function copyUrl() {
@@ -389,33 +402,110 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
     }
 
     function printMenu() {
-        const content = printRef.current;
-        if (!content) return;
         const win = window.open('', '_blank');
-        if (!win) return;
-        win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Carta — ${tenant_name}</title>
-        <style>
-            *{box-sizing:border-box;margin:0;padding:0}
-            body{font-family:Georgia,serif;color:${design.data.text_color};background:${design.data.bg_color};padding:40px}
-            h1{font-size:28px;text-align:center;margin-bottom:6px;letter-spacing:1px}
-            .subtitle{text-align:center;font-size:11px;color:#888;margin-bottom:32px;letter-spacing:3px;text-transform:uppercase}
-            h2{font-size:14px;text-transform:uppercase;letter-spacing:2px;margin:28px 0 10px;color:${design.data.primary_color};border-bottom:1px solid #eee;padding-bottom:6px}
-            .dish{display:flex;gap:12px;padding:10px 0;border-bottom:1px dotted #eee}
-            .dish:last-child{border:none}
-            .dish img{width:70px;height:70px;object-fit:cover;border-radius:8px;flex-shrink:0}
-            .dish-info{flex:1}.dish-name{font-size:13px;font-weight:700;margin-bottom:3px}
-            .dish-desc{font-size:11px;color:#888;line-height:1.5}
-            .dish-price{font-size:14px;font-weight:700;white-space:nowrap;margin-left:auto;padding-left:12px;align-self:center;color:${design.data.primary_color}}
-            footer{text-align:center;margin-top:40px;font-size:10px;color:#aaa}
-        </style></head><body>${content.innerHTML}<footer>Carta digital generada con MenuGo</footer></body></html>`);
+        if (!win) {
+            alert('El navegador bloqueó la ventana emergente. Permite ventanas emergentes para este sitio e intenta de nuevo.');
+            return;
+        }
+
+        const { primary_color, bg_color, text_color } = design.data;
+
+        // Construir filas de platos
+        const categoriesHtml = categories.map(cat => {
+            const dishesHtml = cat.dishes
+                .filter(d => d.available)
+                .map(d => `
+                    <div class="dish">
+                        ${d.image_url
+                        ? `<img src="${d.image_url}" alt="${d.name}" />`
+                        : `<div class="dish-img-placeholder"></div>`
+                    }
+                        <div class="dish-info">
+                            <div class="dish-name">${d.name}</div>
+                            ${d.description ? `<div class="dish-desc">${d.description}</div>` : ''}
+                        </div>
+                        <div class="dish-price">${fmt(d.price)}</div>
+                    </div>
+                `).join('');
+
+            if (!dishesHtml) return '';
+
+            return `
+                <div class="category">
+                    <h2>${cat.name}</h2>
+                    ${cat.description ? `<p class="cat-desc">${cat.description}</p>` : ''}
+                    ${dishesHtml}
+                </div>
+            `;
+        }).join('');
+
+        win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Carta — ${tenant_name}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            color: ${text_color};
+            background: ${bg_color};
+            padding: 40px 48px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header { text-align: center; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid ${primary_color}33; }
+        .header img { height: 64px; width: auto; margin-bottom: 12px; }
+        .header h1 { font-size: 30px; letter-spacing: 1px; color: ${text_color}; }
+        .header .slogan { font-size: 12px; color: ${text_color}99; margin-top: 6px; font-style: italic; }
+        .category { margin-bottom: 32px; }
+        h2 {
+            font-size: 13px; text-transform: uppercase; letter-spacing: 3px;
+            color: ${primary_color}; border-bottom: 1.5px solid ${primary_color}44;
+            padding-bottom: 6px; margin-bottom: 14px;
+        }
+        .cat-desc { font-size: 11px; color: ${text_color}88; margin-top: -8px; margin-bottom: 12px; font-style: italic; }
+        .dish {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 10px 0; border-bottom: 1px dotted ${text_color}22;
+        }
+        .dish:last-child { border-bottom: none; }
+        .dish img { width: 68px; height: 68px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+        .dish-img-placeholder { width: 68px; height: 68px; flex-shrink: 0; }
+        .dish-info { flex: 1; }
+        .dish-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: ${text_color}; }
+        .dish-desc { font-size: 11px; color: ${text_color}88; line-height: 1.5; }
+        .dish-price { font-size: 14px; font-weight: 800; white-space: nowrap; color: ${primary_color}; padding-left: 12px; align-self: center; }
+        footer { text-align: center; margin-top: 40px; padding-top: 16px; border-top: 1px solid ${text_color}22; font-size: 10px; color: ${text_color}66; }
+        @media print {
+            body { padding: 20px 28px; }
+            .dish img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="/logo-trans.png" alt="${tenant_name}" />
+        <h1>${tenant_name}</h1>
+        ${design.data.slogan ? `<p class="slogan">${design.data.slogan}</p>` : ''}
+    </div>
+    ${categoriesHtml || '<p style="text-align:center;opacity:.5">La carta está vacía.</p>'}
+    <footer>Carta digital generada con Menugo</footer>
+</body>
+</html>`);
+
         win.document.close();
-        win.onload = () => { win.print(); win.close(); };
+        // Esperar a que las imágenes carguen antes de imprimir
+        win.addEventListener('load', () => {
+            win.focus();
+            win.print();
+        });
     }
 
     // ── Preview styles ────────────────────────────────────────────────────────
     const previewStyle = {
         backgroundColor: design.data.bg_color,
-        color:           design.data.text_color,
+        color: design.data.text_color,
     } as React.CSSProperties;
 
     return (
@@ -442,13 +532,12 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                     <div className="flex gap-1 p-1 rounded-xl bg-muted/40 w-fit mb-6">
                         {([
                             ['builder', 'Constructor'],
-                            ['design',  'Diseño'],
+                            ['design', 'Diseño'],
                             ['preview', 'Vista previa'],
                         ] as const).map(([tab, label]) => (
                             <button key={tab} onClick={() => setActiveTab(tab)}
-                                className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    activeTab === tab ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                                }`}>
+                                className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                                    }`}>
                                 {label}
                             </button>
                         ))}
@@ -474,7 +563,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                         ? <p className="text-sm text-muted-foreground italic">Esta categoría no tiene platos.</p>
                                         : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                             {cat.dishes.map(dish => <DishCard key={dish.id} dish={dish} onEdit={setEditing} />)}
-                                          </div>
+                                        </div>
                                     }
                                 </div>
                             ))}
@@ -489,16 +578,16 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                             {/* Colores */}
                             <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
                                 <h3 className="text-sm font-semibold">Colores</h3>
-                                <ColorField label="Color primario"   value={design.data.primary_color} onChange={v => design.setData('primary_color', v)} />
-                                <ColorField label="Color de fondo"   value={design.data.bg_color}      onChange={v => design.setData('bg_color', v)} />
-                                <ColorField label="Color de texto"   value={design.data.text_color}    onChange={v => design.setData('text_color', v)} />
+                                <ColorField label="Color primario" value={design.data.primary_color} onChange={v => design.setData('primary_color', v)} />
+                                <ColorField label="Color de fondo" value={design.data.bg_color} onChange={v => design.setData('bg_color', v)} />
+                                <ColorField label="Color de texto" value={design.data.text_color} onChange={v => design.setData('text_color', v)} />
                             </div>
 
                             {/* Logo */}
                             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
                                 <h3 className="text-sm font-semibold">Tamaño del logo</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {[['sm','Pequeño'],['md','Mediano'],['lg','Grande'],['xl','Extra grande']].map(([v, l]) => (
+                                    {[['sm', 'Pequeño'], ['md', 'Mediano'], ['lg', 'Grande'], ['xl', 'Extra grande']].map(([v, l]) => (
                                         <SizeBtn key={v} label={l} active={design.data.logo_size === v} onClick={() => design.setData('logo_size', v)} />
                                     ))}
                                 </div>
@@ -512,7 +601,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
                                 <h3 className="text-sm font-semibold">Tamaño del nombre del restaurante</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {[['sm','S'],['md','M'],['lg','L'],['xl','XL'],['2xl','2XL']].map(([v, l]) => (
+                                    {[['sm', 'S'], ['md', 'M'], ['lg', 'L'], ['xl', 'XL'], ['2xl', '2XL']].map(([v, l]) => (
                                         <SizeBtn key={v} label={l} active={design.data.name_size === v} onClick={() => design.setData('name_size', v)} />
                                     ))}
                                 </div>
@@ -534,7 +623,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                 <div>
                                     <p className="text-xs text-muted-foreground mb-2">Tamaño del slogan</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {[['xs','XS'],['sm','S'],['md','M'],['lg','L']].map(([v, l]) => (
+                                        {[['xs', 'XS'], ['sm', 'S'], ['md', 'M'], ['lg', 'L']].map(([v, l]) => (
                                             <SizeBtn key={v} label={l} active={design.data.slogan_size === v} onClick={() => design.setData('slogan_size', v)} />
                                         ))}
                                     </div>
@@ -573,7 +662,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                             : <>
                                                 <Upload className="h-8 w-8" />
                                                 <span className="text-sm font-medium">Subir banner</span>
-                                              </>
+                                            </>
                                         }
                                     </button>
                                 )}
@@ -600,17 +689,16 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                                 key={key}
                                                 type="button"
                                                 onClick={() => {
-                                                    const cur  = design.data.payment_methods;
+                                                    const cur = design.data.payment_methods;
                                                     const next = active
                                                         ? cur.filter(m => m !== key)
                                                         : [...cur, key];
                                                     if (next.length > 0) design.setData('payment_methods', next);
                                                 }}
-                                                className={`h-8 px-3 rounded-full text-xs font-medium transition-colors border ${
-                                                    active
+                                                className={`h-8 px-3 rounded-full text-xs font-medium transition-colors border ${active
                                                         ? 'bg-primary text-primary-foreground border-primary'
                                                         : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
-                                                }`}
+                                                    }`}
                                             >
                                                 {label}
                                             </button>
@@ -632,12 +720,12 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                     </p>
                                 </div>
                                 {([
-                                    { key: 'instagram', label: 'Instagram',  placeholder: 'https://instagram.com/tu_restaurante',  type: 'url' },
-                                    { key: 'facebook',  label: 'Facebook',   placeholder: 'https://facebook.com/tu_restaurante',   type: 'url' },
-                                    { key: 'whatsapp',  label: 'WhatsApp',   placeholder: '573001234567  (solo números con código de país)', type: 'tel' },
-                                    { key: 'tiktok',    label: 'TikTok',     placeholder: 'https://tiktok.com/@tu_restaurante',    type: 'url' },
-                                    { key: 'twitter',   label: 'X / Twitter',placeholder: 'https://x.com/tu_restaurante',          type: 'url' },
-                                    { key: 'youtube',   label: 'YouTube',    placeholder: 'https://youtube.com/@tu_restaurante',   type: 'url' },
+                                    { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/tu_restaurante', type: 'url' },
+                                    { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/tu_restaurante', type: 'url' },
+                                    { key: 'whatsapp', label: 'WhatsApp', placeholder: '573001234567  (solo números con código de país)', type: 'tel' },
+                                    { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@tu_restaurante', type: 'url' },
+                                    { key: 'twitter', label: 'X / Twitter', placeholder: 'https://x.com/tu_restaurante', type: 'url' },
+                                    { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@tu_restaurante', type: 'url' },
                                 ] as const).map(({ key, label, placeholder, type }) => (
                                     <div key={key} className="space-y-1">
                                         <label className="text-xs font-medium text-muted-foreground">{label}</label>
@@ -658,6 +746,139 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                         )}
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* Servicio a domicilio */}
+                            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold">Servicio a domicilio</h3>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            Activa el domicilio y configura las tarifas por zona.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => design.setData('delivery_enabled', !design.data.delivery_enabled)}
+                                        className="shrink-0"
+                                    >
+                                        {design.data.delivery_enabled
+                                            ? <ToggleRight className="h-8 w-8 text-accent" />
+                                            : <ToggleLeft className="h-8 w-8 text-muted-foreground" />
+                                        }
+                                    </button>
+                                </div>
+
+                                {design.data.delivery_enabled && (
+                                    <div className="space-y-4 pt-2 border-t border-border">
+                                        {/* Monto mínimo */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-muted-foreground">
+                                                Pedido mínimo (COP) — 0 = sin mínimo
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                step={1000}
+                                                className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                                value={design.data.delivery_min_order}
+                                                onChange={e => design.setData('delivery_min_order', parseInt(e.target.value) || 0)}
+                                                placeholder="0"
+                                            />
+                                        </div>
+
+                                        {/* Zonas */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-medium text-muted-foreground">
+                                                    Zonas de entrega
+                                                </label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => design.setData('delivery_zones', [
+                                                        ...design.data.delivery_zones,
+                                                        { label: '', min_km: 0, max_km: 0, price: 0 },
+                                                    ])}
+                                                    className="text-xs text-primary hover:underline font-medium"
+                                                >
+                                                    + Agregar zona
+                                                </button>
+                                            </div>
+
+                                            {design.data.delivery_zones.length === 0 && (
+                                                <p className="text-xs text-muted-foreground/50 italic">
+                                                    Sin zonas configuradas.
+                                                </p>
+                                            )}
+
+                                            {design.data.delivery_zones.map((zone, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="flex items-center gap-2 rounded-xl bg-muted/30 px-3 py-2.5"
+                                                >
+                                                    <input
+                                                        className="flex-1 min-w-0 rounded-lg border border-input bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                        placeholder="Nombre de zona"
+                                                        value={zone.label}
+                                                        onChange={e => {
+                                                            const zones = [...design.data.delivery_zones];
+                                                            zones[idx] = { ...zones[idx], label: e.target.value };
+                                                            design.setData('delivery_zones', zones);
+                                                        }}
+                                                    />
+                                                    <input
+                                                        type="number" min={0} step={0.1}
+                                                        className="w-14 rounded-lg border border-input bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                        placeholder="km min"
+                                                        value={zone.min_km}
+                                                        onChange={e => {
+                                                            const zones = [...design.data.delivery_zones];
+                                                            zones[idx] = { ...zones[idx], min_km: parseFloat(e.target.value) || 0 };
+                                                            design.setData('delivery_zones', zones);
+                                                        }}
+                                                    />
+                                                    <input
+                                                        type="number" min={0} step={0.1}
+                                                        className="w-14 rounded-lg border border-input bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                        placeholder="km max"
+                                                        value={zone.max_km}
+                                                        onChange={e => {
+                                                            const zones = [...design.data.delivery_zones];
+                                                            zones[idx] = { ...zones[idx], max_km: parseFloat(e.target.value) || 0 };
+                                                            design.setData('delivery_zones', zones);
+                                                        }}
+                                                    />
+                                                    <input
+                                                        type="number" min={0} step={500}
+                                                        className="w-20 rounded-lg border border-input bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                        placeholder="$ tarifa"
+                                                        value={zone.price}
+                                                        onChange={e => {
+                                                            const zones = [...design.data.delivery_zones];
+                                                            zones[idx] = { ...zones[idx], price: parseInt(e.target.value) || 0 };
+                                                            design.setData('delivery_zones', zones);
+                                                        }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => design.setData('delivery_zones',
+                                                            design.data.delivery_zones.filter((_, i) => i !== idx)
+                                                        )}
+                                                        className="shrink-0 p-1 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                            {design.data.delivery_zones.length > 0 && (
+                                                <p className="text-[10px] text-muted-foreground/40">
+                                                    Nombre · km mín · km máx · Tarifa (COP)
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Guardar */}
@@ -720,7 +941,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                                                 ? <img src={dish.image_url} alt={dish.name} className="h-16 w-16 rounded-xl object-cover shrink-0 border" style={{ borderColor: `${design.data.text_color}22` }} />
                                                                 : <div className="h-16 w-16 rounded-xl shrink-0 border border-dashed flex items-center justify-center" style={{ borderColor: `${design.data.text_color}33`, backgroundColor: `${design.data.text_color}08` }}>
                                                                     <ImageOff className="h-5 w-5 opacity-30" style={{ color: design.data.text_color }} />
-                                                                  </div>
+                                                                </div>
                                                             }
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-baseline justify-between gap-2">
@@ -740,7 +961,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                 </div>
 
                                 <div className="text-center pb-6 opacity-40 text-xs" style={{ color: design.data.text_color }}>
-                                    Carta digital · MenuGo
+                                    Carta digital · Menugo
                                 </div>
                             </div>
                         </div>
@@ -754,8 +975,94 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                             <h2 className="font-display text-base font-bold">Código QR</h2>
                             <p className="text-xs text-muted-foreground mt-1">Tus clientes escanean esto</p>
                         </div>
-                        <div ref={qrRef} className="p-4 bg-white rounded-2xl shadow-sm border border-border">
-                            <QRCodeSVG value={public_url} size={160} level="M" fgColor="#1a1a1a" />
+                        <div className="relative w-full max-w-[340px] mx-auto aspect-square rounded-[3rem] p-1.5 overflow-hidden group shadow-[0_20px_50px_-15px_rgba(0,0,0,0.3)] hover:shadow-[0_30px_70px_-15px_rgba(0,0,0,0.5)] transition-all duration-500">
+                            
+                            <style dangerouslySetInnerHTML={{__html: `
+                                @keyframes qr-spin-gradient {
+                                    0% { transform: translate(-50%, -50%) rotate(0deg); }
+                                    100% { transform: translate(-50%, -50%) rotate(360deg); }
+                                }
+                                @keyframes qr-float {
+                                    0%, 100% { transform: translateY(0px) scale(1.08); }
+                                    50% { transform: translateY(-12px) scale(1.08); }
+                                }
+                                @keyframes qr-shine {
+                                    0% { left: -100%; }
+                                    20% { left: 200%; }
+                                    100% { left: 200%; }
+                                }
+                            `}} />
+
+                            {/* Borde animado giratorio (Efecto Láser / Neón) */}
+                            <div 
+                                className="absolute top-1/2 left-1/2 w-[250%] h-[250%] opacity-80 group-hover:opacity-100 transition-opacity duration-500" 
+                                style={{
+                                    animation: 'qr-spin-gradient 3s linear infinite',
+                                    background: `conic-gradient(from 0deg, transparent 0%, transparent 35%, ${design.data.primary_color || '#ff6b00'} 45%, ${design.data.primary_color || '#ff6b00'} 55%, transparent 65%, transparent 100%)`
+                                }} 
+                            />
+                            
+                            {/* Tarjeta interior */}
+                            <div className="relative w-full h-full bg-white dark:bg-zinc-900 rounded-[2.8rem] p-6 flex flex-col items-center justify-center overflow-hidden z-10">
+                                
+                                {/* Aura interna del color primario */}
+                                <div className="absolute inset-0 opacity-10 group-hover:opacity-30 transition-opacity duration-700"
+                                    style={{ background: `radial-gradient(circle at 50% 50%, ${design.data.primary_color || '#ff6b00'} 0%, transparent 65%)` }}
+                                />
+
+                                {/* Contenedor del código QR con efecto de flotación 3D */}
+                                <div ref={qrRef} 
+                                    className="relative z-20 bg-white p-5 rounded-3xl shadow-[0_15px_35px_-5px_rgba(0,0,0,0.15)] border border-gray-100/50 group-hover:border-white transition-all duration-500"
+                                    style={{ transformOrigin: 'center' }}
+                                >
+                                    <div className="transform group-hover:[animation:qr-float_3s_ease-in-out_infinite] transition-transform duration-500">
+                                        <QRCodeSVG
+                                            value={public_url}
+                                            size={180}
+                                            level="H"
+                                            fgColor={design.data.primary_color || '#000000'}
+                                            bgColor="transparent"
+                                            imageSettings={{
+                                                src: '/logo-trans.png',
+                                                height: 56,
+                                                width: 56,
+                                                excavate: true,
+                                            }}
+                                            className="relative z-10"
+                                        />
+                                        
+                                        {/* Logo central MUY llamativo */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                                            <div className="relative w-[68px] h-[68px] flex items-center justify-center">
+                                                {/* Anillos de pulsación */}
+                                                <div className="absolute inset-[-30%] rounded-full animate-ping opacity-20" style={{ backgroundColor: design.data.primary_color || '#ff6b00', animationDuration: '2s' }} />
+                                                <div className="absolute inset-[-10%] rounded-full animate-pulse opacity-40 blur-md" style={{ backgroundColor: design.data.primary_color || '#ff6b00' }} />
+                                                
+                                                {/* Insignia física */}
+                                                <div 
+                                                    className="relative bg-white w-full h-full rounded-full shadow-[0_12px_25px_rgba(0,0,0,0.3),inset_0_4px_6px_rgba(255,255,255,0.8)] flex items-center justify-center overflow-hidden z-10 transform group-hover:rotate-[360deg] transition-transform duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] border-[4px]"
+                                                    style={{ borderColor: design.data.primary_color || '#ff6b00' }}
+                                                >
+                                                    <div className="w-full h-full bg-gradient-to-br from-white to-gray-100 flex items-center justify-center p-1.5">
+                                                        <img src="/logo-trans.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md scale-110" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Etiqueta de acción que aparece */}
+                                <div className="absolute bottom-5 z-20 transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-[600ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+                                    <div 
+                                        className="px-6 py-2.5 text-white text-[12px] uppercase tracking-[0.25em] font-black rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.4)] relative overflow-hidden"
+                                        style={{ backgroundColor: design.data.primary_color || '#1a1a1a' }}
+                                    >
+                                        <div className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-70" style={{ animation: 'qr-shine 3s infinite' }} />
+                                        <span className="relative z-10 drop-shadow-md">¡Escanéame!</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div className="w-full flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2">
                             <span className="flex-1 text-xs text-muted-foreground truncate">{public_url}</span>
@@ -780,10 +1087,10 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estado de la carta</h3>
                         <div className="space-y-2.5">
                             {[
-                                { label: 'Categorías',  value: categories.length,     color: 'text-foreground' },
-                                { label: 'Platos',      value: totalPlatos,            color: 'text-foreground' },
-                                { label: 'Disponibles', value: totalDisponibles,       color: 'text-accent' },
-                                { label: 'Sin imagen',  value: sinImagen,              color: sinImagen > 0 ? 'text-yellow-400' : 'text-accent' },
+                                { label: 'Categorías', value: categories.length, color: 'text-foreground' },
+                                { label: 'Platos', value: totalPlatos, color: 'text-foreground' },
+                                { label: 'Disponibles', value: totalDisponibles, color: 'text-accent' },
+                                { label: 'Sin imagen', value: sinImagen, color: sinImagen > 0 ? 'text-yellow-400' : 'text-accent' },
                             ].map(item => (
                                 <div key={item.label} className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">{item.label}</span>

@@ -1,8 +1,8 @@
 @extends('layouts.app')
-@section('title', 'Menú Digital — MenuGo')
+@section('title', 'Menu Digital — MenuGo')
 
 @section('content')
-<x-app-shell variant="restaurant" title="Menú Digital" subtitle="Gestión de categorías y productos para el cliente">
+<x-app-shell variant="restaurant" title="Menu Digital" subtitle="Gestión de categorías y productos para el cliente">
 
     <div class="flex justify-between items-center mb-6">
         <div class="relative">

@@ -9,7 +9,7 @@ export default function AdminLogin() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post('/admin/login');
+        post(window.location.pathname);
     };
 
     return (
@@ -21,7 +21,7 @@ export default function AdminLogin() {
                     {/* Badge */}
                     <div className="flex flex-col items-center gap-4">
                         <div className="bg-white rounded-full p-2.5 shadow-lg">
-                            <img src="/logo-trans.png" alt="MenuGo" className="h-12 w-auto" />
+                            <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
                         </div>
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40
                                          bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
@@ -37,12 +37,14 @@ export default function AdminLogin() {
                     <div className="rounded-2xl border border-border bg-card/60 backdrop-blur-sm p-7 space-y-5">
                         <form onSubmit={submit} className="space-y-4">
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-foreground">Correo</label>
+                                <label htmlFor="email" className="text-sm font-medium text-foreground">Correo</label>
                                 <input
+                                    id="email"
+                                    name="email"
                                     type="email"
                                     value={data.email}
                                     onChange={e => setData('email', e.target.value)}
-                                    placeholder="admin@menugo.com"
+                                    placeholder="admin@Menugo.com"
                                     autoComplete="email"
                                     className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm
                                                text-foreground placeholder:text-muted-foreground
@@ -52,8 +54,10 @@ export default function AdminLogin() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-foreground">Contraseña</label>
+                                <label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</label>
                                 <input
+                                    id="password"
+                                    name="password"
                                     type="password"
                                     value={data.password}
                                     onChange={e => setData('password', e.target.value)}
@@ -78,7 +82,7 @@ export default function AdminLogin() {
                     </div>
 
                     <div className="text-center">
-                        <Link href="/login" className="text-xs text-muted-foreground hover:text-primary transition">
+                        <Link href="/welcome" className="text-xs text-muted-foreground hover:text-primary transition">
                             ← Volver al acceso de restaurante
                         </Link>
                     </div>

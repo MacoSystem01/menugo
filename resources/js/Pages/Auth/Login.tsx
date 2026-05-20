@@ -30,9 +30,9 @@ export default function Login() {
                     {/* Logo */}
                     <div className="flex items-center gap-3 z-10">
                         <div className="bg-white rounded-full p-2 shadow-md">
-                            <img src="/logo-trans.png" alt="MenuGo" className="h-12 w-auto" />
+                            <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
                         </div>
-                        <span className="text-2xl font-display font-bold text-foreground">MenuGo</span>
+                        <span className="text-2xl font-display font-bold text-foreground">Menugo</span>
                     </div>
 
                     {/* Centro */}
@@ -65,7 +65,7 @@ export default function Login() {
                     {/* Testimonio */}
                     <div className="z-10 rounded-2xl border border-border bg-card/40 backdrop-blur-sm p-5">
                         <p className="text-sm text-muted-foreground italic">
-                            "Desde que usamos MenuGo los tiempos de espera bajaron un 40% y los errores en pedidos prácticamente desaparecieron."
+                            "Desde que usamos Menugo los tiempos de espera bajaron un 40% y los errores en pedidos prácticamente desaparecieron."
                         </p>
                         <p className="mt-2 text-xs font-semibold text-primary">— Carlos M., Chef propietario</p>
                     </div>
@@ -78,7 +78,7 @@ export default function Login() {
                         {/* Logo mobile */}
                         <div className="flex lg:hidden justify-center">
                             <div className="bg-white rounded-full p-2 shadow-md">
-                                <img src="/logo-trans.png" alt="MenuGo" className="h-12 w-auto" />
+                                <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
                             </div>
                         </div>
 
@@ -89,8 +89,10 @@ export default function Login() {
 
                         <form onSubmit={submit} className="space-y-5">
                             <div className="space-y-1.5">
-                                <label className="block text-sm font-medium text-foreground text-center">Correo electrónico</label>
+                                <label htmlFor="email" className="block text-sm font-medium text-foreground text-center">Correo electrónico</label>
                                 <input
+                                    id="email"
+                                    name="email"
                                     type="email"
                                     value={data.email}
                                     onChange={e => setData('email', e.target.value)}
@@ -105,12 +107,14 @@ export default function Login() {
 
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-center gap-2">
-                                    <label className="text-sm font-medium text-foreground">Contraseña</label>
+                                    <label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña</label>
                                     <Link href="/forgot-password" className="text-xs text-primary hover:underline">
                                         ¿Olvidaste la contraseña?
                                     </Link>
                                 </div>
                                 <input
+                                    id="password"
+                                    name="password"
                                     type="password"
                                     value={data.password}
                                     onChange={e => setData('password', e.target.value)}
@@ -147,12 +151,7 @@ export default function Login() {
                             </button>
                         </form>
 
-                        <div className="rounded-xl border border-border bg-card/50 p-4 text-center space-y-1">
-                            <p className="text-xs text-muted-foreground">¿Eres administrador del sistema?</p>
-                            <Link href="/admin/login" className="text-xs font-semibold text-primary hover:underline">
-                                Acceso SuperAdmin →
-                            </Link>
-                        </div>
+
                     </div>
                 </div>
             </div>

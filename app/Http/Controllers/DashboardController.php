@@ -161,7 +161,7 @@ class DashboardController extends Controller
     {
         $mesas = RestaurantTable::with(['orders' => fn($q) => $q->whereIn('status',
             ['in_kitchen', 'cooking', 'ready'])])
-            ->where('active', true)->orderBy('number')->get()
+            ->orderBy('number')->get()
             ->map(fn($t) => [
                 'id'      => $t->id,
                 'number'  => $t->number,
@@ -198,7 +198,7 @@ class DashboardController extends Controller
             ->where('type', 'domicilio')
             ->whereIn('status', ['ready', 'in_kitchen', 'cooking', 'delivered'])
             ->where(function ($q) use ($user) {
-                $q->where('assigned_to', $user->id)->orWhereNull('assigned_to');
+                $q->where('delivery_user_id', $user->id)->orWhereNull('delivery_user_id');
             })
             ->latest()->take(20)->get()
             ->map(fn($o) => [
@@ -208,7 +208,7 @@ class DashboardController extends Controller
                 'delivery_address' => $o->delivery_address,
                 'status'           => $o->status,
                 'total'            => $o->total,
-                'assigned_to'      => $o->assigned_to,
+                'delivery_user_id' => $o->delivery_user_id,
                 'items'            => $o->items->count(),
                 'tiempo'           => $o->created_at->diffForHumans(short: true),
             ]);

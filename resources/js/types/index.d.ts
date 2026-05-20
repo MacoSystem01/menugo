@@ -27,6 +27,7 @@ export interface PageProps {
     flash?: {
         success?: string;
         error?: string;
+        warning?: string;
     };
 }
 
@@ -214,7 +215,7 @@ interface DashboardDomicilio {
     delivery_address: string | null;
     status: string;
     total: number;
-    assigned_to: number | null;
+    delivery_user_id: number | null;
     items: number;
     tiempo: string;
 }

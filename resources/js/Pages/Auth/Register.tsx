@@ -91,7 +91,7 @@ export default function Register() {
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <>
-            <Head title="Crear cuenta — MenuGo" />
+            <Head title="Crear cuenta — Menugo" />
             <div className="min-h-screen grid lg:grid-cols-2">
 
                 {/* ════ Panel izquierdo: wizard ════ */}
@@ -110,7 +110,7 @@ export default function Register() {
                         {/* Logo mobile */}
                         <div className="flex lg:hidden justify-center">
                             <div className="bg-white rounded-full p-2 shadow-md">
-                                <img src="/logo-trans.png" alt="MenuGo" className="h-12 w-auto" />
+                                <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
                             </div>
                         </div>
 
@@ -223,7 +223,7 @@ export default function Register() {
                                         {data.type === 'restaurante' ? 'Tu restaurante' : 'Tu puesto'}
                                     </h1>
                                     <p className="text-sm text-muted-foreground mt-1">
-                                        Este nombre define tu espacio exclusivo dentro de MenuGo.
+                                        Este nombre define tu espacio exclusivo dentro de Menugo.
                                     </p>
                                 </div>
 
@@ -257,7 +257,7 @@ export default function Register() {
                                             placeholder="minegocio"
                                             className="flex-1 bg-transparent px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none cursor-default select-all"
                                         />
-                                        <span className="pr-4 text-xs text-muted-foreground whitespace-nowrap select-none">.menugo.com</span>
+                                        <span className="pr-4 text-xs text-muted-foreground whitespace-nowrap select-none">.Menugo.com</span>
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">
                                         Se genera automáticamente a partir del nombre del establecimiento.
@@ -271,7 +271,7 @@ export default function Register() {
                                         <Globe2 className="h-4 w-4 text-primary shrink-0" />
                                         <div>
                                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Tu URL de acceso</p>
-                                            <p className="text-sm font-semibold text-primary">{data.subdomain}.menugo.com</p>
+                                            <p className="text-sm font-semibold text-primary">{data.subdomain}.Menugo.com</p>
                                         </div>
                                     </div>
                                 )}
@@ -303,7 +303,7 @@ export default function Register() {
                                     {data.subdomain && (
                                         <span className="inline-flex items-center gap-1 text-xs bg-accent/10 text-accent rounded-full px-3 py-1 font-medium">
                                             <Globe2 className="h-3 w-3" />
-                                            {data.subdomain}.menugo.com
+                                            {data.subdomain}.Menugo.com
                                         </span>
                                     )}
                                 </div>
@@ -429,14 +429,14 @@ export default function Register() {
 
                     <div className="relative flex items-center gap-3">
                         <div className="bg-white rounded-full p-2 shadow-md">
-                            <img src="/logo-trans.png" alt="MenuGo" className="h-10 w-auto" />
+                            <img src="/logo-trans.png" alt="Menugo" className="h-10 w-auto" />
                         </div>
-                        <span className="font-display text-xl font-bold text-primary-foreground">MenuGo</span>
+                        <span className="font-display text-xl font-bold text-primary-foreground">Menugo</span>
                     </div>
 
                     <div className="relative space-y-6">
                         <h2 className="font-display text-4xl font-bold text-primary-foreground leading-tight">
-                            Únete a +500 restaurantes que ya operan con MenuGo.
+                            Únete a +500 restaurantes que ya operan con Menugo.
                         </h2>
                         <ul className="space-y-3">
                             {BENEFITS.map(b => (

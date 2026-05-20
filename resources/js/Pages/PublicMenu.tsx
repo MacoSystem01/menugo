@@ -80,22 +80,33 @@ interface SocialLinks {
     youtube?:   string;
 }
 
+interface DeliveryZone {
+    label:  string;
+    min_km: number;
+    max_km: number;
+    price:  number;
+}
+
 interface CartaSettings {
-    primary_color:   string;
-    bg_color:        string;
-    text_color:      string;
-    logo_size:       string;
-    name_size:       string;
-    slogan:          string | null;
-    slogan_size:     string;
-    banner_url:      string | null;
-    payment_methods: string[];
-    social_links:    SocialLinks;
+    primary_color:      string;
+    bg_color:           string;
+    text_color:         string;
+    logo_size:          string;
+    name_size:          string;
+    slogan:             string | null;
+    slogan_size:        string;
+    banner_url:         string | null;
+    payment_methods:    string[];
+    social_links:       SocialLinks;
+    delivery_enabled:   boolean;
+    delivery_min_order: number;
+    delivery_zones:     DeliveryZone[];
 }
 
 interface Table {
-    id:     number;
-    number: string;
+    id:               number;
+    number:           string;
+    has_active_orders: boolean;
 }
 
 interface Props {
@@ -167,11 +178,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     const payMethods  = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
 
     // ── Cart state ─────────────────────────────────────────────────────────────
-    const [cart,       setCart]       = useState<CartItem[]>([]);
-    const [screen,     setScreen]     = useState<Screen>('menu');
-    const [submitting, setSubmitting] = useState(false);
-    const [errors,     setErrors]     = useState<Record<string, string>>({});
-    const [success,    setSuccess]    = useState<{ name: string; total: number } | null>(null);
+    const [cart,              setCart]              = useState<CartItem[]>([]);
+    const [screen,            setScreen]            = useState<Screen>('menu');
+    const [submitting,        setSubmitting]        = useState(false);
+    const [errors,            setErrors]            = useState<Record<string, string>>({});
+    const [success,           setSuccess]           = useState<{ name: string; total: number } | null>(null);
+    const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
     // ── Session timer (10 min) ─────────────────────────────────────────────────
     const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -205,14 +217,19 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     }, [timeLeft]);
 
     // ── Checkout form ──────────────────────────────────────────────────────────
+    const deliveryZones   = settings?.delivery_zones     ?? [];
+    const deliveryEnabled = settings?.delivery_enabled   ?? false;
+    const deliveryMinOrder= settings?.delivery_min_order ?? 0;
+
     const [form, setForm] = useState({
-        customer_name:    '',
-        customer_phone:   '',
-        type:             'mesa' as 'mesa' | 'domicilio',
-        table_id:         '',
-        delivery_address: '',
-        payment_method:   payMethods[0],
-        notes:            '',
+        customer_name:     '',
+        customer_phone:    '',
+        type:              'mesa' as 'mesa' | 'domicilio',
+        table_id:          '',
+        delivery_address:  '',
+        delivery_zone_idx: null as number | null,
+        payment_method:    payMethods[0],
+        notes:             '',
     });
 
     function setField<K extends keyof typeof form>(key: K, value: typeof form[K]) {
@@ -249,30 +266,46 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
     const totalPrice = cart.reduce((s, i) => s + i.dish.price * i.quantity, 0);
 
+    const selectedZone = form.type === 'domicilio' && form.delivery_zone_idx !== null
+        ? (deliveryZones[form.delivery_zone_idx] ?? null)
+        : null;
+    const deliveryFee = selectedZone?.price ?? 0;
+    const grandTotal  = totalPrice + deliveryFee;
+
     // ── Submit ─────────────────────────────────────────────────────────────────
+    const selectedTable     = form.type === 'mesa' && form.table_id
+        ? tables.find(t => String(t.id) === form.table_id) ?? null
+        : null;
+    const tableIsOccupied   = selectedTable?.has_active_orders ?? false;
+    const canSubmit         = !tableIsOccupied || occupiedConfirmed;
+
     function submitOrder() {
+        if (!canSubmit) return;
         setSubmitting(true);
         setErrors({});
         const snapshotTotal = totalPrice;
         const snapshotName  = form.customer_name;
         router.post('/carta/pedido', {
-            customer_name:    form.customer_name,
-            customer_phone:   form.customer_phone,
-            type:             form.type,
-            table_id:         form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
-            delivery_address: form.type === 'domicilio' ? form.delivery_address || null : null,
-            payment_method:   form.payment_method,
-            notes:            form.notes || null,
-            items:            cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
+            customer_name:     form.customer_name,
+            customer_phone:    form.customer_phone,
+            type:              form.type,
+            table_id:          form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
+            delivery_address:  form.type === 'domicilio' ? form.delivery_address || null : null,
+            delivery_zone_idx: form.type === 'domicilio' ? form.delivery_zone_idx : null,
+            payment_method:    form.payment_method,
+            notes:             form.notes || null,
+            confirmed:         occupiedConfirmed,
+            items:             cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
         }, {
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
             onSuccess: () => {
                 setSuccess({ name: snapshotName, total: snapshotTotal });
                 setCart([]);
                 setScreen('menu');
+                setOccupiedConfirmed(false);
                 setForm({
                     customer_name: '', customer_phone: '', type: 'mesa',
-                    table_id: '', delivery_address: '',
+                    table_id: '', delivery_address: '', delivery_zone_idx: null,
                     payment_method: payMethods[0], notes: '',
                 });
                 setSubmitting(false);
@@ -296,14 +329,27 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                 className="sticky top-0 z-10 backdrop-blur-md border-b"
                 style={{ backgroundColor: `${s.bg}f0`, borderColor: `${s.text}18` }}
             >
-                <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-                    <img src="/logo-trans.png" alt={tenant_name} className={`${logoClass} w-auto shrink-0`} />
-                    <div className="min-w-0">
-                        <h1 className={`font-display font-bold leading-tight truncate ${nameClass}`} style={{ color: s.text }}>
+                <div className="max-w-5xl mx-auto px-3 sm:px-8 py-2.5 flex items-center gap-3">
+                    {/* Logo: limitado a h-9 en móvil para no ocupar demasiado espacio */}
+                    <img
+                        src="/logo-trans.png"
+                        alt={tenant_name}
+                        className={`max-h-9 sm:max-h-12 md:${logoClass} w-auto shrink-0 object-contain`}
+                    />
+                    <div className="min-w-0 flex-1">
+                        {/* Nombre: text-base en móvil, tamaño configurado en sm+ */}
+                        <h1
+                            className={`font-display font-bold leading-tight line-clamp-1 text-base sm:text-lg md:${nameClass}`}
+                            style={{ color: s.text }}
+                        >
                             {tenant_name}
                         </h1>
                         {settings?.slogan ? (
-                            <p className={`${sloganClass} truncate opacity-70 mt-0.5`} style={{ color: s.text }}>
+                            /* Slogan: siempre visible, text-xs en móvil */
+                            <p
+                                className={`text-xs sm:${sloganClass} line-clamp-1 opacity-70 mt-0.5`}
+                                style={{ color: s.text }}
+                            >
                                 {settings.slogan}
                             </p>
                         ) : (
@@ -316,11 +362,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             {/* ── Índice de categorías ── */}
             {categories.length > 1 && (
                 <div
-                    className="sticky top-18.25 z-10 backdrop-blur border-b"
+                    className="sticky top-[52px] z-10 backdrop-blur border-b lg:hidden"
                     style={{ backgroundColor: `${s.bg}f5`, borderColor: `${s.text}15` }}
                 >
-                    <div className="max-w-2xl mx-auto px-4">
-                        <div className="flex gap-2 overflow-x-auto py-3 scrollbar-none">
+                    <div className="max-w-5xl mx-auto px-4 sm:px-8">
+                        <div className="flex gap-2 overflow-x-auto py-2.5 scrollbar-none">
                             {categories.map(cat => (
                                 <a
                                     key={cat.id}
@@ -347,7 +393,30 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             )}
 
             {/* ── Contenido ── */}
-            <main className="max-w-2xl mx-auto px-4 py-8 space-y-12 pb-28">
+            <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 lg:flex lg:gap-10">
+
+                {/* Sidebar categorías — sólo desktop */}
+                {categories.length > 1 && (
+                    <aside className="hidden lg:block w-44 shrink-0">
+                        <div className="sticky top-20 space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase tracking-widest mb-3 opacity-40 px-2" style={{ color: s.text }}>Categorías</p>
+                            {categories.map(cat => (
+                                <a
+                                    key={cat.id}
+                                    href={`#cat-${cat.id}`}
+                                    className="flex items-center rounded-xl px-3 py-2 text-sm font-medium transition-all"
+                                    style={{ color: s.text }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = `${s.primary}14`; (e.currentTarget as HTMLAnchorElement).style.color = s.primary; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = ''; (e.currentTarget as HTMLAnchorElement).style.color = s.text; }}
+                                >
+                                    {cat.name}
+                                </a>
+                            ))}
+                        </div>
+                    </aside>
+                )}
+
+                <main className="flex-1 min-w-0 space-y-10 pb-28">
                 {categories.length === 0 ? (
                     <div className="text-center py-20" style={{ color: `${s.text}70` }}>
                         <p className="text-lg font-medium">La carta está siendo preparada.</p>
@@ -355,7 +424,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                     </div>
                 ) : (
                     categories.map(cat => (
-                        <section key={cat.id} id={`cat-${cat.id}`}>
+                        <section key={cat.id} id={`cat-${cat.id}`} className="scroll-mt-36 lg:scroll-mt-28">
                             <div className="mb-5">
                                 <div className="flex items-center gap-3 mb-1">
                                     <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
@@ -371,7 +440,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                 )}
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {cat.dishes.map(dish => {
                                     const qty = cartQty(dish.id);
                                     return (
@@ -431,7 +500,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                                 <img
                                                     src={dish.image_url}
                                                     alt={dish.name}
-                                                    className="shrink-0 h-20 w-20 rounded-xl object-cover"
+                                                    className="shrink-0 h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover"
                                                     style={{ border: `1px solid ${s.text}20` }}
                                                 />
                                             )}
@@ -442,7 +511,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                         </section>
                     ))
                 )}
-            </main>
+                </main>
+            </div>
 
             {/* ── Footer ── */}
             <footer className="border-t mt-12 pb-8" style={{ borderColor: `${s.text}15` }}>
@@ -557,14 +627,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
 
                 <p className="text-center text-xs opacity-35 pt-2" style={{ color: s.text }}>
                     {tenant_name} · Carta digital por{' '}
-                    <span className="font-semibold" style={{ color: s.primary }}>MenuGo</span>
+                    <span className="font-semibold" style={{ color: s.primary }}>Menugo</span>
                 </p>
             </footer>
 
             {/* ── Barra flotante del carrito ── */}
             {cart.length > 0 && screen === 'menu' && (
                 <div className="fixed bottom-0 left-0 right-0 z-20 p-4">
-                    <div className="max-w-2xl mx-auto">
+                    <div className="max-w-5xl mx-auto">
                         <button
                             onClick={() => setScreen('cart')}
                             className="w-full flex items-center justify-between px-5 py-4 rounded-2xl shadow-xl font-semibold"
@@ -579,15 +649,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                 </span>
                                 Ver pedido
                             </span>
-                            <span className="flex items-center gap-3">
-                                {timeLeft !== null && (
-                                    <span className="flex items-center gap-1 text-sm font-mono font-bold opacity-90">
-                                        <Clock className="h-3.5 w-3.5" />
-                                        {fmtTimer(timeLeft)}
-                                    </span>
-                                )}
-                                <span className="text-lg font-bold">{fmt(totalPrice)}</span>
-                            </span>
+                            <span className="text-lg font-bold">{fmt(totalPrice)}</span>
                         </button>
                     </div>
                 </div>
@@ -595,7 +657,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
 
             {/* ── Hoja: carrito ── */}
             {screen === 'cart' && (
-                <div className="fixed inset-0 z-30 flex flex-col" style={{ backgroundColor: s.bg }}>
+                <div className="fixed inset-0 z-30 flex justify-end">
+                    {/* Backdrop desktop */}
+                    <div className="hidden lg:block absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setScreen('menu')} />
+                    {/* Panel */}
+                    <div className="relative flex flex-col w-full lg:w-[440px] shadow-2xl" style={{ backgroundColor: s.bg }}>
                     <div
                         className="flex items-center justify-between px-4 py-4 border-b shrink-0"
                         style={{ borderColor: `${s.text}15` }}
@@ -604,17 +670,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                             <ChevronLeft className="h-6 w-6" />
                         </button>
                         <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Tu pedido</h2>
-                        {timeLeft !== null ? (
-                            <span
-                                className="flex items-center gap-1 text-xs font-mono font-bold px-2 py-1 rounded-full"
-                                style={{
-                                    color:           timerColor(timeLeft, s.primary),
-                                    backgroundColor: `${timerColor(timeLeft, s.primary)}18`,
-                                }}
-                            >
-                                <Clock className="h-3 w-3" /> {fmtTimer(timeLeft)}
-                            </span>
-                        ) : <div className="w-9" />}
+                        <div className="w-9" />
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -684,12 +740,17 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                             Hacer pedido
                         </button>
                     </div>
+                    </div>
                 </div>
             )}
 
             {/* ── Hoja: checkout ── */}
             {screen === 'checkout' && (
-                <div className="fixed inset-0 z-30 flex flex-col" style={{ backgroundColor: s.bg }}>
+                <div className="fixed inset-0 z-30 flex justify-end">
+                    {/* Backdrop desktop */}
+                    <div className="hidden lg:block absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setScreen('cart')} />
+                    {/* Panel */}
+                    <div className="relative flex flex-col w-full lg:w-[440px] shadow-2xl" style={{ backgroundColor: s.bg }}>
                     <div
                         className="flex items-center justify-between px-4 py-4 border-b shrink-0"
                         style={{ borderColor: `${s.text}15` }}
@@ -698,17 +759,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                             <ChevronLeft className="h-6 w-6" />
                         </button>
                         <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Datos del pedido</h2>
-                        {timeLeft !== null ? (
-                            <span
-                                className="flex items-center gap-1 text-xs font-mono font-bold px-2 py-1 rounded-full"
-                                style={{
-                                    color:           timerColor(timeLeft, s.primary),
-                                    backgroundColor: `${timerColor(timeLeft, s.primary)}18`,
-                                }}
-                            >
-                                <Clock className="h-3 w-3" /> {fmtTimer(timeLeft)}
-                            </span>
-                        ) : <div className="w-9" />}
+                        <div className="w-9" />
                     </div>
 
                     <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
@@ -779,31 +830,67 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
 
                         {/* Mesa */}
                         {form.type === 'mesa' && (
-                            <div className="space-y-1.5">
+                            <div className="space-y-2">
                                 <label className="text-sm font-medium" style={{ color: s.text }}>Mesa</label>
                                 {tables.length > 0 ? (
                                     <div className="flex flex-wrap gap-2">
-                                        {tables.map(t => (
-                                            <button
-                                                key={t.id}
-                                                type="button"
-                                                onClick={() => setField('table_id', String(t.id))}
-                                                className="h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
-                                                style={{
-                                                    borderColor:     form.table_id === String(t.id) ? s.primary : `${s.text}20`,
-                                                    backgroundColor: form.table_id === String(t.id) ? `${s.primary}20` : 'transparent',
-                                                    color:           form.table_id === String(t.id) ? s.primary : s.text,
-                                                }}
-                                            >
-                                                {t.number}
-                                            </button>
-                                        ))}
+                                        {tables.map(t => {
+                                            const isSelected = form.table_id === String(t.id);
+                                            const occupied   = t.has_active_orders;
+                                            return (
+                                                <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setField('table_id', String(t.id));
+                                                        setOccupiedConfirmed(false);
+                                                    }}
+                                                    className="relative h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
+                                                    style={{
+                                                        borderColor:     isSelected ? s.primary : occupied ? '#f97316' : `${s.text}20`,
+                                                        backgroundColor: isSelected ? `${s.primary}20` : occupied ? 'rgba(249,115,22,0.08)' : 'transparent',
+                                                        color:           isSelected ? s.primary : occupied ? '#f97316' : s.text,
+                                                    }}
+                                                >
+                                                    {t.number}
+                                                    {occupied && (
+                                                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <p className="text-xs opacity-50" style={{ color: s.text }}>
                                         No hay mesas registradas.
                                     </p>
                                 )}
+
+                                {/* Aviso de mesa ocupada */}
+                                {tableIsOccupied && (
+                                    <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-3 space-y-2">
+                                        <p className="text-xs font-semibold text-orange-500">
+                                            ⚠️ Esta mesa ya tiene un pedido activo.
+                                        </p>
+                                        <p className="text-xs" style={{ color: s.text, opacity: 0.7 }}>
+                                            Para agregar productos al pedido en curso, comunícate con el personal. Si deseas hacer un pedido nuevo e independiente, confírmalo.
+                                        </p>
+                                        {!occupiedConfirmed ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setOccupiedConfirmed(true)}
+                                                className="w-full rounded-lg border border-orange-500/60 py-1.5 text-xs font-semibold text-orange-500 hover:bg-orange-500/10 transition-colors"
+                                            >
+                                                Confirmar pedido nuevo e independiente
+                                            </button>
+                                        ) : (
+                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-400">
+                                                <Check className="h-3.5 w-3.5" /> Confirmado — se creará un pedido nuevo
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {errors.table_id && <p className="text-xs text-red-500">{errors.table_id}</p>}
                             </div>
                         )}
@@ -828,6 +915,48 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                 />
                                 {errors.delivery_address && (
                                     <p className="text-xs text-red-500">{errors.delivery_address}</p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Selector de zona de domicilio */}
+                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>
+                                    Zona de entrega <span style={{ color: s.primary }}>*</span>
+                                </label>
+                                <div className="space-y-1.5">
+                                    {deliveryZones.map((zone, idx) => {
+                                        const selected = form.delivery_zone_idx === idx;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setForm(f => ({ ...f, delivery_zone_idx: idx }))}
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left"
+                                                style={{
+                                                    borderColor:     selected ? s.primary : `${s.text}20`,
+                                                    backgroundColor: selected ? `${s.primary}12` : 'transparent',
+                                                    color:           s.text,
+                                                }}
+                                            >
+                                                <span>
+                                                    <span className="font-medium">{zone.label}</span>
+                                                    <span className="opacity-55 ml-2 text-xs">
+                                                        {zone.min_km}–{zone.max_km} km
+                                                    </span>
+                                                </span>
+                                                <span className="font-bold shrink-0" style={{ color: selected ? s.primary : s.text }}>
+                                                    {zone.price === 0 ? 'Gratis' : fmt(zone.price)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {deliveryMinOrder > 0 && (
+                                    <p className="text-xs opacity-55" style={{ color: s.text }}>
+                                        Pedido mínimo para domicilio: {fmt(deliveryMinOrder)}
+                                    </p>
                                 )}
                             </div>
                         )}
@@ -892,13 +1021,23 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                     </span>
                                 </div>
                             ))}
+                            {selectedZone && (
+                                <div className="flex items-center justify-between text-sm gap-2">
+                                    <span className="opacity-70" style={{ color: s.text }}>
+                                        + Domicilio ({selectedZone.label})
+                                    </span>
+                                    <span className="font-semibold shrink-0" style={{ color: s.text }}>
+                                        {deliveryFee === 0 ? 'Gratis' : fmt(deliveryFee)}
+                                    </span>
+                                </div>
+                            )}
                             <div
                                 className="border-t pt-2 flex items-center justify-between"
                                 style={{ borderColor: `${s.text}15` }}
                             >
                                 <span className="font-semibold" style={{ color: s.text }}>Total</span>
                                 <span className="font-display font-bold text-base" style={{ color: s.primary }}>
-                                    {fmt(totalPrice)}
+                                    {fmt(grandTotal)}
                                 </span>
                             </div>
                         </div>
@@ -911,12 +1050,17 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                     <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: `${s.text}15` }}>
                         <button
                             onClick={submitOrder}
-                            disabled={submitting}
-                            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-60"
+                            disabled={submitting || !canSubmit}
+                            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ backgroundColor: s.primary, color: '#ffffff' }}
                         >
-                            {submitting ? 'Enviando pedido...' : `Confirmar pedido · ${fmt(totalPrice)}`}
+                            {submitting
+                                ? 'Enviando pedido...'
+                                : tableIsOccupied && !occupiedConfirmed
+                                ? 'Confirma el pedido nuevo arriba ↑'
+                                : `Confirmar pedido · ${fmt(grandTotal)}`}
                         </button>
+                    </div>
                     </div>
                 </div>
             )}
@@ -950,6 +1094,18 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                             Volver a la carta
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* ── Temporizador fijo esquina inferior izquierda ── */}
+            {timeLeft !== null && (
+                <div
+                    className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full px-4 py-2 shadow-lg"
+                    style={{ backgroundColor: timerColor(timeLeft, s.primary), color: '#ffffff' }}
+                >
+                    <Clock className="h-4 w-4 shrink-0" />
+                    <span className="text-xs font-semibold leading-none">Vigencia Toma Pedido:</span>
+                    <span className="font-mono text-sm font-bold leading-none">{fmtTimer(timeLeft)}</span>
                 </div>
             )}
 

@@ -10,7 +10,7 @@ Artisan::command('inspire', function () {
 
 // Cierre automático de día a medianoche para todos los tenants.
 // En Windows (XAMPP) se necesita una tarea en el Programador de tareas que ejecute
-// cada minuto: php C:\xampp\htdocs\menugo\artisan schedule:run
+// cada minuto: php C:\xampp\htdocs\Menugo\artisan schedule:run
 Schedule::command('app:cierre-diario')
     ->dailyAt('00:00')
     ->withoutOverlapping()

@@ -37,6 +37,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'inventario.ver', 'inventario.crear', 'inventario.editar', 'inventario.eliminar',
             // Reporte
             'reporte.ver',
+            // Auditoría
+            'auditoria.ver',
         ];
 
         foreach ($all as $perm) {

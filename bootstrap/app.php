@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -30,23 +31,27 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         // Redirigir a /login en tenant, o al path de admin configurado en el dominio central
         $middleware->redirectGuestsTo(function (Request $request) {
+            $host = $request->getHost();
             $centralHost = parse_url(config('app.url'), PHP_URL_HOST);
+            $centralDomains = [$centralHost, '127.0.0.1', 'localhost'];
 
-            if ($request->getHost() !== $centralHost) {
+            if (!in_array($host, $centralDomains)) {
                 return '/login';
             }
 
             return '/' . ltrim(env('ADMIN_LOGIN_PATH', 'sistema/acceso-control'), '/');
         });
 
-        // Excepción de CSRF para desarrollo local (Bypass 419 error)
+        // Inertia envía X-XSRF-TOKEN automáticamente en todas las peticiones.
+        // Solo se excluye /logout para que funcione incluso con sesión expirada.
         $middleware->validateCsrfTokens(except: [
-            '/login',
             '/logout',
-            'sistema/acceso-control',
-            '/admin/login'
         ]);
     })
-    ->withExceptions(function (Exceptions $_): void {
-        //
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (ModelNotFoundException $_, Request $request) {
+            if ($request->header('X-Inertia')) {
+                return back()->with('error', 'El registro solicitado no fue encontrado.');
+            }
+        });
     })->create();

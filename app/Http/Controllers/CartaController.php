@@ -41,9 +41,14 @@ class CartaController extends Controller
             ])
             ->values();
 
-        $tables = RestaurantTable::orderByRaw('CAST(number AS UNSIGNED), number')
-            ->get(['id', 'number'])
-            ->map(fn($t) => ['id' => $t->id, 'number' => (string) $t->number]);
+        $tables = RestaurantTable::withCount(['activeOrders'])
+            ->orderByRaw('CAST(number AS UNSIGNED), number')
+            ->get()
+            ->map(fn($t) => [
+                'id'               => $t->id,
+                'number'           => (string) $t->number,
+                'has_active_orders' => $t->active_orders_count > 0,
+            ]);
 
         $tenantName = tenancy()->tenant?->name ?? config('app.name');
 
@@ -60,17 +65,30 @@ class CartaController extends Controller
     public function placeOrder(Request $request)
     {
         $data = $request->validate([
-            'customer_name'    => 'required|string|max:150',
-            'customer_phone'   => 'required|string|max:20',
-            'type'             => 'required|in:mesa,domicilio',
-            'table_id'         => 'nullable|integer|exists:restaurant_tables,id',
-            'delivery_address' => 'nullable|string|max:300',
-            'payment_method'   => 'required|string|max:50',
-            'notes'            => 'nullable|string|max:500',
-            'items'            => 'required|array|min:1',
-            'items.*.dish_id'  => 'required|integer|exists:dishes,id',
-            'items.*.quantity' => 'required|integer|min:1|max:99',
+            'customer_name'     => 'required|string|max:150',
+            'customer_phone'    => 'required|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
+            'type'              => 'required|in:mesa,domicilio',
+            'table_id'          => 'nullable|integer|exists:restaurant_tables,id',
+            'delivery_address'  => 'required_if:type,domicilio|nullable|string|max:300',
+            'delivery_phone'    => 'nullable|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
+            'delivery_zone_idx' => 'nullable|integer|min:0',
+            'payment_method'    => 'required|string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
+            'notes'             => 'nullable|string|max:500',
+            'confirmed'         => 'nullable|boolean',
+            'items'             => 'required|array|min:1|max:50',
+            'items.*.dish_id'   => 'required|integer|exists:dishes,id',
+            'items.*.quantity'  => 'required|integer|min:1|max:99',
         ]);
+
+        // Block orders on occupied tables unless the customer explicitly confirmed
+        if ($data['type'] === 'mesa' && ! empty($data['table_id']) && empty($data['confirmed'])) {
+            $table = \App\Models\RestaurantTable::find($data['table_id']);
+            if ($table && $table->activeOrders()->exists()) {
+                return redirect('/carta')->withErrors([
+                    'table_occupied' => 'Esta mesa ya tiene un pedido activo.',
+                ]);
+            }
+        }
 
         // Resolve prices from DB to avoid client-side tampering
         $total      = 0;
@@ -89,24 +107,44 @@ class CartaController extends Controller
         }
 
         if (empty($orderItems)) {
-            return back()->withErrors(['items' => 'Ningún plato del pedido está disponible.']);
+            return redirect('/carta')->withErrors(['items' => 'Ningún plato del pedido está disponible.']);
         }
 
+        // Resolve delivery fee from the selected zone
+        $deliveryFee = 0;
+        if ($data['type'] === 'domicilio' && isset($data['delivery_zone_idx'])) {
+            $cfg   = CartaSetting::firstOrCreate([]);
+            $zones = $cfg->delivery_zones ?? [];
+            $zone  = $zones[$data['delivery_zone_idx']] ?? null;
+            if ($zone) {
+                $deliveryFee = (int) $zone['price'];
+            }
+        }
+        $total += $deliveryFee;
+
         $order = Order::create([
-            'customer_name'    => $data['customer_name'],
-            'customer_phone'   => $data['customer_phone'],
-            'type'             => $data['type'],
-            'table_id'         => $data['table_id'] ?? null,
-            'delivery_address' => $data['delivery_address'] ?? null,
-            'payment_method'   => $data['payment_method'],
-            'notes'            => $data['notes'] ?? null,
-            'status'           => 'pending',
-            'total'            => $total,
+            'customer_name'     => $data['customer_name'],
+            'customer_phone'    => $data['customer_phone'],
+            'type'              => $data['type'],
+            'table_id'          => $data['table_id'] ?? null,
+            'delivery_address'  => $data['delivery_address'] ?? null,
+            'delivery_phone'    => $data['delivery_phone'] ?? null,
+            'delivery_fee'      => $deliveryFee,
+            'payment_method'    => $data['payment_method'],
+            'notes'             => $data['notes'] ?? null,
+            'status'            => 'pending',
+            'total'             => $total,
         ]);
 
         $order->items()->createMany($orderItems);
 
-        return back()->with('order_placed', [
+        // Marcar la mesa como ocupada automáticamente al recibir el pedido
+        if ($data['type'] === 'mesa' && !empty($data['table_id'])) {
+            \App\Models\RestaurantTable::where('id', $data['table_id'])
+                ->update(['status' => 'occupied']);
+        }
+
+        return redirect('/carta')->with('order_placed', [
             'id'    => $order->id,
             'total' => (float) $total,
         ]);
@@ -156,22 +194,29 @@ class CartaController extends Controller
     public function saveSettings(Request $request)
     {
         $data = $request->validate([
-            'primary_color'          => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
-            'bg_color'               => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
-            'text_color'             => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
-            'logo_size'              => 'required|in:sm,md,lg,xl',
-            'name_size'              => 'required|in:sm,md,lg,xl,2xl',
-            'slogan'                 => 'nullable|string|max:200',
-            'slogan_size'            => 'required|in:xs,sm,md,lg',
-            'payment_methods'        => 'required|array|min:1',
-            'payment_methods.*'      => 'string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
-            'social_links'           => 'nullable|array',
-            'social_links.instagram' => 'nullable|url|max:255',
-            'social_links.facebook'  => 'nullable|url|max:255',
-            'social_links.whatsapp'  => 'nullable|string|max:20|regex:/^\+?[0-9]{7,15}$/',
-            'social_links.tiktok'    => 'nullable|url|max:255',
-            'social_links.twitter'   => 'nullable|url|max:255',
-            'social_links.youtube'   => 'nullable|url|max:255',
+            'primary_color'            => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
+            'bg_color'                 => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
+            'text_color'               => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
+            'logo_size'                => 'required|in:sm,md,lg,xl',
+            'name_size'                => 'required|in:sm,md,lg,xl,2xl',
+            'slogan'                   => 'nullable|string|max:200',
+            'slogan_size'              => 'required|in:xs,sm,md,lg',
+            'payment_methods'          => 'required|array|min:1',
+            'payment_methods.*'        => 'string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
+            'social_links'             => 'nullable|array',
+            'social_links.instagram'   => 'nullable|url|max:255',
+            'social_links.facebook'    => 'nullable|url|max:255',
+            'social_links.whatsapp'    => 'nullable|string|max:20|regex:/^\+?[0-9]{7,15}$/',
+            'social_links.tiktok'      => 'nullable|url|max:255',
+            'social_links.twitter'     => 'nullable|url|max:255',
+            'social_links.youtube'     => 'nullable|url|max:255',
+            'delivery_enabled'         => 'boolean',
+            'delivery_min_order'       => 'nullable|integer|min:0',
+            'delivery_zones'           => 'nullable|array|max:20',
+            'delivery_zones.*.label'   => 'required|string|max:60',
+            'delivery_zones.*.min_km'  => 'required|numeric|min:0',
+            'delivery_zones.*.max_km'  => 'required|numeric',
+            'delivery_zones.*.price'   => 'required|integer|min:0',
         ]);
 
         // Store only non-empty social links
@@ -265,16 +310,19 @@ class CartaController extends Controller
     private function settingsArray(CartaSetting $s): array
     {
         return [
-            'primary_color'   => $s->primary_color,
-            'bg_color'        => $s->bg_color,
-            'text_color'      => $s->text_color,
-            'logo_size'       => $s->logo_size,
-            'name_size'       => $s->name_size,
-            'slogan'          => $s->slogan,
-            'slogan_size'     => $s->slogan_size,
-            'banner_url'      => $s->banner_url,
-            'payment_methods' => $s->payment_methods ?? ['efectivo'],
-            'social_links'    => $s->social_links    ?? [],
+            'primary_color'      => $s->primary_color,
+            'bg_color'           => $s->bg_color,
+            'text_color'         => $s->text_color,
+            'logo_size'          => $s->logo_size,
+            'name_size'          => $s->name_size,
+            'slogan'             => $s->slogan,
+            'slogan_size'        => $s->slogan_size,
+            'banner_url'         => $s->banner_url,
+            'payment_methods'    => $s->payment_methods    ?? ['efectivo'],
+            'social_links'       => $s->social_links       ?? [],
+            'delivery_enabled'   => (bool) ($s->delivery_enabled   ?? false),
+            'delivery_min_order' => (int)  ($s->delivery_min_order ?? 0),
+            'delivery_zones'     => $s->delivery_zones     ?? [],
         ];
     }
 }

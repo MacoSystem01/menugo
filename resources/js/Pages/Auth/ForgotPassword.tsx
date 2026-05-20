@@ -17,7 +17,7 @@ export default function ForgotPassword() {
 
                     <div className="flex justify-center">
                         <div className="bg-white rounded-full p-2 shadow-md">
-                            <img src="/logo-trans.png" alt="MenuGo" className="h-12 w-auto" />
+                            <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
                         </div>
                     </div>
 

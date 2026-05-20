@@ -62,7 +62,8 @@ const INV_STATUS_CLASS: Record<string, string> = {
 const REPORTES = [
     { tipo: 'caja',       label: 'Caja',       desc: 'Todos los pagos registrados' },
     { tipo: 'pedidos',    label: 'Pedidos',     desc: 'Historial completo de pedidos' },
-    { tipo: 'cocina',     label: 'Cocina',      desc: 'Novedades y manejo del área' },
+    { tipo: 'cocina',     label: 'Cocina',      desc: 'Listado general de pedidos' },
+    { tipo: 'novedades',  label: 'Novedades',   desc: 'Pérdidas y alertas de cocina' },
     { tipo: 'mesa',       label: 'Mesa',        desc: 'Pedidos por mesa individualmente' },
     { tipo: 'domicilio',  label: 'Domicilio',   desc: 'Domicilios por repartidor' },
     { tipo: 'inventario', label: 'Inventario',  desc: 'Stock y bodega actual' },
@@ -84,6 +85,7 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
         try {
             const params = new URLSearchParams({ tipo, formato, desde, hasta });
             const res = await fetch(`/reporte/exportar?${params}`, {
+                credentials: 'include',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',

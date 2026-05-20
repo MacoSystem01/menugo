@@ -22,7 +22,12 @@ const paths: Record<string, string> = {
     'building-2':       '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>',
     'bar-chart-3':      '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
     'credit-card':      '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
+    'megaphone':        '<path d="m3 11 19-9-9 19-2-8-8-2z"/>',
+    'image-ad':         '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="m3 15 4-4 4 4 4-5 4 5"/><circle cx="8.5" cy="9.5" r="1.5"/>',
+    'gallery-h':        '<rect width="4" height="8" x="2" y="8" rx="1"/><rect width="4" height="8" x="10" y="8" rx="1"/><rect width="4" height="8" x="18" y="8" rx="1"/><path d="M2 4h20"/><path d="M2 20h20"/>',
     'shield-check':     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    'plus-circle':      '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+    'settings':         '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
 };
 
 function Icon({ name, className = 'h-4 w-4' }: { name: string; className?: string }) {
@@ -37,7 +42,7 @@ function Icon({ name, className = 'h-4 w-4' }: { name: string; className?: strin
 }
 
 // ── Tipos de navegación ────────────────────────────────────────────────────────
-type NavChild = { href: string; label: string; readOnly?: boolean };
+type NavChild = { href: string; label: string; readOnly?: boolean; exact?: boolean };
 type NavItem =
     | { href: string; label: string; icon: string; readOnly?: boolean; children?: never }
     | { label: string; icon: string; children: NavChild[]; href?: never; readOnly?: boolean };
@@ -54,7 +59,7 @@ const ROLE_BADGE: Record<Role, { label: string; className: string }> = {
 };
 
 // ── Navegación por rol ─────────────────────────────────────────────────────────
-const menuGroup: NavItem = { label: 'Menú', icon: 'utensils', children: [
+const MenuGroup: NavItem = { label: 'Menú', icon: 'utensils', children: [
     { href: '/menu/carta',      label: 'Carta' },
     { href: '/menu/categorias', label: 'Categorías' },
     { href: '/menu/platos',     label: 'Platos' },
@@ -69,34 +74,54 @@ const cocinaReadOnly: NavItem = { label: 'Cocina', icon: 'flame', readOnly: true
     { href: '/cocina', label: 'Cocina', readOnly: true },
 ]};
 
+const mesaGroup: NavItem = { label: 'Mesa', icon: 'layout-dashboard', children: [
+    { href: '/tables',    label: 'Mesas' },
+    { href: '/adiciones', label: 'Adiciones' },
+]};
+
+const configuracionGroup: NavItem = { label: 'Configuraciones', icon: 'settings', children: [
+    { href: '/configuracion/pagos',     label: 'Métodos de pago' },
+    { href: '/configuracion/domicilio', label: 'Tarifas domicilio' },
+]};
+
+const cajaGroup: NavItem = { label: 'Caja', icon: 'dollar-sign', children: [
+    { href: '/caja',                  label: 'Caja',              exact: true },
+    { href: '/caja/cierre/caja',      label: 'Cierre de Caja' },
+    { href: '/caja/cierre/datafono',  label: 'Cierre de Datafono' },
+]};
+
 const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     gerente: [
         { href: '/dashboard', label: 'Inicio', icon: 'home' },
         { href: '/usuarios',  label: 'Usuarios', icon: 'users' },
-        menuGroup,
-        { href: '/caja',      label: 'Caja',      icon: 'dollar-sign' },
+        MenuGroup,
+        cajaGroup,
         { href: '/pedidos',   label: 'Pedidos',   icon: 'shopping-bag' },
         cocinaGroup,
-        { href: '/tables',    label: 'Mesa',      icon: 'layout-dashboard' },
+        mesaGroup,
         { href: '/domicilio', label: 'Domicilio', icon: 'map-pin' },
         { href: '/inventario',label: 'Inventario',icon: 'package' },
-        { href: '/reporte',   label: 'Reporte',   icon: 'file-bar-chart' },
-        { href: '/auditoria', label: 'Auditoría', icon: 'shield-check' },
+        { label: 'Reporte', icon: 'file-bar-chart', children: [
+            { href: '/reporte',   label: 'General' },
+            { href: '/auditoria', label: 'Auditoría' },
+        ]},
+        configuracionGroup,
     ],
     administrador: [
         { href: '/dashboard', label: 'Inicio',    icon: 'home' },
         { href: '/usuarios',  label: 'Usuarios',  icon: 'users' },
-        menuGroup,
-        { href: '/caja',      label: 'Caja',      icon: 'dollar-sign' },
+        MenuGroup,
+        cajaGroup,
         { href: '/pedidos',   label: 'Pedidos',   icon: 'shopping-bag' },
         cocinaGroup,
-        { href: '/tables',    label: 'Mesa',      icon: 'layout-dashboard' },
+        mesaGroup,
         { href: '/domicilio', label: 'Domicilio', icon: 'map-pin' },
         { href: '/inventario',label: 'Inventario',icon: 'package' },
+        configuracionGroup,
     ],
     caja: [
         { href: '/dashboard', label: 'Inicio',  icon: 'home' },
-        { href: '/caja',      label: 'Caja',    icon: 'dollar-sign' },
+        cajaGroup,
         { href: '/pedidos',   label: 'Pedidos', icon: 'shopping-bag' },
     ],
     cocina: [
@@ -107,7 +132,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     mesa: [
         { href: '/dashboard', label: 'Inicio',  icon: 'home' },
         { href: '/pedidos',   label: 'Pedidos', icon: 'shopping-bag' },
-        { href: '/tables',    label: 'Mesa',    icon: 'layout-dashboard' },
+        mesaGroup,
         cocinaReadOnly,
     ],
     domicilio: [
@@ -116,14 +141,15 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
         { href: '/pedidos',   label: 'Pedidos',   icon: 'shopping-bag' },
     ],
     superadmin: [
-        { href: '/admin',           label: 'Global',      icon: 'layout-dashboard' },
-        { href: '/admin/tenants',   label: 'Locales',     icon: 'building-2' },
-        { href: '/admin/analytics', label: 'Analítica',   icon: 'bar-chart-3' },
-        { href: '/admin/billing',   label: 'Facturación', icon: 'credit-card' },
+        { href: '/admin',                       label: 'Global',             icon: 'layout-dashboard' },
+        { href: '/admin/tenants',               label: 'Locales',            icon: 'building-2' },
+        { href: '/admin/billing',               label: 'Facturación',        icon: 'credit-card' },
+        { href: '/admin/publicidad',            label: 'Publicidad MockUp',  icon: 'image-ad' },
+        { href: '/admin/publicidad-slider',     label: 'Publicidad Slider',  icon: 'gallery-h' },
     ],
 };
 
-// ── Submenú desplegable ────────────────────────────────────────────────────────
+// ── SubMenu desplegable ────────────────────────────────────────────────────────
 function SubMenu({
     item, currentPath, isOpen, onToggle,
 }: {
@@ -132,7 +158,9 @@ function SubMenu({
     isOpen: boolean;
     onToggle: () => void;
 }) {
-    const isChildActive = item.children.some(c => currentPath.startsWith(c.href));
+    const isChildActive = item.children.some(c =>
+        c.exact ? currentPath === c.href : currentPath.startsWith(c.href)
+    );
 
     return (
         <div>
@@ -155,7 +183,9 @@ function SubMenu({
             {isOpen && (
                 <div className="mt-0.5 ml-3 pl-4 border-l border-sidebar-border space-y-0.5 pb-1">
                     {item.children.map((child) => {
-                        const active = currentPath === child.href || currentPath.startsWith(child.href + '/');
+                        const active = child.exact
+                            ? currentPath === child.href
+                            : (currentPath === child.href || currentPath.startsWith(child.href + '/'));
                         return (
                             <Link
                                 key={child.href}
@@ -194,11 +224,13 @@ function SidebarContent({
     return (
         <>
             {/* Logo + badge */}
-            <div className="px-4 py-4 border-b border-sidebar-border">
-                <Link href="/" className="flex items-center gap-2" onClick={onNavigate}>
-                    <img src="/logo-trans.png" alt="MenuGo" className="h-10 w-auto" />
+            <div className="px-4 py-6 border-b border-sidebar-border flex flex-col items-center justify-center text-center">
+                <Link href="/" onClick={onNavigate} className="block transition-transform hover:scale-105">
+                    <div className="mx-auto h-24 w-24 bg-white rounded-full flex items-center justify-center p-3 shadow-[0_0_20px_rgba(255,255,255,0.1)] border border-white/10">
+                        <img src="/logo-trans.png" alt="Menugo" className="h-full w-full object-contain" />
+                    </div>
                 </Link>
-                <span className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.className}`}>
+                <span className={`mt-4 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase tracking-wider ${badge.className}`}>
                     {badge.label}
                 </span>
             </div>
@@ -245,17 +277,18 @@ function SidebarContent({
                     <div className="text-xs font-semibold text-sidebar-foreground truncate">{user.name}</div>
                     <div className="text-[10px] text-muted-foreground capitalize">{user.role}</div>
                 </div>
-                <Link
-                    href="/logout"
-                    method="post"
-                    as="button"
-                    onClick={() => { if (onNavigate) onNavigate(); }}
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (onNavigate) onNavigate();
+                        router.post('/logout');
+                    }}
                     className="w-full flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground
                                hover:bg-red-500/10 hover:text-red-400 transition-colors"
                 >
                     <Icon name="log-out" className="h-4 w-4" />
                     Cerrar sesión
-                </Link>
+                </button>
             </div>
         </>
     );
@@ -323,7 +356,7 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
                     <button
                         onClick={() => setMobileOpen(true)}
                         className="lg:hidden grid h-9 w-9 place-items-center rounded-xl border border-border text-muted-foreground hover:bg-accent/10 hover:text-foreground transition-colors"
-                        aria-label="Abrir menú"
+                        aria-label="Abrir Menu"
                     >
                         <Icon name="menu" />
                     </button>
@@ -334,12 +367,19 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
                 </header>
 
                 {/* Flash messages */}
-                {(flash?.error || flash?.success) && (
-                    <div className={`mx-4 lg:mx-10 mt-4 rounded-xl px-4 py-3 text-sm font-medium border
-                        ${flash.error
-                            ? 'bg-red-500/10 border-red-500/20 text-red-400'
-                            : 'bg-accent/10 border-accent/20 text-accent'}`}>
-                        {flash.error ?? flash.success}
+                {flash?.error && (
+                    <div className="mx-4 lg:mx-10 mt-4 rounded-xl px-4 py-3 text-sm font-medium border bg-red-500/10 border-red-500/20 text-red-400">
+                        {flash.error}
+                    </div>
+                )}
+                {flash?.warning && (
+                    <div className="mx-4 lg:mx-10 mt-4 rounded-xl px-4 py-3 text-sm font-medium border bg-yellow-500/10 border-yellow-500/20 text-yellow-400">
+                        {flash.warning}
+                    </div>
+                )}
+                {flash?.success && (
+                    <div className="mx-4 lg:mx-10 mt-4 rounded-xl px-4 py-3 text-sm font-medium border bg-accent/10 border-accent/20 text-accent">
+                        {flash.success}
                     </div>
                 )}
 

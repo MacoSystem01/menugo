@@ -23,23 +23,13 @@ class AuthController extends Controller
             ]);
 
             if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-                if (app()->environment('local')) {
-                    // BACKDOOR DE EMERGENCIA PARA DESARROLLO LOCAL
-                    $user = \App\Models\User::first();
-                    if ($user) {
-                        Auth::login($user);
-                    } else {
-                        return back()->withErrors(['email' => 'DB VACÍA: No hay ningún usuario creado en este restaurante (tenant). Ejecuta migraciones y seeders.'])->onlyInput('email');
-                    }
-                } else {
-                    return back()->withErrors(['email' => 'Las credenciales no son correctas.'])->onlyInput('email');
-                }
+                return back()->withErrors(['email' => 'Las credenciales no son correctas.'])->onlyInput('email');
             }
 
             $user = Auth::user();
 
-            // Evitar error 500 si la columna 'active' no existe en la BD
-            $isActive = $user->getAttribute('active') ?? true;
+            /** @var \App\Models\User $user */
+            $isActive = $user->active ?? true;
             
             if (!$isActive) {
                 Auth::logout();
@@ -49,7 +39,7 @@ class AuthController extends Controller
             $request->session()->regenerate();
             try {
                 AuditLog::registrar('login', 'Usuario', $user->id, "Inicio de sesión: {$user->name} ({$user->email})");
-            } catch (\Throwable $th) {
+            } catch (\Throwable) {
                 // Ignorar para no bloquear el login
             }
 
@@ -96,7 +86,7 @@ class AuthController extends Controller
             if (tenant()) {
                 try {
                     AuditLog::registrar('logout', 'Usuario', $u->id, "Cierre de sesión: {$u->name} ({$u->email})");
-                } catch (\Throwable $th) {
+                } catch (\Throwable) {
                     // Ignorar error de log para evitar bloquear el cierre de sesión
                 }
             }
@@ -107,15 +97,13 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
         $request->session()->save(); // write new empty session to disk before any redirect
 
-        $centralHost = parse_url(config('app.url'), PHP_URL_HOST);
+        // Redirigir siempre a la página de bienvenida del dominio central
+        $welcomeUrl = rtrim(config('app.url'), '/') . '/';
 
-        if ($request->getHost() !== $centralHost) {
-            // Si está en un tenant, redirigir a la vista welcome (raíz del dominio central)
-            return Inertia::location(config('app.url') . '/');
+        if ($request->hasHeader('X-Inertia')) {
+            return response('', 409)->header('X-Inertia-Location', $welcomeUrl);
         }
 
-        // Si es el SuperAdmin cerrando sesión en el dominio central
-        // Redirigir a la vista welcome (/) para cumplir con lo solicitado
-        return Inertia::location(config('app.url') . '/');
+        return redirect()->away($welcomeUrl);
     }
 }

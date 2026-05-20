@@ -14,7 +14,7 @@ return [
     'central_domains' => [
         '127.0.0.1',
         'localhost',
-        'menugo.local',
+        'Menugo.local',
     ],
 
     /**
@@ -47,7 +47,7 @@ return [
          * Tenant database names are created like this:
          * prefix + tenant_id + suffix.
          */
-        'prefix' => 'menugo_',
+        'prefix' => 'Menugo_',
         'suffix' => '',
 
         /**

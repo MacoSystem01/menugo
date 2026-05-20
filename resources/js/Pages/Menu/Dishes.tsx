@@ -1,6 +1,6 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, useForm, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Utensils, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface Category {
@@ -34,6 +34,21 @@ interface FormFields {
     available: boolean;
 }
 
+const CAT_PALETTE = [
+    { bg: 'rgba(251,146,60,0.18)',  color: '#fb923c', border: 'rgba(251,146,60,0.45)'  }, // orange
+    { bg: 'rgba(34,211,238,0.18)',  color: '#22d3ee', border: 'rgba(34,211,238,0.45)'  }, // cyan
+    { bg: 'rgba(167,139,250,0.18)', color: '#a78bfa', border: 'rgba(167,139,250,0.45)' }, // violet
+    { bg: 'rgba(52,211,153,0.18)',  color: '#34d399', border: 'rgba(52,211,153,0.45)'  }, // emerald
+    { bg: 'rgba(251,113,133,0.18)', color: '#fb7185', border: 'rgba(251,113,133,0.45)' }, // rose
+    { bg: 'rgba(250,204,21,0.18)',  color: '#facc15', border: 'rgba(250,204,21,0.45)'  }, // yellow
+    { bg: 'rgba(96,165,250,0.18)',  color: '#60a5fa', border: 'rgba(96,165,250,0.45)'  }, // blue
+    { bg: 'rgba(244,114,182,0.18)', color: '#f472b6', border: 'rgba(244,114,182,0.45)' }, // pink
+    { bg: 'rgba(74,222,128,0.18)',  color: '#4ade80', border: 'rgba(74,222,128,0.45)'  }, // green
+    { bg: 'rgba(251,191,36,0.18)',  color: '#fbbf24', border: 'rgba(251,191,36,0.45)'  }, // amber
+    { bg: 'rgba(129,140,248,0.18)', color: '#818cf8', border: 'rgba(129,140,248,0.45)' }, // indigo
+    { bg: 'rgba(45,212,191,0.18)',  color: '#2dd4bf', border: 'rgba(45,212,191,0.45)'  }, // teal
+];
+
 function fmt(n: number) {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
 }
@@ -48,6 +63,13 @@ export default function Dishes({ dishes, categories, flash }: Props) {
         category_id: '',
         name: '', description: '', price: '', sort_order: 0, available: true,
     });
+
+    // Assign a fixed vivid color to each category by its position in the list
+    const colorMap = useMemo(() => {
+        const map = new Map<number, typeof CAT_PALETTE[0]>();
+        categories.forEach((cat, i) => map.set(cat.id, CAT_PALETTE[i % CAT_PALETTE.length]));
+        return map;
+    }, [categories]);
 
     // Categories that actually have dishes
     const usedCategories = categories.filter(c => dishes.some(d => d.category_id === c.id));
@@ -120,10 +142,15 @@ export default function Dishes({ dishes, categories, flash }: Props) {
         // Only show category separator when viewing all categories
         if (activeCat === null && dish.category_id !== lastCatId) {
             lastCatId = dish.category_id;
+            const sepColor = colorMap.get(dish.category_id);
             tableRows.push(
-                <tr key={`sep-${dish.category_id}`} className="bg-muted/40">
+                <tr key={`sep-${dish.category_id}`}
+                    style={{ backgroundColor: sepColor ? sepColor.bg : undefined }}>
                     <td colSpan={5} className="px-6 py-2">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span
+                            className="text-xs font-bold uppercase tracking-widest"
+                            style={{ color: sepColor?.color }}
+                        >
                             {dish.category ?? 'Sin categoría'}
                         </span>
                     </td>
@@ -140,9 +167,21 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                     )}
                 </td>
                 <td className="px-6 py-4 hidden md:table-cell">
-                    <span className="text-xs bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-medium">
-                        {dish.category ?? '—'}
-                    </span>
+                    {(() => {
+                        const c = colorMap.get(dish.category_id);
+                        return (
+                            <span
+                                className="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
+                                style={{
+                                    backgroundColor: c?.bg,
+                                    color: c?.color,
+                                    borderColor: c?.border,
+                                }}
+                            >
+                                {dish.category ?? '—'}
+                            </span>
+                        );
+                    })()}
                 </td>
                 <td className="px-6 py-4 text-right font-semibold">{fmt(dish.price)}</td>
                 <td className="px-6 py-4 text-center">
@@ -174,7 +213,7 @@ export default function Dishes({ dishes, categories, flash }: Props) {
     });
 
     return (
-        <AppShell title="Platos" subtitle="Gestiona los platos de tu menú">
+        <AppShell title="Platos" subtitle="Gestiona los platos de tu Menu">
             <Head title="Platos" />
 
             {flash?.success && (
@@ -214,14 +253,19 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                     </button>
                     {usedCategories.map(cat => {
                         const count = dishes.filter(d => d.category_id === cat.id).length;
+                        const c = colorMap.get(cat.id);
+                        const isActive = activeCat === cat.id;
                         return (
                             <button
                                 key={cat.id}
-                                onClick={() => setActiveCat(activeCat === cat.id ? null : cat.id)}
-                                className={`h-7 px-3 rounded-full text-xs font-medium transition-colors
-                                    ${activeCat === cat.id
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'border border-border text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                                onClick={() => setActiveCat(isActive ? null : cat.id)}
+                                className="h-7 px-3 rounded-full text-xs font-semibold border transition-all"
+                                style={{
+                                    backgroundColor: isActive ? c?.color : c?.bg,
+                                    color: isActive ? '#0d0d0d' : c?.color,
+                                    borderColor: c?.border,
+                                    boxShadow: isActive ? `0 0 8px ${c?.border}` : undefined,
+                                }}
                             >
                                 {cat.name}
                                 <span className="ml-1.5 opacity-70">({count})</span>
@@ -237,7 +281,7 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                     <Utensils className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                     <p className="font-medium">{search || activeCat ? 'Sin resultados' : 'Sin platos'}</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {search || activeCat ? 'Intenta con otro término o categoría.' : 'Agrega el primer plato a tu menú.'}
+                        {search || activeCat ? 'Intenta con otro término o categoría.' : 'Agrega el primer plato a tu Menu.'}
                     </p>
                 </div>
             ) : (

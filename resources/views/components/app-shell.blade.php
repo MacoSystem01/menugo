@@ -37,7 +37,7 @@ $adminNav = [
 
 $nav = $variant === 'admin' ? $adminNav : $restaurantNav;
 
-// Detecta si algún hijo del submenú está activo para abrir el details por defecto
+// Detecta si algún hijo del subMenu está activo para abrir el details por defecto
 $menuChildActive   = request()->is('menu/*');
 $cocinaChildActive = request()->is('cocina') || request()->is('cocina/*');
 @endphp
@@ -60,7 +60,7 @@ $cocinaChildActive = request()->is('cocina') || request()->is('cocina/*');
             @foreach ($nav as $item)
 
                 @if (isset($item['children']))
-                    {{-- ── Submenú desplegable ── --}}
+                    {{-- ── SubMenu desplegable ── --}}
                     @php
                         $open = match($item['label']) {
                             'Menú'   => $menuChildActive,

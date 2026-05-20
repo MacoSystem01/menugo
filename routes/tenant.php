@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AdicionesController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartaController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\DishController;
 use App\Http\Controllers\DomicilioController;
 use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\UserController;
@@ -28,18 +30,20 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
     ])->group(function () {
 
     // ── Auth del restaurante ──────────────────────────────────────────────────
-    Route::middleware('guest')->group(function () {
+    Route::middleware(['guest', 'throttle:10,1'])->group(function () {
         Route::get('/login',  [AuthController::class, 'showLogin'])->name('tenant.login');
         Route::post('/login', [AuthController::class, 'login']);
         Route::get('/forgot-password', fn() => Inertia::render('Auth/ForgotPassword'))->name('password.request');
         Route::post('/forgot-password', fn() => back())->name('password.email');
     });
 
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ── Carta pública (sin auth, acceso del cliente vía QR) ──────────────────
     Route::get('/carta', [CartaController::class, 'public'])->name('carta.public');
-    Route::post('/carta/pedido', [CartaController::class, 'placeOrder'])->name('carta.pedido');
+    Route::post('/carta/pedido', [CartaController::class, 'placeOrder'])
+        ->middleware('throttle:30,1')
+        ->name('carta.pedido');
 
     // ── Panel restaurante (requiere auth) ─────────────────────────────────────
     Route::middleware('auth')->group(function () {
@@ -69,7 +73,7 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
             ->middleware('perm:usuarios.eliminar')
             ->name('usuarios.destroy');
 
-        // ── Menú → Carta ─────────────────────────────────────────────────────
+        // ── Menu → Carta ─────────────────────────────────────────────────────
         Route::get('/menu/carta',                              [CartaController::class, 'admin'])
             ->middleware('perm:carta.ver')
             ->name('carta.admin');
@@ -98,7 +102,7 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
             ->middleware('perm:carta.editar')
             ->name('carta.plato.update');
 
-        // ── Menú → Categorías ────────────────────────────────────────────────
+        // ── Menu → Categorías ────────────────────────────────────────────────
         Route::get('/menu/categorias',                          [CategoryController::class, 'index'])
             ->middleware('perm:categorias.ver')
             ->name('categorias');
@@ -119,7 +123,7 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
             ->middleware('perm:categorias.eliminar')
             ->name('categorias.destroy');
 
-        // ── Menú → Platos ────────────────────────────────────────────────────
+        // ── Menu → Platos ────────────────────────────────────────────────────
         Route::get('/menu/platos',           [DishController::class, 'index'])
             ->middleware('perm:platos.ver')
             ->name('platos');
@@ -140,6 +144,14 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
         Route::get('/caja',                    [OrderController::class, 'caja'])
             ->middleware('perm:caja.ver')
             ->name('caja');
+
+        Route::get('/caja/cierre/caja',        [OrderController::class, 'cierreCaja'])
+            ->middleware('perm:caja.gestionar')
+            ->name('caja.cierre.caja');
+
+        Route::get('/caja/cierre/datafono',    [OrderController::class, 'cierreDatafono'])
+            ->middleware('perm:caja.gestionar')
+            ->name('caja.cierre.datafono');
 
         Route::post('/caja/{order}/cobrar',    [OrderController::class, 'cobrar'])
             ->middleware('perm:caja.gestionar')
@@ -163,6 +175,10 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
             ->middleware('perm:cocina.ver')
             ->name('cocina');
 
+        Route::post('/cocina/items/{item}/preparado',            [CocinaController::class, 'marcarItemPreparado'])
+            ->middleware('perm:cocina.gestionar')
+            ->name('cocina.item.preparado');
+
         Route::post('/cocina/{order}/aceptar',                   [CocinaController::class, 'acceptOrder'])
             ->middleware('perm:cocina.gestionar')
             ->name('cocina.aceptar');
@@ -178,6 +194,10 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
         Route::post('/cocina/{order}/entregado',                 [CocinaController::class, 'markDelivered'])
             ->middleware('perm:mesa.gestionar')
             ->name('cocina.entregado');
+
+        Route::post('/cocina/{order}/cancelar',                  [CocinaController::class, 'cancelarPedido'])
+            ->middleware('perm:cocina.gestionar')
+            ->name('cocina.cancelar');
 
         Route::get('/cocina/novedades',                          [CocinaController::class, 'novedades'])
             ->middleware('perm:novedades.ver')
@@ -207,6 +227,19 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
         Route::delete('/tables/{table}', [TableController::class, 'destroy'])
             ->middleware('perm:mesa.gestionar')
             ->name('tables.destroy');
+
+        Route::post('/tables/{table}/liberar', [TableController::class, 'liberar'])
+            ->middleware('perm:mesa.gestionar|caja.gestionar')
+            ->name('tables.liberar');
+
+        // ── Adiciones ─────────────────────────────────────────────────────────
+        Route::get('/adiciones', [AdicionesController::class, 'index'])
+            ->middleware('perm:mesa.ver')
+            ->name('adiciones');
+
+        Route::post('/adiciones/{order}/agregar', [AdicionesController::class, 'agregar'])
+            ->middleware('perm:mesa.gestionar')
+            ->name('adiciones.agregar');
 
         // ── Domicilio ─────────────────────────────────────────────────────────
         Route::get('/domicilio',                     [DomicilioController::class, 'index'])
@@ -255,5 +288,22 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
         Route::get('/auditoria', [AuditController::class, 'index'])
             ->middleware('perm:auditoria.ver')
             ->name('auditoria');
+
+        // ── Configuraciones ───────────────────────────────────────────────────
+        Route::get('/configuracion/pagos',      [ConfiguracionController::class, 'pagos'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.pagos');
+
+        Route::post('/configuracion/pagos',     [ConfiguracionController::class, 'guardarPagos'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.pagos.guardar');
+
+        Route::get('/configuracion/domicilio',  [ConfiguracionController::class, 'domicilio'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.domicilio');
+
+        Route::post('/configuracion/domicilio', [ConfiguracionController::class, 'guardarDomicilio'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.domicilio.guardar');
     });
 });

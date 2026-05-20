@@ -17,11 +17,21 @@ class CartaSetting extends Model
         'slogan_size',
         'banner_image',
         'social_links',
+        'payment_methods',
+        'payment_details',
+        'delivery_ranges',
+        'delivery_enabled',
+        'delivery_min_order',
+        'delivery_zones',
     ];
 
     protected $casts = [
-        'payment_methods' => 'array',
-        'social_links'    => 'array',
+        'payment_methods'  => 'array',
+        'payment_details'  => 'array',
+        'social_links'     => 'array',
+        'delivery_ranges'  => 'array',
+        'delivery_enabled' => 'boolean',
+        'delivery_zones'   => 'array',
     ];
 
     // Ensures firstOrCreate returns sensible values even before the DB row is saved

@@ -147,3 +147,13 @@
   50% { transform: translateY(-12px); }
 }
 .animate-float { animation: float 6s ease-in-out infinite; }
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee-scroll 32s linear infinite;
+  will-change: transform;
+}
+.animate-marquee:hover { animation-play-state: paused; }

@@ -25,7 +25,7 @@
                         <span class="text-gradient-warm">Todos tus locales.</span>
                     </h1>
                     <p class="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
-                        Desde food trucks callejeros hasta restaurantes premium — MenuGo centraliza menús, pedidos, mesas, inventario y métricas en una sola plataforma multi-tenant.
+                        Desde food trucks callejeros hasta restaurantes premium — MenuGo centraliza menús, pedidos, mesas, inventario y métricas en un solo lugar.
                     </p>
                     <div class="mt-8 flex flex-wrap gap-4">
                         <a href="{{ url('/register') }}"

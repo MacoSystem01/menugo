@@ -35,23 +35,41 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $authUser = null;
+
+        if ($user = $request->user()) {
+            // Manejo defensivo: si las tablas de Spatie aún no existen en este
+            // tenant (DB sin seedear) se devuelven colecciones vacías en lugar
+            // de lanzar una excepción que congela la petición.
+            try {
+                $role        = $user->getRoleNames()->first() ?? 'desconocido';
+                $roles       = $user->getRoleNames();
+                $permissions = $user->getAllPermissions()->pluck('name');
+            } catch (\Throwable) {
+                $role        = 'desconocido';
+                $roles       = collect();
+                $permissions = collect();
+            }
+
+            $authUser = [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'phone'       => $user->phone,
+                'active'      => $user->active,
+                'role'        => $role,
+                'roles'       => $roles,
+                'permissions' => $permissions,
+            ];
+        }
+
         return [
             ...parent::share($request),
-            'auth' => [
-                'user' => $request->user() ? [
-                    'id'          => $request->user()->id,
-                    'name'        => $request->user()->name,
-                    'email'       => $request->user()->email,
-                    'phone'       => $request->user()->phone,
-                    'active'      => $request->user()->active,
-                    'role'        => $request->user()->getRoleNames()->first() ?? 'desconocido',
-                    'roles'       => $request->user()->getRoleNames(),
-                    'permissions' => $request->user()->getAllPermissions()->pluck('name'),
-                ] : null,
-            ],
+            'auth'  => ['user' => $authUser],
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error'   => $request->session()->get('error'),
+                'warning' => $request->session()->get('warning'),
             ],
         ];
     }

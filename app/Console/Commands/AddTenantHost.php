@@ -18,7 +18,7 @@ class AddTenantHost extends Command
         $write     = $this->option('write');
 
         $entries = $subdomain
-            ? ["{$subdomain}.menugo.local"]
+            ? ["{$subdomain}.Menugo.local"]
             : $this->allDomains();
 
         if (empty($entries)) {

@@ -3,9 +3,20 @@ import { useState, useEffect } from 'react';
 import { LoginSearch } from '@/components/LoginSearch';
 import {
     ArrowRight, Sparkles, Store, BarChart3, Truck, Utensils, ShieldCheck,
-    Zap, Globe2, Star, Check, X,
+    Zap, Globe2, Star, Check, X, Menu, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+interface Advertisement {
+    image_url: string;
+    title:     string | null;
+    url:       string | null;
+}
+
+interface SliderLogo {
+    image_url:     string;
+    business_name: string | null;
+}
 
 /* ─────────────────────────────────────────────
    Datos de planes compartidos entre modal y página
@@ -108,7 +119,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
 
                     {/* Subtítulo */}
                     <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
-                        Suscríbete a MenuGo y accede a todas las herramientas para
+                        Suscríbete a Menugo y accede a todas las herramientas para
                         gestionar tu restaurante de forma digital.
                     </p>
 
@@ -201,12 +212,12 @@ function PlansModal({ onClose }: { onClose: () => void }) {
 /* ─────────────────────────────────────────────
    Página principal Welcome
 ───────────────────────────────────────────── */
-export default function Welcome() {
+export default function Welcome({ advertisements = [], sliderLogos = [] }: { advertisements?: Advertisement[]; sliderLogos?: SliderLogo[] }) {
     const [showPlansModal, setShowPlansModal] = useState(true);
 
     return (
         <>
-            <Head title="MenuGo — Sistema multi-restaurante todo en uno" />
+            <Head title="Menugo — Sistema multi-restaurante todo en uno" />
 
             {/* Modal de planes al entrar */}
             {showPlansModal && (
@@ -215,8 +226,8 @@ export default function Welcome() {
 
             <div className="min-h-screen">
                 <SiteHeader onOpenPlans={() => setShowPlansModal(true)} />
-                <Hero />
-                <Marquee />
+                <Hero ads={advertisements} />
+                <Marquee logos={sliderLogos} />
                 <Features />
                 <ForEveryone />
                 <Testimonials />
@@ -228,48 +239,171 @@ export default function Welcome() {
 }
 
 /* ─────────────────────────────────────────────
+   Slider de publicidad — encaja en el Hero
+───────────────────────────────────────────── */
+function HeroSlider({ ads }: { ads: Advertisement[] }) {
+    const [current, setCurrent] = useState(0);
+    // 'tick' se incrementa al navegar manualmente para reiniciar el intervalo
+    const [tick, setTick] = useState(0);
+
+    useEffect(() => {
+        if (ads.length <= 1) return;
+        const id = setInterval(() => setCurrent(c => (c + 1) % ads.length), 5000);
+        return () => clearInterval(id);
+    }, [ads.length, tick]);
+
+    function goNext() { setCurrent(c => (c + 1) % ads.length);              setTick(t => t + 1); }
+    function goPrev() { setCurrent(c => (c - 1 + ads.length) % ads.length); setTick(t => t + 1); }
+    function goTo(i: number) { setCurrent(i);                                setTick(t => t + 1); }
+
+    const ad = ads[current];
+    const Wrap = ad.url
+        ? ({ children }: { children: React.ReactNode }) => (
+            <a href={ad.url!} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                {children}
+            </a>
+          )
+        : ({ children }: { children: React.ReactNode }) => <>{children}</>;
+
+    return (
+        <div className="relative rounded-3xl shadow-glow border border-border/50 overflow-hidden aspect-4/3 w-full bg-black/20">
+            {/* Fondo difuminado para rellenar el espacio sin barras */}
+            <img
+                key={`bg-${current}`}
+                src={ad.image_url}
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40 pointer-events-none select-none"
+            />
+            <Wrap>
+                <img
+                    key={current}
+                    src={ad.image_url}
+                    alt={ad.title ?? 'Anuncio'}
+                    className="relative w-full h-full object-contain z-10"
+                />
+            </Wrap>
+
+            {/* Título overlay */}
+            {ad.title && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-5 py-4 pointer-events-none">
+                    <p className="font-display text-lg font-bold text-white leading-tight">{ad.title}</p>
+                    {ad.url && <p className="text-xs text-white/60 mt-0.5">Ver menú →</p>}
+                </div>
+            )}
+
+            {/* Prev / Next */}
+            {ads.length > 1 && (
+                <>
+                    <button
+                        onClick={goPrev}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/65 transition-colors backdrop-blur-sm"
+                        aria-label="Anterior"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={goNext}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/65 transition-colors backdrop-blur-sm"
+                        aria-label="Siguiente"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </button>
+                </>
+            )}
+
+            {/* Dots */}
+            {ads.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+                    {ads.map((_, i) => (
+                        <button
+                            key={i}
+                            onClick={() => goTo(i)}
+                            className={`rounded-full transition-all ${
+                                i === current
+                                    ? 'w-5 h-1.5 bg-white'
+                                    : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
+                            }`}
+                            aria-label={`Ir a slide ${i + 1}`}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─────────────────────────────────────────────
    Header — botón "Ver planes" abre el modal
 ───────────────────────────────────────────── */
 function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
+    const [mobileOpen, setMobileOpen] = useState(false);
+
     return (
         <header className="sticky top-0 z-40 glass">
-            <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-8">
+            <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-8">
 
-                <Link href="/" className="flex items-center gap-3 group">
+                <Link href="/" className="flex items-center gap-3 group shrink-0">
                     <div className="relative">
                         <div className="absolute inset-0 bg-gradient-warm opacity-40 blur-md rounded-full group-hover:opacity-70 transition-opacity" />
                         <div className="relative bg-white rounded-full p-2 shadow-glow transition-transform group-hover:scale-110">
-                            <img src="/logo-trans.png" alt="MenuGo" className="h-20 w-auto" />
+                            <img src="/logo-trans.png" alt="Menugo" className="h-14 sm:h-20 w-auto" />
                         </div>
                     </div>
-                    <span className="font-display text-3xl font-bold tracking-tight">
+                    <span className="font-display text-2xl sm:text-3xl font-bold tracking-tight">
                         Menu<span className="text-gradient-warm">Go</span>
                     </span>
                 </Link>
 
-                {/* Menú más grande */}
+                {/* Menu desktop */}
                 <nav className="hidden items-center gap-10 md:flex">
+                    <Link href="/" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Inicio</Link>
                     <a href="#features" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Funciones</a>
                     <Link href="/pricing" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Planes</Link>
                     <a href="#testimonios" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Clientes</a>
                 </nav>
 
-                {/* Botones más grandes */}
-                <div className="flex items-center gap-4">
+                {/* Botones desktop */}
+                <div className="hidden md:flex items-center gap-4">
                     <LoginSearch triggerClass="flex items-center gap-1.5 text-base font-medium text-muted-foreground hover:text-foreground transition-colors" />
                     <Button variant="hero" size="lg" onClick={onOpenPlans}>
                         Empezar gratis
                     </Button>
                 </div>
+
+                {/* Hamburger móvil */}
+                <button
+                    className="md:hidden p-2 rounded-xl hover:bg-muted/60 transition-colors"
+                    onClick={() => setMobileOpen(o => !o)}
+                    aria-label="Abrir Menu"
+                >
+                    {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </button>
             </div>
+
+            {/* Menu móvil desplegable */}
+            {mobileOpen && (
+                <div className="md:hidden border-t border-border bg-background/98 backdrop-blur-md px-6 py-4 space-y-1">
+                    <Link href="/" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Inicio</Link>
+                    <a href="#features" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Funciones</a>
+                    <Link href="/pricing" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Planes</Link>
+                    <a href="#testimonios" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Clientes</a>
+                    <div className="pt-4 mt-2 border-t border-border space-y-3">
+                        <LoginSearch triggerClass="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors" />
+                        <Button variant="hero" size="lg" onClick={() => { onOpenPlans(); setMobileOpen(false); }} className="w-full">
+                            Empezar gratis
+                        </Button>
+                    </div>
+                </div>
+            )}
         </header>
     );
 }
 
+
 /* ─────────────────────────────────────────────
-   Secciones sin cambios
+   Secciones
 ───────────────────────────────────────────── */
-function Hero() {
+function Hero({ ads }: { ads: Advertisement[] }) {
     return (
         <section className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-radial pointer-events-none" />
@@ -288,7 +422,7 @@ function Hero() {
                             <span className="text-gradient-warm">Todos tus locales.</span>
                         </h1>
                         <p className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
-                            Desde food trucks callejeros hasta restaurantes premium — MenuGo centraliza menús, pedidos, mesas, inventario y métricas en una sola plataforma multi-tenant.
+                            Desde food trucks callejeros hasta restaurantes premium — Menugo centraliza Menus, pedidos, mesas, inventario y métricas en un solo lugar.
                         </p>
                         <div className="mt-8 flex flex-wrap gap-4">
                             <Link href="/register">
@@ -302,8 +436,8 @@ function Hero() {
                             </Link>
                         </div>
                         <div className="mt-8 flex items-center gap-6 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1.5"><Check className="h-4 w-4 text-accent" /> 14 días gratis</div>
-                            <div className="flex items-center gap-1.5"><Check className="h-4 w-4 text-accent" /> Sin tarjeta</div>
+                            <div className="flex items-center gap-1.5"><Check className="h-4 w-4 text-accent" /> 15 días gratis</div>
+                            <div className="flex items-center gap-1.5"><Check className="h-4 w-4 text-accent" /> Suscripción Gratis</div>
                             <div className="flex items-center gap-1.5"><Check className="h-4 w-4 text-accent" /> Cancela cuando quieras</div>
                         </div>
                     </div>
@@ -311,11 +445,15 @@ function Hero() {
                     <div className="relative">
                         <div className="relative animate-float">
                             <div className="absolute -inset-4 bg-gradient-warm opacity-30 blur-3xl rounded-[3rem]" />
-                            <img
-                                src="/images/hero-food.jpg"
-                                alt="Variedad de platos de restaurantes"
-                                className="relative rounded-3xl shadow-glow border border-border/50 object-cover aspect-4/3 w-full"
-                            />
+                            {ads.length > 0 ? (
+                                <HeroSlider ads={ads} />
+                            ) : (
+                                <img
+                                    src="/images/hero-food.jpg"
+                                    alt="Variedad de platos de restaurantes"
+                                    className="relative rounded-3xl shadow-glow border border-border/50 object-cover aspect-4/3 w-full"
+                                />
+                            )}
                         </div>
                         <div className="absolute -bottom-6 -left-6 glass rounded-2xl p-4 shadow-card">
                             <div className="text-xs text-muted-foreground">Pedidos hoy</div>
@@ -333,13 +471,68 @@ function Hero() {
     );
 }
 
-function Marquee() {
-    const items = ['TacoLab', 'Sushi Nori', 'Burger Forge', 'Arepa Street', 'La Trattoria', 'Wok Express', 'El Asador'];
+const FALLBACK_NAMES = ['TacoLab', 'Sushi Nori', 'Burger Forge', 'Arepa Street', 'La Trattoria', 'Wok Express', 'El Asador'];
+
+function Marquee({ logos = [] }: { logos?: SliderLogo[] }) {
+    const hasLogos = logos.length > 0;
+
+    /* Duplicar para loop infinito; si hay pocos, rellenar hasta ≥8 primero */
+    const track = (() => {
+        if (!hasLogos) return [];
+        let set = [...logos];
+        while (set.length < 8) set = [...set, ...logos];
+        return [...set, ...set];
+    })();
+
     return (
-        <div className="border-y border-border bg-card/30 py-6 overflow-hidden">
-            <div className="flex gap-12 text-muted-foreground items-center justify-around flex-wrap px-6">
-                <span className="text-xs uppercase tracking-widest">Confían en MenuGo</span>
-                {items.map(i => <span key={i} className="font-display text-lg font-semibold opacity-70">{i}</span>)}
+        <div className="border-y border-border overflow-hidden" style={{ background: 'oklch(0.13 0.015 50)' }}>
+            <div className="flex items-stretch">
+
+                {/* ── Etiqueta fija izquierda ── */}
+                <div className="shrink-0 flex flex-col justify-center gap-0.5 px-7 py-5 border-r border-border z-10"
+                    style={{ background: 'oklch(0.16 0.018 50)' }}>
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Confían en</span>
+                    <span className="font-display text-sm font-bold text-gradient-warm leading-none">Menugo</span>
+                </div>
+
+                {/* ── Track con scroll infinito ── */}
+                <div
+                    className="flex-1 overflow-hidden relative"
+                    style={{ maskImage: 'linear-gradient(to right, transparent, black 60px, black calc(100% - 60px), transparent)' }}
+                >
+                    {hasLogos ? (
+                        <div className="animate-marquee flex items-center gap-4 py-4 w-max">
+                            {track.map((logo, i) => (
+                                <div
+                                    key={i}
+                                    className="shrink-0 flex flex-col items-center justify-center gap-2 rounded-2xl border border-border px-5 py-3 transition-colors hover:border-primary/40"
+                                    style={{ background: 'oklch(0.20 0.02 50)', minWidth: '130px' }}
+                                >
+                                    <img
+                                        src={logo.image_url}
+                                        alt={logo.business_name ?? `Logo ${i + 1}`}
+                                        className="h-12 w-28 object-contain"
+                                        loading="lazy"
+                                    />
+                                    {logo.business_name && (
+                                        <span className="text-[10px] font-semibold text-muted-foreground tracking-wide whitespace-nowrap">
+                                            {logo.business_name}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        /* Fallback sin logos: nombres en texto */
+                        <div className="flex items-center gap-10 px-8 py-6 flex-wrap">
+                            {FALLBACK_NAMES.map(name => (
+                                <span key={name} className="font-display text-base font-semibold opacity-50 whitespace-nowrap">
+                                    {name}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -347,9 +540,9 @@ function Marquee() {
 
 function Features() {
     const features = [
-        { icon: Store, title: 'Multi-tenant nativo', desc: 'Cada restaurante con su propio perfil, branding, menú y equipo. Aislado y seguro.' },
+        { icon: Store, title: 'Multi-tenant nativo', desc: 'Cada restaurante con su propio perfil, branding, Menu y equipo. Aislado y seguro.' },
         { icon: BarChart3, title: 'Panel SuperAdmin', desc: 'Métricas globales en tiempo real de todos los locales registrados en la plataforma.' },
-        { icon: Utensils, title: 'Menús dinámicos', desc: 'Edita platos, precios y disponibilidad. Cambios en vivo sin reiniciar nada.' },
+        { icon: Utensils, title: 'Menus dinámicos', desc: 'Edita platos, precios y disponibilidad. Cambios en vivo sin reiniciar nada.' },
         { icon: Truck, title: 'Para puestos callejeros', desc: 'Diseñado también para food trucks y carritos. Móvil primero, súper liviano.' },
         { icon: ShieldCheck, title: 'Seguridad por diseño', desc: 'Roles, permisos y RLS. Tus datos y los de tus clientes siempre protegidos.' },
         { icon: Zap, title: 'Velocidad de chef', desc: 'Interfaz pulida para que el equipo se mueva tan rápido como tu cocina.' },
@@ -397,7 +590,7 @@ function ForEveryone() {
                     <h3 className="mt-6 font-display text-3xl font-bold">Comida rápida callejera</h3>
                     <p className="mt-3 text-muted-foreground">Para puestos, carritos y food trucks. Cobra, gestiona y crece desde el celular.</p>
                     <ul className="mt-6 space-y-2 text-sm">
-                        {['Pedido y cobro express', 'Modo offline', 'QR para tu menú digital'].map(i => (
+                        {['Pedido y cobro express', 'Modo offline', 'QR para tu Menu digital'].map(i => (
                             <li key={i} className="flex items-center gap-2"><Check className="h-4 w-4 text-accent" />{i}</li>
                         ))}
                     </ul>
@@ -409,7 +602,7 @@ function ForEveryone() {
 
 function Testimonials() {
     const t = [
-        { name: 'Camila Restrepo', role: 'Dueña, TacoLab', text: 'Pasé de un cuaderno a controlar 3 puestos desde mi celular. MenuGo cambió mi negocio.' },
+        { name: 'Camila Restrepo', role: 'Dueña, TacoLab', text: 'Pasé de un cuaderno a controlar 3 puestos desde mi celular. Menugo cambió mi negocio.' },
         { name: 'Mateo Pérez', role: 'Gerente, La Trattoria', text: 'El panel SuperAdmin nos da visibilidad total. Sabemos qué local rinde más cada hora.' },
         { name: 'Lucía Gómez', role: 'Food truck Wok Express', text: 'Lo mejor: funciona offline. Nunca pierdo un pedido aunque se caiga el internet.' },
     ];
@@ -470,9 +663,9 @@ function SiteFooter() {
                 <div>
                     <div className="flex items-center gap-2">
                         <div className="bg-white rounded-full p-1.5 shadow">
-                            <img src="/logo-trans.png" alt="MenuGo" className="h-6 w-auto" />
+                            <img src="/logo-trans.png" alt="Menugo" className="h-6 w-auto" />
                         </div>
-                        <span className="font-display text-lg font-bold">MenuGo</span>
+                        <span className="font-display text-lg font-bold">Menugo</span>
                     </div>
                     <p className="mt-3 text-sm text-muted-foreground">El sistema operativo para restaurantes modernos y puestos de comida.</p>
                 </div>
@@ -496,7 +689,7 @@ function SiteFooter() {
                 </div>
             </div>
             <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-                © {new Date().getFullYear()} MenuGo — Sistema de gestión de restaurantes.
+                © {new Date().getFullYear()} Menugo — Sistema de gestión de restaurantes.
             </div>
         </footer>
     );

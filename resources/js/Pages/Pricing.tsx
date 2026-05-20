@@ -10,7 +10,7 @@ const plans = [
         price: '$30.000',
         period: 'COP / mes',
         desc: 'Pago mes a mes, sin ataduras.',
-        features: ['Locales ilimitados', 'Productos ilimitados', 'Menú QR', 'Pedidos y mesas', 'KDS de cocina', 'Inventario y reportes', 'Soporte estándar'],
+        features: ['Locales ilimitados', 'Productos ilimitados', 'Menu QR', 'Pedidos y mesas', 'KDS de cocina', 'Inventario y reportes', 'Soporte estándar'],
         cta: 'Elegir Mensual',
         variant: 'outline' as const,
         popular: false,
@@ -61,7 +61,7 @@ function selectPlan(planKey: string) {
 export default function Pricing() {
     return (
         <>
-            <Head title="Planes y precios — MenuGo" />
+            <Head title="Planes y precios — Menugo" />
             <div className="min-h-screen">
 
                 {/* Header */}
@@ -69,7 +69,7 @@ export default function Pricing() {
                     <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                         <Link href="/" className="flex items-center gap-2 group">
                             <div className="bg-white rounded-full p-1.5 shadow transition-transform group-hover:scale-110">
-                                <img src="/logo-trans.png" alt="MenuGo" className="h-7 w-auto" />
+                                <img src="/logo-trans.png" alt="Menugo" className="h-7 w-auto" />
                             </div>
                             <span className="font-display text-xl font-bold tracking-tight">
                                 Menu<span className="text-gradient-warm">Go</span>
@@ -118,7 +118,7 @@ export default function Pricing() {
                                     <span className="font-display text-4xl font-bold tracking-tight">{p.price}</span>
                                 </div>
                                 <span className="text-sm font-medium text-muted-foreground mt-1">{p.period}</span>
-                                
+
                                 {p.savings && (
                                     <div className="mt-2">
                                         <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent border border-accent/20">
@@ -126,7 +126,7 @@ export default function Pricing() {
                                         </span>
                                     </div>
                                 )}
-                                
+
                                 <p className="mt-4 text-sm text-muted-foreground leading-relaxed flex-grow">{p.desc}</p>
 
                                 {/* ── Redirecciona a /register?plan=KEY ── */}
@@ -155,7 +155,7 @@ export default function Pricing() {
 
                 {/* Footer */}
                 <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-                    © {new Date().getFullYear()} MenuGo — Sistema de gestión de restaurantes.
+                    © {new Date().getFullYear()} Menugo — Sistema de gestión de restaurantes.
                 </footer>
             </div>
         </>

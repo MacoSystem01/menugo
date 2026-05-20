@@ -216,6 +216,7 @@ export default function Inventario({ items, resumen, filters, por_vencer, flash 
                 </div>
             ) : (
                 <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="text-xs uppercase text-muted-foreground bg-muted/30 border-b border-border">
                             <tr>
@@ -260,6 +261,7 @@ export default function Inventario({ items, resumen, filters, por_vencer, flash 
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             )}
 
