@@ -1,7 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import { Calculator, DollarSign, TrendingUp, TrendingDown, CheckCircle2, Banknote, Coins } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, TrendingDown, CheckCircle2, Banknote, Coins, Printer } from 'lucide-react';
 
 interface Props {
     totalSistema: number;
@@ -15,7 +15,7 @@ function fmt(n: number) {
     }).format(n);
 }
 
-const BILLETES = [100_000, 50_000, 20_000, 10_000, 5_000, 2_000, 1_000];
+const BILLETES = [100_000, 50_000, 20_000, 10_000, 5_000, 2_000];
 const MONEDAS  = [1_000, 500, 200, 100, 50];
 
 const METHOD_LABELS: Record<string, string> = {
@@ -55,6 +55,228 @@ export default function CierreCaja({ totalSistema, totalOrdenesHoy, resumenMetod
         setCantidades({});
     }
 
+    function imprimirCierre() {
+        const now   = new Date();
+        const fecha = now.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const hora  = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+        const totalMetodos = Object.values(resumenMetodos).reduce((s, d) => s + d.total, 0);
+
+        const filasMetodos = Object.entries(resumenMetodos).length > 0
+            ? Object.entries(resumenMetodos).map(([m, d]) => `
+                <div class="row-item">
+                    <span class="row-name">${METHOD_LABELS[m] ?? m}</span>
+                    <span class="row-qty">${d.cantidad}</span>
+                    <span class="row-val">${fmt(d.total)}</span>
+                </div>`).join('')
+            : `<div class="empty">Sin pagos registrados</div>`;
+
+        const filasBilletes = BILLETES
+            .map(d => ({ d, cant: parseInt(cantidades[d] || '0', 10) || 0, sub: subtotal(d) }))
+            .filter(r => r.cant > 0)
+            .map(r => `
+                <div class="row-item">
+                    <span class="row-name">${fmt(r.d)}</span>
+                    <span class="row-qty">${r.cant}</span>
+                    <span class="row-val">${fmt(r.sub)}</span>
+                </div>`).join('');
+
+        const filasMonedas = MONEDAS
+            .map(d => ({ d, cant: parseInt(cantidades[d] || '0', 10) || 0, sub: subtotal(d) }))
+            .filter(r => r.cant > 0)
+            .map(r => `
+                <div class="row-item">
+                    <span class="row-name">${fmt(r.d)}</span>
+                    <span class="row-qty">${r.cant}</span>
+                    <span class="row-val">${fmt(r.sub)}</span>
+                </div>`).join('');
+
+        const resultColor  = cuadra ? '#22c55e' : sobrante ? '#f97316' : '#ef4444';
+        const resultLabel  = cuadra ? '✓  CUADRA' : sobrante ? `Sobrante` : `Faltante`;
+        const resultAmount = cuadra ? '' : fmt(Math.abs(diferencia));
+        const resultBadge  = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;font-weight:700;color:${resultColor};text-transform:uppercase;letter-spacing:1px;">${resultLabel}</span>
+                ${resultAmount ? `<span style="font-size:20px;font-weight:800;color:${resultColor};">${resultAmount}</span>` : ''}
+            </div>`;
+
+        const win = window.open('', '_blank');
+        if (!win) return;
+
+        win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>Cierre de Caja — ${fecha}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 28px 24px;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  /* Cabecera */
+  .header { text-align: center; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; }
+  .header img { height: 60px; width: auto; object-fit: contain; margin-bottom: 6px; }
+  .header .doc-title {
+    font-size: 11px; letter-spacing: 3px; color: #555;
+    text-transform: uppercase; margin-top: 4px;
+  }
+
+  /* Fecha / Órdenes */
+  .meta-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px dashed #bbb;
+  }
+  .meta-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+  .meta-value { font-size: 14px; font-weight: 700; }
+
+  /* Secciones */
+  .section { padding: 12px 0; border-bottom: 1px dashed #bbb; }
+  .section-label {
+    font-size: 10px; color: #888; text-transform: uppercase;
+    letter-spacing: 1.5px; font-weight: 700; margin-bottom: 10px;
+  }
+
+  /* Filas de items */
+  .col-headers {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 0 8px; font-size: 10px; color: #888;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding-bottom: 6px; border-bottom: 1px solid #ddd; margin-bottom: 6px;
+  }
+  .col-headers .ch-qty, .col-headers .ch-val { text-align: right; }
+  .row-item { display: grid; grid-template-columns: 1fr auto auto; gap: 0 8px; align-items: baseline; margin-bottom: 6px; }
+  .row-name { font-size: 13px; font-weight: 600; }
+  .row-qty  { font-size: 13px; color: #444; text-align: center; min-width: 28px; }
+  .row-val  { font-size: 13px; font-weight: 700; text-align: right; white-space: nowrap; }
+  .empty    { font-size: 12px; color: #aaa; font-style: italic; }
+
+  /* Totales */
+  .total-block {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0;
+  }
+  .total-block.border-top { border-top: 2px solid #1a1a1a; border-bottom: 2px solid #1a1a1a; margin-bottom: 0; }
+  .total-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .total-val   { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .subtotal-block {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px dashed #bbb;
+  }
+  .subtotal-label { font-size: 12px; color: #555; }
+  .subtotal-val   { font-size: 14px; font-weight: 700; }
+
+  /* Resultado */
+  .result-block { padding: 14px 0; }
+
+  /* Pie */
+  .footer { text-align: center; padding: 16px 0 4px; }
+  .footer .thanks { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .footer .brand  { font-size: 11px; color: #888; }
+
+  @media print { body { padding: 8px 12px; } }
+</style>
+</head>
+<body>
+
+  <!-- Cabecera -->
+  <div class="header">
+    <img src="/logo.png" alt="Logo"
+         onerror="this.style.display='none'" />
+    <div class="doc-title">Cierre de Caja</div>
+  </div>
+
+  <!-- Fecha | Órdenes -->
+  <div class="meta-row">
+    <div>
+      <div class="meta-label">Fecha</div>
+      <div class="meta-value">${fecha}</div>
+    </div>
+    <div style="text-align:right">
+      <div class="meta-label">Hora</div>
+      <div class="meta-value">${hora}</div>
+    </div>
+  </div>
+
+  <div style="padding:10px 0;border-bottom:1px dashed #bbb;">
+    <div class="meta-label" style="margin-bottom:2px">Órdenes cerradas hoy</div>
+    <div style="font-size:24px;font-weight:800;line-height:1.1;">${totalOrdenesHoy}</div>
+  </div>
+
+  <!-- Recaudo por método -->
+  <div class="section">
+    <div class="section-label">Recaudo por método de pago</div>
+    <div class="col-headers">
+      <span>Método</span>
+      <span class="ch-qty">Cant</span>
+      <span class="ch-val">Total</span>
+    </div>
+    ${filasMetodos}
+  </div>
+
+  <div class="subtotal-block">
+    <span class="subtotal-label">Total sistema (todos los métodos)</span>
+    <span class="subtotal-val">${fmt(totalMetodos)}</span>
+  </div>
+
+  <!-- Billetes -->
+  ${filasBilletes ? `
+  <div class="section">
+    <div class="section-label">Billetes contados</div>
+    <div class="col-headers">
+      <span>Denominación</span>
+      <span class="ch-qty">Cant</span>
+      <span class="ch-val">Subtotal</span>
+    </div>
+    ${filasBilletes}
+  </div>` : ''}
+
+  <!-- Monedas -->
+  ${filasMonedas ? `
+  <div class="section">
+    <div class="section-label">Monedas contadas</div>
+    <div class="col-headers">
+      <span>Denominación</span>
+      <span class="ch-qty">Cant</span>
+      <span class="ch-val">Subtotal</span>
+    </div>
+    ${filasMonedas}
+  </div>` : ''}
+
+  <!-- Totales finales -->
+  <div class="subtotal-block">
+    <span class="subtotal-label">Total sistema (efectivo)</span>
+    <span class="subtotal-val">${fmt(totalSistema)}</span>
+  </div>
+
+  <div class="total-block border-top" style="margin-top:4px;">
+    <span class="total-label">Total Contado</span>
+    <span class="total-val">${fmt(totalContado)}</span>
+  </div>
+
+  <!-- Resultado arqueo -->
+  <div class="result-block">
+    ${resultBadge}
+  </div>
+
+  <!-- Pie -->
+  <div class="footer">
+    <div class="thanks">Cierre de turno registrado</div>
+    <div class="brand">Menugo.app · Powered by Menugo</div>
+  </div>
+
+</body></html>`);
+
+        win.document.close();
+        win.addEventListener('load', () => { win.focus(); win.print(); });
+    }
+
     return (
         <AppShell title="Cierre de Caja" subtitle="Arqueo de efectivo al cierre del turno">
             <Head title="Cierre de Caja" />
@@ -63,11 +285,11 @@ export default function CierreCaja({ totalSistema, totalOrdenesHoy, resumenMetod
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <div className="rounded-2xl border border-border bg-card p-5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-muted-foreground">Efectivo registrado (sistema)</span>
+                        <span className="text-xs text-muted-foreground">Efectivo Registrado Caja (Sistema)</span>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="font-display text-2xl font-bold text-accent">{fmt(totalSistema)}</div>
-                    <div className="text-xs text-muted-foreground mt-1">según pagos en efectivo hoy</div>
+                    <div className="text-xs text-muted-foreground mt-1">Pagos en Efectivo Registrados</div>
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card p-5">
@@ -202,12 +424,23 @@ export default function CierreCaja({ totalSistema, totalOrdenesHoy, resumenMetod
                         </div>
                     </div>
 
-                    <button
-                        onClick={limpiar}
-                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                    >
-                        Limpiar todos los campos
-                    </button>
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                        <button
+                            onClick={limpiar}
+                            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                        >
+                            Limpiar todos los campos
+                        </button>
+
+                        {totalContado > 0 && (
+                            <button
+                                onClick={imprimirCierre}
+                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                                <Printer className="h-4 w-4" /> Imprimir Cierre de Caja
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* ── Panel lateral: resumen por método ── */}

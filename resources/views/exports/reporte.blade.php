@@ -3,48 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111827; background: #fff; }
-    .header { background: #1e293b; color: #fff; padding: 16px 20px; margin-bottom: 20px; }
-    .header h1 { font-size: 16px; font-weight: bold; }
-    .header p  { font-size: 10px; color: #94a3b8; margin-top: 3px; }
-    .meta { padding: 0 20px 14px; display: flex; gap: 20px; font-size: 10px; color: #6b7280; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
-    .meta strong { color: #111827; }
-    table { width: 100%; border-collapse: collapse; margin: 0 20px; width: calc(100% - 40px); }
-    thead tr { background: #f1f5f9; }
-    thead th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; color: #475569; border-bottom: 2px solid #cbd5e1; }
-    tbody tr:nth-child(even) { background: #f8fafc; }
-    tbody td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; font-size: 10px; vertical-align: top; }
-    .footer { margin-top: 24px; padding: 12px 20px 0; border-top: 1px solid #e5e7eb; font-size: 9px; color: #9ca3af; text-align: center; }
-    .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; }
-    .badge-ok      { background: #d1fae5; color: #065f46; }
-    .badge-bajo    { background: #fef3c7; color: #92400e; }
-    .badge-agotado { background: #fee2e2; color: #991b1b; }
-    .badge-vencido { background: #fce7f3; color: #9d174d; }
-    .badge-paid    { background: #d1fae5; color: #065f46; }
-    .badge-partial { background: #fef3c7; color: #92400e; }
-    .badge-unpaid  { background: #f3f4f6; color: #6b7280; }
-    .badge-delivered  { background: #dbeafe; color: #1e40af; }
-    .badge-cancelled  { background: #fee2e2; color: #991b1b; }
-    .right { text-align: right; }
-    .center { text-align: center; }
-    .total-row { background: #1e293b !important; color: #fff; font-weight: 700; }
-    .total-row td { color: #fff; border: none; padding: 9px 10px; }
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: DejaVu Sans, Arial, sans-serif;
+    font-size: 10px;
+    color: #1e293b;
+    background: #ffffff;
+    padding-bottom: 44px;
+}
+
+/* ── Footer fijo ───────────────────────────────────────────────────────── */
+.page-footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 28px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+.footer-inner {
+    display: table;
+    width: 100%;
+    padding: 0 28px;
+    height: 28px;
+}
+.footer-l { display: table-cell; vertical-align: middle; font-size: 7.5px; color: #94a3b8; }
+.footer-r { display: table-cell; vertical-align: middle; text-align: right; font-size: 7.5px; color: #94a3b8; }
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+.header {
+    background: #0f172a;
+    padding: 20px 28px 18px;
+}
+.header-row { display: table; width: 100%; }
+.header-l   { display: table-cell; vertical-align: bottom; }
+.header-r   { display: table-cell; vertical-align: top; text-align: right; }
+
+.brand      { font-size: 8px; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.14em; }
+.brand-sub  { font-size: 7.5px; color: #475569; margin-top: 1px; }
+.rpt-title  { font-size: 19px; font-weight: 700; color: #f8fafc; margin-top: 10px; letter-spacing: -0.01em; line-height: 1.2; }
+
+.gen-label  { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; }
+.gen-val    { font-size: 9.5px; color: #94a3b8; margin-top: 3px; }
+
+/* ── Accent bar ────────────────────────────────────────────────────────── */
+.accent-bar { height: 3px; background: #3b82f6; }
+
+/* ── Meta strip ────────────────────────────────────────────────────────── */
+.meta-strip { background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 11px 28px; }
+.meta-row   { display: table; width: 100%; }
+.meta-cell  { display: table-cell; padding-right: 36px; vertical-align: top; }
+
+.meta-label { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; }
+.meta-val   { font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 3px; }
+.meta-sm    { font-size: 10px; font-weight: 600; color: #475569; margin-top: 3px; }
+.dot-ok     { color: #16a34a; }
+
+/* ── Section label ─────────────────────────────────────────────────────── */
+.section-lbl {
+    padding: 13px 28px 5px;
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: #94a3b8;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+/* ── Tabla principal ───────────────────────────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; }
+
+.data-table thead tr  { background: #1e293b; }
+.data-table thead th  {
+    padding: 9px 10px 9px 14px;
+    text-align: left;
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #94a3b8;
+    border-right: 1px solid #334155;
+}
+.data-table thead th:first-child { padding-left: 28px; }
+.data-table thead th:last-child  { border-right: none; }
+
+.data-table tbody tr:nth-child(odd)  { background: #ffffff; }
+.data-table tbody tr:nth-child(even) { background: #f8fafc; }
+
+.data-table tbody td {
+    padding: 7.5px 10px 7.5px 14px;
+    font-size: 9.5px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+.data-table tbody td:first-child { padding-left: 28px; }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Fila de totales ───────────────────────────────────────────────────── */
+.total-row            { background: #0f172a !important; }
+.total-row td         { color: #f1f5f9 !important; font-weight: 700 !important; border: none !important; padding-top: 10px !important; padding-bottom: 10px !important; }
+.total-row td:first-child { padding-left: 28px !important; }
+
+/* ── Alineación ────────────────────────────────────────────────────────── */
+.right  { text-align: right; }
+.center { text-align: center; }
+
+/* ── Badges ────────────────────────────────────────────────────────────── */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 7.5px; font-weight: 700; letter-spacing: 0.04em; }
+.badge-ok, .badge-paid, .badge-delivered { background: #d1fae5; color: #065f46; }
+.badge-bajo, .badge-partial              { background: #fef3c7; color: #92400e; }
+.badge-agotado, .badge-unpaid            { background: #fee2e2; color: #991b1b; }
+.badge-vencido, .badge-cancelled         { background: #fce7f3; color: #9d174d; }
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+.empty-cell { text-align: center !important; padding: 36px 12px !important; color: #94a3b8 !important; font-size: 11px !important; }
 </style>
 </head>
 <body>
 
+{{-- Footer fijo --}}
+<div class="page-footer">
+    <div class="footer-inner">
+        <div class="footer-l">MenuGo · Sistema de gestión de restaurante · Documento generado automáticamente</div>
+        <div class="footer-r">{{ now()->format('d/m/Y H:i:s') }}</div>
+    </div>
+</div>
+
+{{-- Header --}}
 <div class="header">
-    <h1>{{ $titulo }}</h1>
-    <p>Generado el {{ now()->format('d/m/Y H:i') }}</p>
+    <div class="header-row">
+        <div class="header-l">
+            <div class="brand">MenuGo</div>
+            <div class="brand-sub">Sistema de gestión de restaurante</div>
+            <div class="rpt-title">{{ $titulo }}</div>
+        </div>
+        <div class="header-r">
+            <div class="gen-label">Generado</div>
+            <div class="gen-val">{{ now()->format('d/m/Y H:i') }}</div>
+        </div>
+    </div>
+</div>
+<div class="accent-bar"></div>
+
+{{-- Meta strip --}}
+<div class="meta-strip">
+    <div class="meta-row">
+        <div class="meta-cell">
+            <div class="meta-label">Período</div>
+            <div class="meta-val">
+                {{ \Carbon\Carbon::parse($desde)->format('d/m/Y') }}
+                &nbsp;—&nbsp;
+                {{ \Carbon\Carbon::parse($hasta)->format('d/m/Y') }}
+            </div>
+        </div>
+        <div class="meta-cell">
+            <div class="meta-label">Registros</div>
+            <div class="meta-val">{{ count($rows) }}</div>
+        </div>
+        <div class="meta-cell">
+            <div class="meta-label">Estado</div>
+            <div class="meta-sm"><span class="dot-ok">&#9679;</span> Documento oficial</div>
+        </div>
+    </div>
 </div>
 
-<div class="meta">
-    <span>Período: <strong>{{ \Carbon\Carbon::parse($desde)->format('d/m/Y') }} — {{ \Carbon\Carbon::parse($hasta)->format('d/m/Y') }}</strong></span>
-    <span>Registros: <strong>{{ count($rows) }}</strong></span>
-</div>
+{{-- Section label --}}
+<div class="section-lbl">Detalle del reporte</div>
 
-<table>
+{{-- Tabla --}}
+<table class="data-table">
     <thead>
         <tr>
             @foreach($headers as $h)
@@ -56,19 +185,17 @@
         @forelse($rows as $row)
             <tr>
                 @foreach($headers as $i => $h)
-                    <td class="{{ $h['align'] ?? '' }}">
-                        @php $val = $row[$i] ?? ''; @endphp
-                        @if(isset($h['badge']) && $h['badge'] && $val)
-                            <span class="badge badge-{{ $h['badgeMap'][$val] ?? '' }}">{{ $h['labelMap'][$val] ?? $val }}</span>
-                        @else
-                            {{ $val }}
-                        @endif
-                    </td>
+                    <td class="{{ $h['align'] ?? '' }}">{{ $row[$i] ?? '' }}</td>
                 @endforeach
             </tr>
         @empty
-            <tr><td colspan="{{ count($headers) }}" class="center" style="padding:20px;color:#6b7280;">Sin registros en el período seleccionado.</td></tr>
+            <tr>
+                <td colspan="{{ count($headers) }}" class="empty-cell">
+                    Sin registros en el período seleccionado.
+                </td>
+            </tr>
         @endforelse
+
         @if(isset($totals) && $totals)
             <tr class="total-row">
                 @foreach($totals as $t)
@@ -78,8 +205,6 @@
         @endif
     </tbody>
 </table>
-
-<div class="footer">MenuGo · Reporte generado automáticamente · {{ now()->format('d/m/Y H:i:s') }}</div>
 
 </body>
 </html>

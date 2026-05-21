@@ -8,6 +8,7 @@ import { CreditCard, Smartphone, Wifi, Banknote, ArrowRightLeft, Save, Info } fr
 interface Detalle {
     titular?:    string;
     numero?:     string;
+    link?:       string;
     tipo_cuenta?: 'ahorros' | 'corriente' | '';
     banco?:      string;
     nota?:       string;
@@ -57,6 +58,7 @@ const METODOS = [
         campos:      [
             { campo: 'titular' as const, label: 'Titular de la cuenta',  placeholder: 'Nombre del propietario', tipo: 'text' as const },
             { campo: 'numero'  as const, label: 'Número de Nequi',        placeholder: '3001234567',            tipo: 'tel'  as const },
+            { campo: 'link'    as const, label: 'Link de pago Nequi',     placeholder: 'https://cobros.nequi.com.co/...', tipo: 'text' as const },
         ] as CampoConfig[],
     },
     {
@@ -66,8 +68,10 @@ const METODOS = [
         icon:        Smartphone,
         requerido:   false,
         campos:      [
-            { campo: 'titular' as const, label: 'Titular de la cuenta',  placeholder: 'Nombre del propietario', tipo: 'text' as const },
-            { campo: 'numero'  as const, label: 'Número de Daviplata',    placeholder: '3001234567',            tipo: 'tel'  as const },
+            { campo: 'titular' as const, label: 'Titular de la cuenta',      placeholder: 'Nombre del propietario',          tipo: 'text' as const },
+            { campo: 'numero'  as const, label: 'Número de Daviplata',        placeholder: '3001234567',                      tipo: 'tel'  as const },
+            { campo: 'link'    as const, label: 'Link de pago Daviplata',     placeholder: 'https://daviplata.com/cobrar/...', tipo: 'text' as const },
+            { campo: 'nota'    as const, label: 'Nota para el cliente (opcional)', placeholder: 'Ej: Escanea el QR o transfiere al número indicado.', tipo: 'text' as const },
         ] as CampoConfig[],
     },
     {
@@ -216,7 +220,7 @@ export default function Pagos({ metodosActivos, detalles: initialDetalles, flash
                                         </p>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {m.campos.map(c => (
-                                                <div key={c.campo} className={c.campo === 'nota' ? 'sm:col-span-2' : ''}>
+                                                <div key={c.campo} className={(c.campo === 'nota' || c.campo === 'link') ? 'sm:col-span-2' : ''}>
                                                     <label className="block text-xs font-medium text-muted-foreground mb-1">
                                                         {c.label}
                                                     </label>

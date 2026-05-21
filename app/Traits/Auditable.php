@@ -40,15 +40,21 @@ trait Auditable
             $properties = null;
         }
 
-        AuditLog::create([
-            'action'         => $action,
-            'auditable_type' => static::auditLabel(),
-            'auditable_id'   => $model->getKey(),
-            'description'    => $model->auditDescription(),
-            'causer_id'      => auth()->id(),
-            'causer_name'    => auth()->user()->name,
-            'properties'     => $properties ?: null,
-        ]);
+        try {
+            AuditLog::create([
+                'action'         => $action,
+                'auditable_type' => static::auditLabel(),
+                'auditable_id'   => $model->getKey(),
+                'description'    => $model->auditDescription(),
+                'causer_id'      => auth()->id(),
+                'causer_name'    => auth()->user()->name,
+                'properties'     => $properties ?: null,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // causer_id del contexto central no existe en esta DB de tenant — se omite el log
+            if ($e->getCode() === '23000') return;
+            throw $e;
+        }
     }
 
     protected static function auditLabel(): string

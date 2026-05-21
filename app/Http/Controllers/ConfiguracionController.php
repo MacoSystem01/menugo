@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\CartaSetting;
+use App\Models\DailyClosing;
+use App\Models\Order;
+use App\Models\RestaurantTable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -33,6 +37,7 @@ class ConfiguracionController extends Controller
             'detalles'                     => 'nullable|array',
             'detalles.*.titular'           => 'nullable|string|max:120',
             'detalles.*.numero'            => 'nullable|string|max:60',
+            'detalles.*.link'              => 'nullable|url|max:500',
             'detalles.*.tipo_cuenta'       => 'nullable|string|in:ahorros,corriente,',
             'detalles.*.banco'             => 'nullable|string|max:80',
             'detalles.*.nota'              => 'nullable|string|max:200',
@@ -43,6 +48,10 @@ class ConfiguracionController extends Controller
         $this->settings()->update([
             'payment_methods' => array_values($metodos),
             'payment_details' => $request->detalles ?? [],
+        ]);
+
+        AuditLog::registrar('update', 'Configuracion', null, 'Métodos de pago actualizados', [
+            'metodos' => array_values($metodos),
         ]);
 
         return back()->with('success', 'Métodos de pago actualizados correctamente.');
@@ -79,6 +88,95 @@ class ConfiguracionController extends Controller
             'delivery_zones'     => $request->delivery_zones ?? [],
         ]);
 
+        AuditLog::registrar('update', 'Configuracion', null, 'Configuración de domicilio actualizada', [
+            'delivery_enabled'   => $request->boolean('delivery_enabled'),
+            'delivery_min_order' => (int) ($request->delivery_min_order ?? 0),
+            'zones_count'        => count($request->delivery_zones ?? []),
+        ]);
+
         return back()->with('success', 'Configuración de domicilio actualizada correctamente.');
+    }
+
+    // ── Horario de trabajo ────────────────────────────────────────────────────
+
+    private function defaultSchedule(): array
+    {
+        $default = ['activo' => true, 'apertura' => '08:00', 'cierre' => '22:00'];
+        return [
+            'lun' => $default, 'mar' => $default, 'mie' => $default,
+            'jue' => $default, 'vie' => $default,
+            'sab' => ['activo' => true, 'apertura' => '09:00', 'cierre' => '23:00'],
+            'dom' => ['activo' => false, 'apertura' => '09:00', 'cierre' => '21:00'],
+        ];
+    }
+
+    public function horario()
+    {
+        $settings      = $this->settings();
+        $schedule      = $settings->work_schedule ?? $this->defaultSchedule();
+        $lastClosing   = DailyClosing::latest('closed_at')->first();
+
+        return Inertia::render('Configuraciones/Horario', [
+            'schedule'     => $schedule,
+            'last_closing' => $lastClosing?->closed_at?->format('d/m/Y H:i'),
+        ]);
+    }
+
+    public function guardarHorario(Request $request)
+    {
+        $days = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+
+        $request->validate(array_merge(...array_map(fn($d) => [
+            "{$d}.activo"   => 'boolean',
+            "{$d}.apertura" => 'nullable|date_format:H:i',
+            "{$d}.cierre"   => 'nullable|date_format:H:i',
+        ], $days)));
+
+        $schedule = [];
+        foreach ($days as $day) {
+            $d = $request->input($day, []);
+            $schedule[$day] = [
+                'activo'   => (bool) ($d['activo']   ?? false),
+                'apertura' => $d['apertura'] ?? '08:00',
+                'cierre'   => $d['cierre']   ?? '22:00',
+            ];
+        }
+
+        $this->settings()->update(['work_schedule' => $schedule]);
+
+        AuditLog::registrar('update', 'Configuracion', null, 'Horario de trabajo actualizado');
+
+        return back()->with('success', 'Horario de trabajo guardado correctamente.');
+    }
+
+    public function cierreJornada()
+    {
+        $now = now();
+
+        $activeOrders = Order::whereNull('closed_at_eod')
+            ->whereNotIn('status', ['cancelled'])
+            ->with('table')
+            ->get();
+
+        $tablesFreed = 0;
+
+        foreach ($activeOrders as $order) {
+            $order->update(['closed_at_eod' => $now]);
+
+            if ($order->table) {
+                $order->table->update(['is_occupied' => false]);
+                $tablesFreed++;
+            }
+        }
+
+        DailyClosing::create([
+            'closed_at'        => $now,
+            'orders_cancelled' => 0,
+            'tables_freed'     => $tablesFreed,
+        ]);
+
+        AuditLog::registrar('eod', 'Sistema', null, "Cierre de jornada ejecutado: {$activeOrders->count()} pedido(s) archivados, {$tablesFreed} mesa(s) liberadas");
+
+        return back()->with('success', "Jornada cerrada. {$activeOrders->count()} pedido(s) archivados y {$tablesFreed} mesa(s) liberadas.");
     }
 }

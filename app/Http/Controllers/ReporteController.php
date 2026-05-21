@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Gasto;
 use App\Models\Order;
 use App\Models\KitchenNote;
 use App\Models\InventoryItem;
@@ -34,6 +35,8 @@ class ReporteController extends Controller
         $pedidosDomicilio = (clone $ventas)->where('type', 'domicilio')->count();
         $ticketPromedio   = $totalPedidos > 0 ? round($totalVentas / $totalPedidos, 2) : 0;
 
+        $totalGastos = (float) Gasto::whereBetween('fecha', [$desde, $hasta])->sum('monto');
+
         $topPlatos = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('dishes', 'dishes.id', '=', 'order_items.dish_id')
@@ -62,6 +65,7 @@ class ReporteController extends Controller
                 'pedidos_mesa'      => $pedidosMesa,
                 'pedidos_domicilio' => $pedidosDomicilio,
                 'ticket_promedio'   => $ticketPromedio,
+                'total_gastos'      => $totalGastos,
             ],
             'top_platos'         => $topPlatos,
             'ventas_por_dia'     => $ventasPorDia,
@@ -84,9 +88,11 @@ class ReporteController extends Controller
 
         $filename = "{$tipo}_{$desde}_{$hasta}";
 
-        return $formato === 'pdf'
-            ? $this->exportPdf($titulo, $headers, $rows, $totals, $desde, $hasta, $filename)
-            : $this->exportXlsx($titulo, $headers, $rows, $totals, $filename);
+        return match ($formato) {
+            'pdf'  => $this->exportPdf($titulo, $headers, $rows, $totals, $desde, $hasta, $filename),
+            'pos'  => $this->exportPos($titulo, $headers, $rows, $totals, $desde, $hasta, $filename),
+            default => $this->exportXlsx($titulo, $headers, $rows, $totals, $filename),
+        };
     }
 
     // ── Datos por tipo ────────────────────────────────────────────────────────
@@ -94,14 +100,16 @@ class ReporteController extends Controller
     private function buildReporte(string $tipo, string $desde, string $hasta): array
     {
         return match ($tipo) {
-            'caja'       => $this->reporteCaja($desde, $hasta),
-            'pedidos'    => $this->reportePedidos($desde, $hasta),
-            'cocina'     => $this->reporteCocina($desde, $hasta),
-            'novedades'  => $this->reporteNovedades($desde, $hasta),
-            'mesa'       => $this->reporteMesa($desde, $hasta),
-            'domicilio'  => $this->reporteDomicilio($desde, $hasta),
-            'inventario' => $this->reporteInventario($desde, $hasta),
-            default      => $this->reportePedidos($desde, $hasta),
+            'caja'            => $this->reporteCaja($desde, $hasta),
+            'cierre_caja'     => $this->reporteCierreCaja($desde, $hasta),
+            'cierre_datafono' => $this->reporteCierreDatafono($desde, $hasta),
+            'pedidos'         => $this->reportePedidos($desde, $hasta),
+            'cocina'          => $this->reporteCocina($desde, $hasta),
+            'novedades'       => $this->reporteNovedades($desde, $hasta),
+            'domicilio'       => $this->reporteDomicilio($desde, $hasta),
+            'inventario'      => $this->reporteInventario($desde, $hasta),
+            'gastos'          => $this->reporteGastos($desde, $hasta),
+            default           => $this->reportePedidos($desde, $hasta),
         };
     }
 
@@ -389,7 +397,132 @@ class ReporteController extends Controller
         return ['Reporte de Domicilios', $headers, $rows, $totals];
     }
 
-    // ── 6. Inventario ─────────────────────────────────────────────────────────
+    // ── 6. Cierre de Caja ────────────────────────────────────────────────────
+
+    private function reporteCierreCaja(string $desde, string $hasta): array
+    {
+        $orders = Order::whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->where('status', '!=', 'cancelled')
+            ->get();
+
+        $efectivoTotal = (float) $orders
+            ->where('payment_method', 'efectivo')
+            ->sum(fn($o) => min((float) $o->amount_paid, (float) $o->total));
+
+        $saldados = $orders->filter(fn($o) => (float) $o->amount_paid >= (float) $o->total);
+
+        $resumen = $saldados
+            ->whereNotNull('payment_method')
+            ->groupBy('payment_method')
+            ->map(fn($g, $m) => [$m, $g->count(), (float) $g->sum('total')])
+            ->sortByDesc(fn($r) => $r[2])
+            ->values();
+
+        $headers = [
+            ['label' => 'Método de pago',  'align' => ''],
+            ['label' => 'Pedidos saldados', 'align' => 'center'],
+            ['label' => 'Total recaudado',  'align' => 'right'],
+        ];
+
+        $rows = $resumen->map(fn($r) => [
+            ucfirst($r[0]),
+            $r[1],
+            $this->fmt($r[2]),
+        ])->toArray();
+
+        $totals = [
+            ['value' => 'TOTAL', 'align' => ''],
+            ['value' => $saldados->count() . ' pedidos',    'align' => 'center'],
+            ['value' => $this->fmt($saldados->sum('total')), 'align' => 'right'],
+        ];
+
+        return ['Cierre de Caja — Resumen por método', $headers, $rows, $totals];
+    }
+
+    // ── 7. Cierre de Datáfono ─────────────────────────────────────────────────
+
+    private function reporteCierreDatafono(string $desde, string $hasta): array
+    {
+        $transacciones = Order::whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->where('status', '!=', 'cancelled')
+            ->whereNotNull('payment_method')
+            ->where('payment_method', '!=', 'efectivo')
+            ->orderBy('payment_method')
+            ->orderBy('created_at')
+            ->get();
+
+        $headers = [
+            ['label' => '#Pedido',  'align' => ''],
+            ['label' => 'Cliente',  'align' => ''],
+            ['label' => 'Método',   'align' => ''],
+            ['label' => 'Monto',    'align' => 'right'],
+            ['label' => 'Fecha',    'align' => ''],
+        ];
+
+        $rows = $transacciones->map(fn($o) => [
+            '#' . $o->id,
+            $o->customer_name,
+            ucfirst($o->payment_method),
+            $this->fmt(min((float) $o->amount_paid, (float) $o->total)),
+            $o->created_at->format('d/m/Y H:i'),
+        ])->toArray();
+
+        $total = (float) $transacciones->sum(fn($o) => min((float) $o->amount_paid, (float) $o->total));
+
+        $totals = [
+            ['value' => 'TOTAL', 'align' => ''],
+            ['value' => $transacciones->count() . ' transacciones', 'align' => ''],
+            ['value' => '', 'align' => ''],
+            ['value' => $this->fmt($total), 'align' => 'right'],
+            ['value' => '', 'align' => ''],
+        ];
+
+        return ['Cierre de Datáfono — Transacciones electrónicas', $headers, $rows, $totals];
+    }
+
+    // ── 8. Gastos ─────────────────────────────────────────────────────────────
+
+    private function reporteGastos(string $desde, string $hasta): array
+    {
+        $gastos = Gasto::whereBetween('fecha', [$desde, $hasta])
+            ->orderBy('fecha')
+            ->get();
+
+        $categoriaLabel = [
+            'general' => 'General', 'insumos' => 'Insumos', 'servicios' => 'Servicios',
+            'nomina' => 'Nómina', 'mantenimiento' => 'Mantenimiento', 'arriendo' => 'Arriendo',
+            'transporte' => 'Transporte', 'publicidad' => 'Publicidad', 'equipos' => 'Equipos',
+            'otros' => 'Otros',
+        ];
+
+        $headers = [
+            ['label' => 'Descripción', 'align' => ''],
+            ['label' => 'Categoría',   'align' => ''],
+            ['label' => 'Fecha',       'align' => ''],
+            ['label' => 'Monto',       'align' => 'right'],
+            ['label' => 'Notas',       'align' => ''],
+        ];
+
+        $rows = $gastos->map(fn($g) => [
+            $g->descripcion,
+            $categoriaLabel[$g->categoria] ?? ucfirst($g->categoria),
+            $g->fecha->format('d/m/Y'),
+            $this->fmt((float) $g->monto),
+            $g->notas ?? '—',
+        ])->toArray();
+
+        $totals = [
+            ['value' => 'TOTAL', 'align' => ''],
+            ['value' => $gastos->count() . ' gastos', 'align' => ''],
+            ['value' => '', 'align' => ''],
+            ['value' => $this->fmt((float) $gastos->sum('monto')), 'align' => 'right'],
+            ['value' => '', 'align' => ''],
+        ];
+
+        return ['Reporte de Gastos', $headers, $rows, $totals];
+    }
+
+    // ── 9. Inventario ─────────────────────────────────────────────────────────
 
     private function reporteInventario(string $desde, string $hasta): array
     {
@@ -435,8 +568,16 @@ class ReporteController extends Controller
 
     private function exportPdf(string $titulo, array $headers, array $rows, ?array $totals, string $desde, string $hasta, string $filename)
     {
+        $orientation = count($headers) > 6 ? 'landscape' : 'portrait';
         $pdf = Pdf::loadView('exports.reporte', compact('titulo', 'headers', 'rows', 'totals', 'desde', 'hasta'))
-            ->setPaper('a4', count($headers) > 7 ? 'landscape' : 'portrait');
+            ->setPaper('a4', $orientation)
+            ->setOption('defaultFont', 'DejaVu Sans')
+            ->setOption('isRemoteEnabled', false)
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('margin_top', 0)
+            ->setOption('margin_bottom', 32)
+            ->setOption('margin_left', 0)
+            ->setOption('margin_right', 0);
 
         return response($pdf->output(), 200, [
             'Content-Type'              => 'application/pdf',
@@ -447,90 +588,260 @@ class ReporteController extends Controller
         ]);
     }
 
-    // ── Generar XLSX ──────────────────────────────────────────────────────────
+    // ── Generar POS (80 mm) ───────────────────────────────────────────────────
 
-    private function exportXlsx(string $titulo, array $headers, array $rows, ?array $totals, string $filename): StreamedResponse
+    private function exportPos(string $titulo, array $headers, array $rows, ?array $totals, string $desde, string $hasta, string $filename)
     {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle(mb_substr($titulo, 0, 31));
+        // 80 mm = 226.77 pt. Altura generosa para que quepa todo el contenido.
+        $heightPt = max(400, 140 + count($rows) * 14 + 60);
 
-        // Title row
-        $sheet->setCellValue('A1', $titulo);
-        $sheet->mergeCells('A1:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)) . '1');
-        $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 13, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E293B']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'indent' => 1],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(24);
+        $pdf = Pdf::loadView('exports.reporte_pos', compact('titulo', 'headers', 'rows', 'totals', 'desde', 'hasta'))
+            ->setPaper([0, 0, 226.77, $heightPt], 'portrait')
+            ->setOption('defaultFont', 'DejaVu Sans Mono')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('margin_top', 0)
+            ->setOption('margin_bottom', 0)
+            ->setOption('margin_left', 0)
+            ->setOption('margin_right', 0);
 
-        // Header row
-        $colIdx = 1;
-        foreach ($headers as $h) {
-            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx++);
-            $sheet->setCellValue("{$col}2", $h['label']);
-        }
-        $headerRange = 'A2:' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)) . '2';
-        $sheet->getStyle($headerRange)->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['argb' => 'FF1E293B']],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF1F5F9']],
-            'borders'   => ['bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => 'FFCBD5E1']]],
-        ]);
-        $sheet->getRowDimension(2)->setRowHeight(18);
-
-        // Data rows
-        $rowNum = 3;
-        foreach ($rows as $row) {
-            $colIdx = 1;
-            foreach ($row as $cell) {
-                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx++);
-                $sheet->setCellValue("{$col}{$rowNum}", $cell);
-            }
-            if ($rowNum % 2 === 0) {
-                $sheet->getStyle("A{$rowNum}:" . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)) . $rowNum)
-                    ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFF8FAFC');
-            }
-            $rowNum++;
-        }
-
-        // Totals row
-        if ($totals) {
-            $colIdx = 1;
-            foreach ($totals as $t) {
-                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx++);
-                $sheet->setCellValue("{$col}{$rowNum}", $t['value']);
-            }
-            $totalRange = "A{$rowNum}:" . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)) . $rowNum;
-            $sheet->getStyle($totalRange)->applyFromArray([
-                'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E293B']],
-            ]);
-        }
-
-        // Auto-width columns
-        for ($i = 1; $i <= count($headers); $i++) {
-            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-
-        // Borders on data
-        if ($rowNum > 3) {
-            $dataRange = "A2:" . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers)) . ($rowNum - 1);
-            $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
-                ->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB('FFE5E7EB');
-        }
-
-        $writer = new Xlsx($spreadsheet);
-
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, "{$filename}.xlsx", [
-            'Content-Type'           => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition'    => 'attachment; filename="' . $filename . '.xlsx"',
+        return response($pdf->output(), 200, [
+            'Content-Type'           => 'application/pdf',
+            'Content-Disposition'    => 'attachment; filename="' . $filename . '_pos.pdf"',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control'          => 'no-store, no-cache, must-revalidate',
             'Pragma'                 => 'no-cache',
         ]);
+    }
+
+    // ── Generar XLSX ──────────────────────────────────────────────────────────
+
+    private function exportXlsx(string $titulo, array $headers, array $rows, ?array $totals, string $filename): \Symfony\Component\HttpFoundation\Response
+    {
+        $col = fn(int $i) => \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+        $n   = count($headers);
+        $lastCol = $col($n);
+
+        // ── Colores corporativos ─────────────────────────────────────────────
+        $C_NAVY_DARK  = 'FF0F172A'; // header superior y total
+        $C_NAVY       = 'FF1E293B'; // cabecera de columnas
+        $C_BLUE       = 'FF3B82F6'; // acento
+        $C_WHITE      = 'FFFFFFFF';
+        $C_GRAY_LIGHT = 'FFF8FAFC'; // fila par
+        $C_GRAY_MED   = 'FFF1F5F9'; // meta strip
+        $C_BORDER     = 'FFE2E8F0'; // bordes sutiles
+        $C_TEXT_DARK  = 'FF1E293B';
+        $C_TEXT_MED   = 'FF475569';
+        $C_TEXT_SOFT  = 'FF94A3B8';
+        $C_ACCENT_TXT = 'FF3B82F6'; // texto acento
+
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle(mb_substr($titulo, 0, 31));
+        $sheet->getTabColor()->setARGB($C_NAVY);
+        $sheet->setShowGridlines(false);
+
+        // ── Fila 1: Brand header ─────────────────────────────────────────────
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->setCellValue('A1', 'MENUGO  ·  Reporte Oficial');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font'      => ['name' => 'Calibri', 'bold' => true, 'size' => 9, 'color' => ['argb' => $C_TEXT_SOFT]],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_NAVY_DARK]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'indent' => 2],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(20);
+
+        // ── Fila 2: Título del reporte ───────────────────────────────────────
+        $sheet->mergeCells("A2:{$lastCol}2");
+        $sheet->setCellValue('A2', $titulo);
+        $sheet->getStyle('A2')->applyFromArray([
+            'font'      => ['name' => 'Calibri', 'bold' => true, 'size' => 16, 'color' => ['argb' => $C_WHITE]],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_NAVY_DARK]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'indent' => 2],
+        ]);
+        $sheet->getRowDimension(2)->setRowHeight(34);
+
+        // ── Fila 3: Línea de acento azul ─────────────────────────────────────
+        $sheet->mergeCells("A3:{$lastCol}3");
+        $sheet->setCellValue('A3', '');
+        $sheet->getStyle('A3')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB($C_BLUE);
+        $sheet->getRowDimension(3)->setRowHeight(3);
+
+        // ── Fila 4: Meta info (período / registros / generado) ───────────────
+        $thirds   = (int) ceil($n / 3);
+        $thirds2  = $thirds * 2;
+        $col1End  = $col(max($thirds, 1));
+        $col2Ini  = $col($thirds + 1);
+        $col2End  = $col(min($thirds2, $n));
+        $col3Ini  = $col(min($thirds2 + 1, $n));
+
+        if ($n >= 3) {
+            $sheet->mergeCells("A4:{$col1End}4");
+            $sheet->mergeCells("{$col2Ini}4:{$col2End}4");
+            $sheet->mergeCells("{$col3Ini}4:{$lastCol}4");
+        } else {
+            $sheet->mergeCells("A4:{$lastCol}4");
+        }
+
+        $sheet->setCellValue('A4', '  Período:  ' . now()->startOfMonth()->format('d/m/Y') . ' — ' . now()->format('d/m/Y'));
+        $sheet->setCellValue("{$col2Ini}4", '  Registros:  ' . count($rows));
+        $sheet->setCellValue("{$col3Ini}4", '  Generado:  ' . now()->format('d/m/Y  H:i'));
+
+        $sheet->getStyle("A4:{$lastCol}4")->applyFromArray([
+            'font'      => ['name' => 'Calibri', 'size' => 9, 'color' => ['argb' => $C_TEXT_MED]],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_GRAY_MED]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+            'borders'   => ['bottom' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => $C_BORDER]]],
+        ]);
+        $sheet->getRowDimension(4)->setRowHeight(22);
+
+        // ── Fila 5: Cabecera de columnas ─────────────────────────────────────
+        for ($i = 1; $i <= $n; $i++) {
+            $sheet->setCellValue($col($i) . '5', mb_strtoupper($headers[$i - 1]['label']));
+        }
+        $sheet->getStyle("A5:{$lastCol}5")->applyFromArray([
+            'font'      => ['name' => 'Calibri', 'bold' => true, 'size' => 8, 'color' => ['argb' => $C_WHITE]],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_NAVY]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_LEFT],
+            'borders'   => [
+                'bottom' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $C_BLUE]],
+            ],
+        ]);
+
+        // Alineación por columna (cabecera)
+        foreach ($headers as $i => $h) {
+            $c = $col($i + 1);
+            $align = match ($h['align'] ?? '') {
+                'right'  => Alignment::HORIZONTAL_RIGHT,
+                'center' => Alignment::HORIZONTAL_CENTER,
+                default  => Alignment::HORIZONTAL_LEFT,
+            };
+            $sheet->getStyle("{$c}5")->getAlignment()
+                ->setHorizontal($align)
+                ->setIndent($align === Alignment::HORIZONTAL_LEFT ? 1 : 0);
+        }
+        $sheet->getRowDimension(5)->setRowHeight(22);
+
+        // ── Filas de datos ───────────────────────────────────────────────────
+        $rowNum = 6;
+        foreach ($rows as $row) {
+            $isEven = ($rowNum % 2 === 0);
+            $bgArgb = $isEven ? $C_GRAY_LIGHT : $C_WHITE;
+
+            for ($i = 1; $i <= $n; $i++) {
+                $cell  = $col($i) . $rowNum;
+                $value = $row[$i - 1] ?? '';
+                $sheet->setCellValue($cell, $value);
+            }
+
+            $rowRange = "A{$rowNum}:{$lastCol}{$rowNum}";
+            $sheet->getStyle($rowRange)->applyFromArray([
+                'font'      => ['name' => 'Calibri', 'size' => 10, 'color' => ['argb' => $C_TEXT_DARK]],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $bgArgb]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                'borders'   => [
+                    'bottom' => ['borderStyle' => Border::BORDER_HAIR, 'color' => ['argb' => $C_BORDER]],
+                ],
+            ]);
+
+            // Alineación por columna (datos)
+            foreach ($headers as $i => $h) {
+                $c = $col($i + 1);
+                $align = match ($h['align'] ?? '') {
+                    'right'  => Alignment::HORIZONTAL_RIGHT,
+                    'center' => Alignment::HORIZONTAL_CENTER,
+                    default  => Alignment::HORIZONTAL_LEFT,
+                };
+                $sheet->getStyle("{$c}{$rowNum}")->getAlignment()
+                    ->setHorizontal($align)
+                    ->setIndent($align === Alignment::HORIZONTAL_LEFT ? 1 : 0);
+            }
+            $sheet->getRowDimension($rowNum)->setRowHeight(18);
+            $rowNum++;
+        }
+
+        // Estado vacío
+        if (count($rows) === 0) {
+            $sheet->mergeCells("A6:{$lastCol}6");
+            $sheet->setCellValue('A6', 'Sin registros en el período seleccionado.');
+            $sheet->getStyle('A6')->applyFromArray([
+                'font'      => ['name' => 'Calibri', 'italic' => true, 'size' => 10, 'color' => ['argb' => $C_TEXT_SOFT]],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_WHITE]],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $sheet->getRowDimension(6)->setRowHeight(36);
+            $rowNum = 7;
+        }
+
+        // ── Fila de totales ──────────────────────────────────────────────────
+        if ($totals) {
+            for ($i = 1; $i <= $n; $i++) {
+                $cell  = $col($i) . $rowNum;
+                $value = $totals[$i - 1]['value'] ?? '';
+                $sheet->setCellValue($cell, $value);
+            }
+            $totalRange = "A{$rowNum}:{$lastCol}{$rowNum}";
+            $sheet->getStyle($totalRange)->applyFromArray([
+                'font'      => ['name' => 'Calibri', 'bold' => true, 'size' => 10, 'color' => ['argb' => $C_WHITE]],
+                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_NAVY_DARK]],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+                'borders'   => [
+                    'top' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['argb' => $C_BLUE]],
+                ],
+            ]);
+            foreach ($totals as $i => $t) {
+                $c = $col($i + 1);
+                $align = match ($t['align'] ?? '') {
+                    'right'  => Alignment::HORIZONTAL_RIGHT,
+                    'center' => Alignment::HORIZONTAL_CENTER,
+                    default  => Alignment::HORIZONTAL_LEFT,
+                };
+                $sheet->getStyle("{$c}{$rowNum}")->getAlignment()
+                    ->setHorizontal($align)
+                    ->setIndent($align === Alignment::HORIZONTAL_LEFT ? 1 : 0);
+            }
+            $sheet->getRowDimension($rowNum)->setRowHeight(22);
+        }
+
+        // ── Borde exterior del bloque de datos ───────────────────────────────
+        $outerRange = "A5:{$lastCol}" . ($rowNum - ($totals ? 0 : 1));
+        $sheet->getStyle($outerRange)->getBorders()->getOutline()
+            ->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setARGB($C_NAVY);
+
+        // ── Anchos de columna ────────────────────────────────────────────────
+        // Calcular ancho máximo por columna en base al contenido
+        for ($i = 1; $i <= $n; $i++) {
+            $maxLen = mb_strlen($headers[$i - 1]['label']) + 4;
+            foreach ($rows as $row) {
+                $len = mb_strlen((string) ($row[$i - 1] ?? ''));
+                if ($len > $maxLen) $maxLen = $len;
+            }
+            // Limitar entre 10 y 45 caracteres
+            $width = min(max($maxLen + 2, 10), 45);
+            $sheet->getColumnDimension($col($i))->setWidth($width);
+        }
+
+        // ── Congelar filas de cabecera ────────────────────────────────────────
+        $sheet->freezePane('A6');
+
+        // ── Márgenes de impresión ─────────────────────────────────────────────
+        $sheet->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.5)->setRight(0.5);
+        $sheet->getPageSetup()
+            ->setOrientation(count($headers) > 7
+                ? \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE
+                : \PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT)
+            ->setFitToPage(true)
+            ->setFitToWidth(1)
+            ->setFitToHeight(0);
+
+        $writer  = new Xlsx($spreadsheet);
+        $tmpFile = tempnam(sys_get_temp_dir(), 'xlsx_');
+        $writer->save($tmpFile);
+
+        return response()->download($tmpFile, "{$filename}.xlsx", [
+            'Content-Type'           => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control'          => 'no-store, no-cache, must-revalidate',
+            'Pragma'                 => 'no-cache',
+        ])->deleteFileAfterSend(true);
     }
 }

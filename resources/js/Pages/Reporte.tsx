@@ -1,7 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { TrendingUp, ShoppingBag, DollarSign, Bike, AlertTriangle, BarChart3, FileText, FileSpreadsheet, Download } from 'lucide-react';
+import { TrendingUp, ShoppingBag, DollarSign, Bike, AlertTriangle, BarChart3, FileText, FileSpreadsheet, Download, TrendingDown, Printer } from 'lucide-react';
 
 interface Resumen {
     total_ventas: number;
@@ -9,6 +9,7 @@ interface Resumen {
     pedidos_mesa: number;
     pedidos_domicilio: number;
     ticket_promedio: number;
+    total_gastos: number;
 }
 
 interface TopPlato {
@@ -60,13 +61,15 @@ const INV_STATUS_CLASS: Record<string, string> = {
 };
 
 const REPORTES = [
-    { tipo: 'caja',       label: 'Caja',       desc: 'Todos los pagos registrados' },
-    { tipo: 'pedidos',    label: 'Pedidos',     desc: 'Historial completo de pedidos' },
-    { tipo: 'cocina',     label: 'Cocina',      desc: 'Listado general de pedidos' },
-    { tipo: 'novedades',  label: 'Novedades',   desc: 'Pérdidas y alertas de cocina' },
-    { tipo: 'mesa',       label: 'Mesa',        desc: 'Pedidos por mesa individualmente' },
-    { tipo: 'domicilio',  label: 'Domicilio',   desc: 'Domicilios por repartidor' },
-    { tipo: 'inventario', label: 'Inventario',  desc: 'Stock y bodega actual' },
+    { tipo: 'caja',            label: 'Caja',            desc: 'Todos los pagos registrados' },
+    { tipo: 'cierre_caja',     label: 'Cierre de Caja',  desc: 'Resumen de efectivo por método' },
+    { tipo: 'cierre_datafono', label: 'Cierre Datáfono', desc: 'Transacciones electrónicas' },
+    { tipo: 'pedidos',         label: 'Pedidos',         desc: 'Historial completo de pedidos' },
+    { tipo: 'cocina',          label: 'Cocina',          desc: 'Listado general de pedidos' },
+    { tipo: 'novedades',       label: 'Novedades',       desc: 'Pérdidas y alertas de cocina' },
+    { tipo: 'domicilio',       label: 'Domicilio',       desc: 'Domicilios por repartidor' },
+    { tipo: 'inventario',      label: 'Inventario',      desc: 'Stock y bodega actual' },
+    { tipo: 'gastos',          label: 'Gastos',          desc: 'Gastos y egresos del período' },
 ] as const;
 
 export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades, inventario_critico, filters }: Props) {
@@ -92,12 +95,13 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
                 },
             });
             if (!res.ok) throw new Error('Error al generar el reporte');
-            const blob = await res.blob();
-            const ext  = formato === 'pdf' ? 'pdf' : 'xlsx';
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `${tipo}_${desde}_${hasta}.${ext}`;
+            const blob   = await res.blob();
+            const ext    = formato === 'xlsx' ? 'xlsx' : 'pdf';
+            const suffix = formato === 'pos' ? '_pos' : '';
+            const url    = URL.createObjectURL(blob);
+            const a      = document.createElement('a');
+            a.href       = url;
+            a.download   = `${tipo}_${desde}_${hasta}${suffix}.${ext}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -113,10 +117,11 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
     const maxVendidos = Math.max(...top_platos.map(p => p.vendidos), 1);
 
     const kpis = [
-        { label: 'Ventas',          value: fmt(resumen.total_ventas),           icon: DollarSign },
-        { label: 'Pedidos',         value: String(resumen.total_pedidos),        icon: ShoppingBag },
-        { label: 'Pedidos mesa',    value: String(resumen.pedidos_mesa),         icon: TrendingUp },
-        { label: 'Domicilios',      value: String(resumen.pedidos_domicilio),    icon: Bike },
+        { label: 'Ventas',    value: fmt(resumen.total_ventas),        icon: DollarSign,   color: 'text-primary',    bg: 'bg-primary/10' },
+        { label: 'Pedidos',   value: String(resumen.total_pedidos),    icon: ShoppingBag,  color: 'text-blue-400',   bg: 'bg-blue-400/10' },
+        { label: 'Mesa',      value: String(resumen.pedidos_mesa),     icon: TrendingUp,   color: 'text-green-400',  bg: 'bg-green-400/10' },
+        { label: 'Domicilio', value: String(resumen.pedidos_domicilio),icon: Bike,         color: 'text-purple-400', bg: 'bg-purple-400/10' },
+        { label: 'Gastos',    value: fmt(resumen.total_gastos),        icon: TrendingDown, color: 'text-red-400',    bg: 'bg-red-400/10' },
     ];
 
     return (
@@ -143,37 +148,55 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
 
             {/* Exportar reportes */}
             <div className="rounded-2xl border border-border bg-card p-5 mb-6">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-1">
                     <Download className="h-4 w-4 text-primary" />
                     <h2 className="font-display text-base font-bold">Exportar reportes</h2>
                     <span className="text-xs text-muted-foreground ml-1">· período seleccionado</span>
                 </div>
+                <p className="text-xs text-muted-foreground mb-4 ml-6">
+                    <span className="inline-flex items-center gap-1"><FileSpreadsheet className="h-3 w-3" /> Excel</span>
+                    <span className="mx-2 text-border">·</span>
+                    <span className="inline-flex items-center gap-1"><FileText className="h-3 w-3" /> PDF carta (A4)</span>
+                    <span className="mx-2 text-border">·</span>
+                    <span className="inline-flex items-center gap-1"><Printer className="h-3 w-3" /> PDF POS (80 mm)</span>
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {REPORTES.map(({ tipo, label, desc }) => {
                         const loadingXlsx = downloading === `${tipo}-xlsx`;
                         const loadingPdf  = downloading === `${tipo}-pdf`;
+                        const loadingPos  = downloading === `${tipo}-pos`;
+                        const spin = <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />;
                         return (
                             <div key={tipo} className="rounded-xl border border-border bg-muted/10 p-4">
                                 <div className="font-semibold text-sm mb-0.5">{label}</div>
                                 <div className="text-xs text-muted-foreground mb-3">{desc}</div>
-                                <div className="flex gap-2">
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    {/* Excel */}
                                     <button
                                         onClick={() => descargar(tipo, 'xlsx')}
                                         disabled={!!downloading}
-                                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-xs font-medium hover:bg-accent/10 hover:text-accent hover:border-accent/30 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-medium hover:bg-accent/10 hover:text-accent hover:border-accent/30 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        title="Exportar Excel"
                                     >
-                                        {loadingXlsx
-                                            ? <><span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> Generando...</>
-                                            : <><FileSpreadsheet className="h-3.5 w-3.5" /> Excel</>}
+                                        {loadingXlsx ? <>{spin} ...</> : <><FileSpreadsheet className="h-3.5 w-3.5" /> Excel</>}
                                     </button>
+                                    {/* PDF carta */}
                                     <button
                                         onClick={() => descargar(tipo, 'pdf')}
                                         disabled={!!downloading}
-                                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-xs font-medium hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-medium hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        title="Exportar PDF carta (A4)"
                                     >
-                                        {loadingPdf
-                                            ? <><span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> Generando...</>
-                                            : <><FileText className="h-3.5 w-3.5" /> PDF</>}
+                                        {loadingPdf ? <>{spin} ...</> : <><FileText className="h-3.5 w-3.5" /> PDF</>}
+                                    </button>
+                                    {/* PDF POS */}
+                                    <button
+                                        onClick={() => descargar(tipo, 'pos')}
+                                        disabled={!!downloading}
+                                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-medium hover:bg-orange-500/10 hover:text-orange-400 hover:border-orange-400/30 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                        title="Exportar PDF POS (80 mm)"
+                                    >
+                                        {loadingPos ? <>{spin} ...</> : <><Printer className="h-3.5 w-3.5" /> POS</>}
                                     </button>
                                 </div>
                             </div>
@@ -183,12 +206,12 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
             </div>
 
             {/* KPIs */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-                {kpis.map(({ label, value, icon: Icon }) => (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
+                {kpis.map(({ label, value, icon: Icon, color, bg }) => (
                     <div key={label} className="rounded-2xl border border-border bg-card p-5">
                         <div className="flex justify-between items-start">
                             <div className="text-xs text-muted-foreground">{label}</div>
-                            <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                            <div className={`grid h-8 w-8 place-items-center rounded-lg ${bg} ${color}`}>
                                 <Icon className="h-4 w-4" />
                             </div>
                         </div>

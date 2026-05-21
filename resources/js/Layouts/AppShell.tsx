@@ -28,6 +28,7 @@ const paths: Record<string, string> = {
     'shield-check':     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
     'plus-circle':      '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
     'settings':         '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    'receipt':          '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M16 8H8"/><path d="M16 12H8"/><path d="M12 16H8"/>',
 };
 
 function Icon({ name, className = 'h-4 w-4' }: { name: string; className?: string }) {
@@ -82,6 +83,7 @@ const mesaGroup: NavItem = { label: 'Mesa', icon: 'layout-dashboard', children: 
 const configuracionGroup: NavItem = { label: 'Configuraciones', icon: 'settings', children: [
     { href: '/configuracion/pagos',     label: 'Métodos de pago' },
     { href: '/configuracion/domicilio', label: 'Tarifas domicilio' },
+    { href: '/configuracion/horario',   label: 'Horario trabajo' },
 ]};
 
 const cajaGroup: NavItem = { label: 'Caja', icon: 'dollar-sign', children: [
@@ -105,6 +107,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
             { href: '/reporte',   label: 'General' },
             { href: '/auditoria', label: 'Auditoría' },
         ]},
+        { href: '/gastos', label: 'Gastos', icon: 'receipt' },
         configuracionGroup,
     ],
     administrador: [
@@ -117,6 +120,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
         mesaGroup,
         { href: '/domicilio', label: 'Domicilio', icon: 'map-pin' },
         { href: '/inventario',label: 'Inventario',icon: 'package' },
+        { href: '/gastos',    label: 'Gastos',    icon: 'receipt' },
         configuracionGroup,
     ],
     caja: [

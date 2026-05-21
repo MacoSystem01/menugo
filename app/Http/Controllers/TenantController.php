@@ -27,6 +27,9 @@ class TenantController extends Controller
             'phone'                 => 'nullable|string|max:20',
             'email'                 => 'required|email|max:150',
             'password'              => 'required|string|min:8|confirmed',
+            'restaurant_address'    => 'nullable|string|max:255',
+            'restaurant_lat'        => 'nullable|numeric|between:-90,90',
+            'restaurant_lng'        => 'nullable|numeric|between:-180,180',
         ]);
 
         $subdomain  = strtolower($data['subdomain']);
@@ -51,13 +54,26 @@ class TenantController extends Controller
         // Entrar al contexto del tenant para crear el usuario dueño
         tenancy()->initialize($tenant);
 
-        User::create([
+        $dispatcher = User::getEventDispatcher();
+        User::unsetEventDispatcher();
+        $owner = User::create([
             'name'     => $data['owner_name'],
             'phone'    => $data['phone'] ?? null,
             'email'    => $data['email'],
             'password' => Hash::make($data['password']),
             'active'   => true,
         ]);
+        User::setEventDispatcher($dispatcher);
+
+        $owner->assignRole('gerente');
+
+        if (!empty($data['restaurant_address'])) {
+            $setting = \App\Models\CartaSetting::first() ?? new \App\Models\CartaSetting();
+            $setting->restaurant_address = $data['restaurant_address'];
+            $setting->restaurant_lat     = isset($data['restaurant_lat']) ? (float) $data['restaurant_lat'] : null;
+            $setting->restaurant_lng     = isset($data['restaurant_lng']) ? (float) $data['restaurant_lng'] : null;
+            $setting->save();
+        }
 
         tenancy()->end();
 
@@ -116,48 +132,99 @@ class TenantController extends Controller
     public function index()
     {
         $tenants = Tenant::with('domains')->latest()->get()->map(fn($t) => [
-            'id'        => $t->id,
-            'name'      => $t->name,
-            'email'     => $t->email,
-            'plan'      => $t->plan,
-            'active'    => $t->active ?? true,
-            'subdomain' => $t->domains->first()?->domain,
+            'id'         => $t->id,
+            'name'       => $t->name,
+            'email'      => $t->email,
+            'plan'       => $t->plan,
+            'active'     => $t->active ?? true,
+            'subdomain'  => $t->domains->first()?->domain,
             'expires_at' => $t->expires_at,
-            'created_at'=> $t->created_at->format('d/m/Y'),
+            'created_at' => $t->created_at->format('d/m/Y'),
+            'address'    => $this->getTenantAddress($t),
         ]);
 
         return Inertia::render('Admin/Tenants', compact('tenants'));
     }
 
+    private function getTenantAddress(Tenant $tenant): ?string
+    {
+        try {
+            tenancy()->initialize($tenant);
+            $address = \App\Models\CartaSetting::first()?->restaurant_address;
+            tenancy()->end();
+            return $address ?: null;
+        } catch (\Throwable) {
+            tenancy()->end();
+            return null;
+        }
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'     => 'required|string|max:150',
-            'email'    => 'required|email|max:150',
-            'subdomain'=> 'required|string|max:50|regex:/^[a-z0-9\-]+$/|unique:domains,domain',
-            'plan'     => 'in:basico,pro,enterprise',
+            'type'                  => 'required|in:restaurante,puesto',
+            'plan'                  => 'required|in:mensual,trimestral,semestral,anual',
+            'name'                  => 'required|string|max:150',
+            'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/'],
+            'owner_name'            => 'required|string|max:150',
+            'phone'                 => 'nullable|string|max:20',
+            'email'                 => 'required|email|max:150',
+            'password'              => 'required|string|min:8|confirmed',
+            'restaurant_address'    => 'nullable|string|max:255',
+            'restaurant_lat'        => 'nullable|numeric|between:-90,90',
+            'restaurant_lng'        => 'nullable|numeric|between:-180,180',
         ]);
 
-        $subdomain = Str::slug($data['subdomain']);
+        $subdomain  = strtolower($data['subdomain']);
+        $fullDomain = "{$subdomain}.Menugo.local";
+
+        if (\Stancl\Tenancy\Database\Models\Domain::where('domain', $fullDomain)->exists()) {
+            return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
+        }
 
         $tenant = Tenant::create([
-            'id'    => Str::uuid(),
-            'name'  => $data['name'],
-            'email' => $data['email'],
-            'plan'  => $data['plan'] ?? 'basico',
-            'active' => true,
+            'id'         => Str::uuid(),
+            'name'       => $data['name'],
+            'email'      => $data['email'],
+            'plan'       => $data['plan'],
+            'type'       => $data['type'],
+            'active'     => true,
             'expires_at' => now()->addDays(30),
         ]);
 
-        $tenant->domains()->create(['domain' => "{$subdomain}.Menugo.local"]);
+        $tenant->domains()->create(['domain' => $fullDomain]);
 
-        // Intentar auto-escribir hosts; si falla, notificar al admin
+        tenancy()->initialize($tenant);
+
+        $dispatcher = User::getEventDispatcher();
+        User::unsetEventDispatcher();
+        $owner = User::create([
+            'name'     => $data['owner_name'],
+            'phone'    => $data['phone'] ?? null,
+            'email'    => $data['email'],
+            'password' => Hash::make($data['password']),
+            'active'   => true,
+        ]);
+        User::setEventDispatcher($dispatcher);
+
+        $owner->assignRole('gerente');
+
+        if (!empty($data['restaurant_address'])) {
+            $setting = \App\Models\CartaSetting::first() ?? new \App\Models\CartaSetting();
+            $setting->restaurant_address = $data['restaurant_address'];
+            $setting->restaurant_lat     = isset($data['restaurant_lat']) ? (float) $data['restaurant_lat'] : null;
+            $setting->restaurant_lng     = isset($data['restaurant_lng']) ? (float) $data['restaurant_lng'] : null;
+            $setting->save();
+        }
+
+        tenancy()->end();
+
         Artisan::call('tenant:host', ['subdomain' => $subdomain, '--write' => true]);
         $hostsWritten = str_contains(Artisan::output(), 'Agregado');
 
-        $msg = "Restaurante '{$data['name']}' creado en {$subdomain}.Menugo.local";
+        $msg = "Restaurante '{$data['name']}' creado en {$fullDomain}";
         if (! $hostsWritten) {
-            $msg .= " — ⚠️ Agrega en hosts: 127.0.0.1 {$subdomain}.Menugo.local";
+            $msg .= " — ⚠️ Agrega en hosts: 127.0.0.1 {$fullDomain}";
         }
 
         return redirect()->route('admin.tenants')->with('success', $msg);
@@ -191,15 +258,34 @@ class TenantController extends Controller
     public function update(Request $request, string $id)
     {
         $tenant = Tenant::findOrFail($id);
+
         $data = $request->validate([
-            'expires_at' => 'nullable|date',
-            'plan'       => 'nullable|string',
-            'active'     => 'nullable|boolean',
+            'name'               => 'nullable|string|max:150',
+            'email'              => 'nullable|email|max:150',
+            'plan'               => 'nullable|string|in:mensual,trimestral,semestral,anual',
+            'active'             => 'nullable|boolean',
+            'expires_at'         => 'nullable|date',
+            'restaurant_address' => 'nullable|string|max:255',
         ]);
 
-        $tenant->update($data);
+        $address = array_key_exists('restaurant_address', $data) ? $data['restaurant_address'] : false;
+        unset($data['restaurant_address']);
 
-        return back()->with('success', 'Local actualizado correctamente.');
+        $tenant->update(array_filter($data, fn($v) => $v !== null));
+
+        if ($address !== false) {
+            try {
+                tenancy()->initialize($tenant);
+                $setting = \App\Models\CartaSetting::firstOrCreate([]);
+                $setting->restaurant_address = $address ?: null;
+                $setting->save();
+                tenancy()->end();
+            } catch (\Throwable) {
+                tenancy()->end();
+            }
+        }
+
+        return back()->with('success', "'{$tenant->name}' actualizado correctamente.");
     }
 
     public function toggleStatus(string $id)

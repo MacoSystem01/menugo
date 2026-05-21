@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\InventoryItem;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -82,7 +83,15 @@ class InventarioController extends Controller
 
         $data['unit'] = $data['unit'] ?? '';
 
-        InventoryItem::create($data);
+        $item = InventoryItem::create($data);
+
+        AuditLog::registrar('create', 'Inventario', $item->id, "Producto '{$item->name}' agregado al inventario", [
+            'quantity'    => (float) $item->quantity,
+            'unit'        => $item->unit,
+            'unit_price'  => (float) $item->unit_price,
+            'status'      => $item->status,
+            'expiry_date' => $item->expiry_date?->format('Y-m-d'),
+        ]);
 
         return back()->with('success', "Producto '{$data['name']}' agregado al inventario.");
     }
@@ -101,14 +110,24 @@ class InventarioController extends Controller
 
         $data['unit'] = $data['unit'] ?? '';
 
+        $old = $inventario->only(['name', 'quantity', 'unit_price', 'status', 'expiry_date']);
         $inventario->update($data);
+
+        AuditLog::registrar('update', 'Inventario', $inventario->id, "Producto '{$inventario->name}' actualizado en inventario", [
+            'old' => $old,
+            'new' => $inventario->only(['name', 'quantity', 'unit_price', 'status', 'expiry_date']),
+        ]);
 
         return back()->with('success', 'Producto actualizado.');
     }
 
     public function destroy(InventoryItem $inventario)
     {
+        $name = $inventario->name;
+        $id   = $inventario->id;
         $inventario->delete();
+
+        AuditLog::registrar('delete', 'Inventario', $id, "Producto '{$name}' eliminado del inventario");
 
         return back()->with('success', 'Producto eliminado del inventario.');
     }

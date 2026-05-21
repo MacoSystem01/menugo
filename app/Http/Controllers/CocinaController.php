@@ -267,9 +267,15 @@ class CocinaController extends Controller
             'dish_id'     => 'nullable|exists:dishes,id',
         ]);
 
-        KitchenNote::create([
+        $note = KitchenNote::create([
             ...$data,
             'created_by' => auth()->id(),
+        ]);
+
+        AuditLog::registrar('create', 'Novedad', $note->id, "Novedad tipo '{$note->type}' registrada manualmente", [
+            'type'        => $note->type,
+            'description' => $note->description,
+            'order_id'    => $note->order_id,
         ]);
 
         return back()->with('success', 'Novedad registrada.');

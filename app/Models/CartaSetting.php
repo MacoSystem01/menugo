@@ -23,6 +23,10 @@ class CartaSetting extends Model
         'delivery_enabled',
         'delivery_min_order',
         'delivery_zones',
+        'work_schedule',
+        'restaurant_lat',
+        'restaurant_lng',
+        'restaurant_address',
     ];
 
     protected $casts = [
@@ -32,6 +36,9 @@ class CartaSetting extends Model
         'delivery_ranges'  => 'array',
         'delivery_enabled' => 'boolean',
         'delivery_zones'   => 'array',
+        'work_schedule'    => 'array',
+        'restaurant_lat'   => 'float',
+        'restaurant_lng'   => 'float',
     ];
 
     // Ensures firstOrCreate returns sensible values even before the DB row is saved

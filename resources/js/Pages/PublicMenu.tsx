@@ -1,6 +1,34 @@
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock } from 'lucide-react';
+import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock, MapPin, AlertTriangle } from 'lucide-react';
+
+// ── Google Maps helpers ───────────────────────────────────────────────────────
+
+function loadMapsScript(key: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        if ((window as any).google?.maps?.places) { resolve(); return; }
+        if (document.getElementById('gm-public')) {
+            document.getElementById('gm-public')!.addEventListener('load', () => resolve());
+            return;
+        }
+        const s   = document.createElement('script');
+        s.id      = 'gm-public';
+        s.src     = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=es`;
+        s.async   = true;
+        s.onload  = () => resolve();
+        s.onerror = () => reject(new Error('No se pudo cargar Google Maps'));
+        document.head.appendChild(s);
+    });
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R    = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a    = Math.sin(dLat / 2) ** 2
+               + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 // ── Íconos de redes sociales (SVG inline) ─────────────────────────────────────
 
@@ -87,6 +115,15 @@ interface DeliveryZone {
     price:  number;
 }
 
+interface PaymentDetail {
+    titular?:    string;
+    numero?:     string;
+    link?:       string;
+    banco?:      string;
+    tipo_cuenta?: string;
+    nota?:       string;
+}
+
 interface CartaSettings {
     primary_color:      string;
     bg_color:           string;
@@ -97,10 +134,15 @@ interface CartaSettings {
     slogan_size:        string;
     banner_url:         string | null;
     payment_methods:    string[];
+    payment_details:    Record<string, PaymentDetail>;
     social_links:       SocialLinks;
     delivery_enabled:   boolean;
     delivery_min_order: number;
     delivery_zones:     DeliveryZone[];
+    restaurant_lat:     number | null;
+    restaurant_lng:     number | null;
+    google_maps_key:    string | null;
+    work_schedule:      Record<string, { activo: boolean; apertura: string; cierre: string }> | null;
 }
 
 interface Table {
@@ -177,12 +219,30 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     const sloganClass = SLOGAN_SIZES[settings?.slogan_size] ?? 'text-sm';
     const payMethods  = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
 
+    // ── Estado operativo del restaurante ──────────────────────────────────────
+    const [closedOverlay, setClosedOverlay] = useState(false);
+    useEffect(() => {
+        const schedule = settings?.work_schedule;
+        if (!schedule) return;
+        const DAY_KEYS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'] as const;
+        const now      = new Date();
+        const dayKey   = DAY_KEYS[now.getDay()];
+        const todaySch = schedule[dayKey];
+        if (!todaySch) return;
+        if (!todaySch.activo) { setClosedOverlay(true); return; }
+        const toMins = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+        const nowMins    = now.getHours() * 60 + now.getMinutes();
+        const apertura   = toMins(todaySch.apertura);
+        const cierre     = toMins(todaySch.cierre);
+        if (nowMins < apertura || nowMins >= cierre) setClosedOverlay(true);
+    }, [settings?.work_schedule]);
+
     // ── Cart state ─────────────────────────────────────────────────────────────
     const [cart,              setCart]              = useState<CartItem[]>([]);
     const [screen,            setScreen]            = useState<Screen>('menu');
     const [submitting,        setSubmitting]        = useState(false);
     const [errors,            setErrors]            = useState<Record<string, string>>({});
-    const [success,           setSuccess]           = useState<{ name: string; total: number } | null>(null);
+    const [success,           setSuccess]           = useState<{ name: string; total: number; paymentMethod: string } | null>(null);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
     // ── Session timer (10 min) ─────────────────────────────────────────────────
@@ -217,9 +277,26 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     }, [timeLeft]);
 
     // ── Checkout form ──────────────────────────────────────────────────────────
-    const deliveryZones   = settings?.delivery_zones     ?? [];
-    const deliveryEnabled = settings?.delivery_enabled   ?? false;
-    const deliveryMinOrder= settings?.delivery_min_order ?? 0;
+    const deliveryZones    = settings?.delivery_zones     ?? [];
+    const deliveryEnabled  = settings?.delivery_enabled   ?? false;
+    const deliveryMinOrder = settings?.delivery_min_order ?? 0;
+    const restaurantLat    = settings?.restaurant_lat     ?? null;
+    const restaurantLng    = settings?.restaurant_lng     ?? null;
+    const googleMapsKey    = settings?.google_maps_key    ?? null;
+    const hasMapsConfig    = !!(googleMapsKey && restaurantLat && restaurantLng);
+
+    const addressInputRef        = useRef<HTMLInputElement>(null);
+    const [addressValidated,     setAddressValidated]     = useState(false);
+    const [deliveryCoords,       setDeliveryCoords]       = useState<{ lat: number; lng: number } | null>(null);
+    const [deliveryKm,           setDeliveryKm]           = useState<number | null>(null);
+    const [outOfCoverage,        setOutOfCoverage]        = useState(false);
+    const [mapsReady,            setMapsReady]            = useState(false);
+    const [warnModal,            setWarnModal]            = useState<{ title: string; message: string } | null>(null);
+    const [addressSuggestions,   setAddressSuggestions]   = useState<Array<{display_name: string; lat: string; lon: string}>>([]);
+    const [showSuggestions,      setShowSuggestions]      = useState(false);
+    const [loadingSuggestions,   setLoadingSuggestions]   = useState(false);
+    const nominatimTimeoutRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const suggestionsRef         = useRef<HTMLDivElement>(null);
 
     const [form, setForm] = useState({
         customer_name:     '',
@@ -235,6 +312,119 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     function setField<K extends keyof typeof form>(key: K, value: typeof form[K]) {
         setForm(f => ({ ...f, [key]: value }));
         if (errors[key]) setErrors(e => { const n = { ...e }; delete n[key]; return n; });
+    }
+
+    // ── Google Maps: cargar script y adjuntar autocomplete ────────────────────
+    useEffect(() => {
+        if (!googleMapsKey) return;
+        loadMapsScript(googleMapsKey)
+            .then(() => setMapsReady(true))
+            .catch(() => { /* Maps no disponible, modo sin validación */ });
+    }, [googleMapsKey]);
+
+    useEffect(() => {
+        if (!mapsReady || !addressInputRef.current || form.type !== 'domicilio') return;
+
+        const ac = new (window as any).google.maps.places.Autocomplete(addressInputRef.current, {
+            types:  ['address'],
+            fields: ['formatted_address', 'geometry'],
+        });
+
+        const listener = ac.addListener('place_changed', () => {
+            const place = ac.getPlace();
+            if (!place.geometry?.location) return;
+
+            const lat  = place.geometry.location.lat() as number;
+            const lng  = place.geometry.location.lng() as number;
+            const addr = place.formatted_address as string ?? '';
+
+            setField('delivery_address', addr);
+            setDeliveryCoords({ lat, lng });
+            setAddressValidated(true);
+            setOutOfCoverage(false);
+
+            // Calcular distancia y auto-seleccionar zona si hay ubicación del restaurante
+            if (restaurantLat && restaurantLng && deliveryZones.length > 0) {
+                const km      = haversineKm(restaurantLat, restaurantLng, lat, lng);
+                setDeliveryKm(km);
+                const zoneIdx = deliveryZones.findIndex(z => km >= z.min_km && km <= z.max_km);
+                if (zoneIdx >= 0) {
+                    setForm(f => ({ ...f, delivery_zone_idx: zoneIdx, delivery_address: addr }));
+                    setOutOfCoverage(false);
+                } else {
+                    setForm(f => ({ ...f, delivery_zone_idx: null, delivery_address: addr }));
+                    setOutOfCoverage(true);
+                }
+            } else {
+                // Sin ubicación del restaurante: solo validar dirección real, zona manual
+                setForm(f => ({ ...f, delivery_address: addr }));
+            }
+        });
+
+        return () => (window as any).google.maps.event.removeListener(listener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mapsReady, form.type]);
+
+    // Limpiar estado de validación al cambiar la dirección manualmente
+    function handleAddressInput(e: React.ChangeEvent<HTMLInputElement>) {
+        const val = e.target.value;
+        setField('delivery_address', val);
+        setAddressValidated(false);
+        setDeliveryCoords(null);
+        setDeliveryKm(null);
+        setOutOfCoverage(false);
+        setForm(f => ({ ...f, delivery_zone_idx: null, delivery_address: val }));
+
+        // Nominatim autocomplete cuando no hay Google Maps key
+        if (!googleMapsKey) {
+            if (nominatimTimeoutRef.current) clearTimeout(nominatimTimeoutRef.current);
+            if (val.trim().length >= 5) {
+                nominatimTimeoutRef.current = setTimeout(() => fetchNominatim(val.trim()), 650);
+            } else {
+                setAddressSuggestions([]);
+                setShowSuggestions(false);
+            }
+        }
+    }
+
+    async function fetchNominatim(query: string) {
+        setLoadingSuggestions(true);
+        try {
+            const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=es`;
+            const res  = await fetch(url);
+            const data = await res.json() as Array<{display_name: string; lat: string; lon: string}>;
+            setAddressSuggestions(data);
+            setShowSuggestions(data.length > 0);
+        } catch {
+            setAddressSuggestions([]);
+            setShowSuggestions(false);
+        } finally {
+            setLoadingSuggestions(false);
+        }
+    }
+
+    function selectNominatimSuggestion(suggestion: { display_name: string; lat: string; lon: string }) {
+        const lat = parseFloat(suggestion.lat);
+        const lng = parseFloat(suggestion.lon);
+        setAddressValidated(true);
+        setDeliveryCoords({ lat, lng });
+        setShowSuggestions(false);
+        setAddressSuggestions([]);
+        setOutOfCoverage(false);
+
+        if (restaurantLat && restaurantLng && deliveryZones.length > 0) {
+            const km      = haversineKm(restaurantLat, restaurantLng, lat, lng);
+            setDeliveryKm(km);
+            const zoneIdx = deliveryZones.findIndex(z => km >= z.min_km && km <= z.max_km);
+            if (zoneIdx >= 0) {
+                setForm(f => ({ ...f, delivery_zone_idx: zoneIdx, delivery_address: suggestion.display_name }));
+            } else {
+                setForm(f => ({ ...f, delivery_zone_idx: null, delivery_address: suggestion.display_name }));
+                setOutOfCoverage(true);
+            }
+        } else {
+            setForm(f => ({ ...f, delivery_address: suggestion.display_name }));
+        }
     }
 
     // ── Cart helpers ───────────────────────────────────────────────────────────
@@ -270,21 +460,93 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         ? (deliveryZones[form.delivery_zone_idx] ?? null)
         : null;
     const deliveryFee = selectedZone?.price ?? 0;
+    const zoneIsAutoDetected = addressValidated && deliveryCoords !== null && restaurantLat !== null && restaurantLng !== null;
     const grandTotal  = totalPrice + deliveryFee;
+
+    // ── Validaciones de domicilio ───────────────────────────────────────────────
+    const belowMinOrder = form.type === 'domicilio'
+        && deliveryEnabled
+        && deliveryMinOrder > 0
+        && totalPrice < deliveryMinOrder;
+
+    const missingZone = form.type === 'domicilio'
+        && deliveryEnabled
+        && deliveryZones.length > 0
+        && form.delivery_zone_idx === null
+        && !outOfCoverage;
+
+    // Dirección debe validarse via autocomplete (Google Maps o Nominatim) — sin importar si hay key
+    const addressNotValidated = form.type === 'domicilio'
+        && !addressValidated
+        && form.delivery_address.trim().length > 0;
 
     // ── Submit ─────────────────────────────────────────────────────────────────
     const selectedTable     = form.type === 'mesa' && form.table_id
         ? tables.find(t => String(t.id) === form.table_id) ?? null
         : null;
     const tableIsOccupied   = selectedTable?.has_active_orders ?? false;
-    const canSubmit         = !tableIsOccupied || occupiedConfirmed;
+    const canSubmit         = (!tableIsOccupied || occupiedConfirmed)
+        && !belowMinOrder
+        && !missingZone
+        && !outOfCoverage
+        && !addressNotValidated;
 
     function submitOrder() {
+        if (submitting) return;
+
+        // ── Validaciones con popup ──────────────────────────────────────────────
+        if (form.type === 'domicilio') {
+            const addr = form.delivery_address.trim();
+
+            if (!addr) {
+                setWarnModal({
+                    title:   'Dirección requerida',
+                    message: 'Ingresa la dirección de entrega antes de confirmar el pedido.',
+                });
+                return;
+            }
+
+            if (!addressValidated) {
+                setWarnModal({
+                    title:   'Dirección no válida',
+                    message: googleMapsKey && mapsReady
+                        ? 'Escribe tu dirección y selecciónala del menú de sugerencias de Google Maps para confirmar que es real.'
+                        : 'Escribe tu dirección y selecciónala de la lista de sugerencias para confirmar que es una ubicación real. No se aceptan direcciones inventadas.',
+                });
+                return;
+            }
+
+            if (outOfCoverage) {
+                setWarnModal({
+                    title:   'Fuera de zona de cobertura',
+                    message: `Tu dirección está fuera del área de entrega${deliveryKm !== null ? ` (${deliveryKm.toFixed(1)} km del restaurante)` : ''}. Lamentablemente no podemos llegar a esa ubicación.`,
+                });
+                return;
+            }
+
+            if (missingZone) {
+                setWarnModal({
+                    title:   'Selecciona tu zona de entrega',
+                    message: 'Debes elegir una zona de entrega para que podamos calcular el costo del domicilio.',
+                });
+                return;
+            }
+
+            if (belowMinOrder) {
+                setWarnModal({
+                    title:   'Pedido mínimo no alcanzado',
+                    message: `El pedido mínimo para domicilio es ${fmt(deliveryMinOrder)}. Tu pedido actual es ${fmt(totalPrice)}. Agrega ${fmt(deliveryMinOrder - totalPrice)} más para continuar.`,
+                });
+                return;
+            }
+        }
+
         if (!canSubmit) return;
         setSubmitting(true);
         setErrors({});
-        const snapshotTotal = totalPrice;
-        const snapshotName  = form.customer_name;
+        const snapshotTotal  = grandTotal;
+        const snapshotName   = form.customer_name;
+        const snapshotMethod = form.payment_method;
         router.post('/carta/pedido', {
             customer_name:     form.customer_name,
             customer_phone:    form.customer_phone,
@@ -292,6 +554,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             table_id:          form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
             delivery_address:  form.type === 'domicilio' ? form.delivery_address || null : null,
             delivery_zone_idx: form.type === 'domicilio' ? form.delivery_zone_idx : null,
+            delivery_lat:      form.type === 'domicilio' && deliveryCoords ? deliveryCoords.lat : null,
+            delivery_lng:      form.type === 'domicilio' && deliveryCoords ? deliveryCoords.lng : null,
             payment_method:    form.payment_method,
             notes:             form.notes || null,
             confirmed:         occupiedConfirmed,
@@ -299,7 +563,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         }, {
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
             onSuccess: () => {
-                setSuccess({ name: snapshotName, total: snapshotTotal });
+                setSuccess({ name: snapshotName, total: snapshotTotal, paymentMethod: snapshotMethod });
                 setCart([]);
                 setScreen('menu');
                 setOccupiedConfirmed(false);
@@ -313,9 +577,88 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         });
     }
 
+    // ── Datos para el overlay de cierre ─────────────────────────────────────
+    const DAYS_LABELS: { key: string; label: string }[] = [
+        { key: 'lun', label: 'Lunes' }, { key: 'mar', label: 'Martes' },
+        { key: 'mie', label: 'Miércoles' }, { key: 'jue', label: 'Jueves' },
+        { key: 'vie', label: 'Viernes' }, { key: 'sab', label: 'Sábado' },
+        { key: 'dom', label: 'Domingo' },
+    ];
+    const DAY_KEYS_NOW = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'] as const;
+    const todayKey     = DAY_KEYS_NOW[new Date().getDay()];
+    const schedule     = settings?.work_schedule ?? null;
+
+    function fmtHour(hhmm: string) {
+        const [h, m] = hhmm.split(':').map(Number);
+        const ampm   = h >= 12 ? 'p.m.' : 'a.m.';
+        const h12    = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    }
+
     return (
         <div className="min-h-screen" style={{ backgroundColor: s.bg, color: s.text }}>
             <Head title={`Carta — ${tenant_name}`} />
+
+            {/* ── Overlay restaurante cerrado ── */}
+            {closedOverlay && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)' }}>
+                    <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+                        style={{ backgroundColor: s.bg, color: s.text }}>
+
+                        {/* Header */}
+                        <div className="px-6 pt-8 pb-5 text-center border-b" style={{ borderColor: 'rgba(128,128,128,0.15)' }}>
+                            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full mb-4"
+                                style={{ backgroundColor: `${s.primary}22` }}>
+                                <Clock className="h-8 w-8" style={{ color: s.primary }} />
+                            </div>
+                            <h2 className="text-xl font-bold mb-1">{tenant_name}</h2>
+                            <p className="text-sm font-semibold" style={{ color: s.primary }}>
+                                Restaurante cerrado
+                            </p>
+                            <p className="text-xs mt-1 opacity-60">
+                                {schedule?.[todayKey]?.activo === false
+                                    ? 'Hoy no tenemos servicio. Consulta nuestros horarios.'
+                                    : 'En este momento estamos fuera del horario de atención.'}
+                            </p>
+                        </div>
+
+                        {/* Horarios */}
+                        {schedule && (
+                            <div className="px-6 py-5 space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-widest opacity-40 mb-3">
+                                    Horario de atención
+                                </p>
+                                {DAYS_LABELS.map(({ key, label }) => {
+                                    const day     = schedule[key];
+                                    const isToday = key === todayKey;
+                                    return (
+                                        <div key={key}
+                                            className="flex items-center justify-between text-sm rounded-xl px-3 py-2"
+                                            style={{
+                                                backgroundColor: isToday ? `${s.primary}18` : 'transparent',
+                                                fontWeight: isToday ? 600 : 400,
+                                            }}>
+                                            <span style={{ color: isToday ? s.primary : undefined }}>
+                                                {label}{isToday && ' (hoy)'}
+                                            </span>
+                                            {day?.activo
+                                                ? <span className="text-xs opacity-80">{fmtHour(day.apertura)} – {fmtHour(day.cierre)}</span>
+                                                : <span className="text-xs opacity-40">Cerrado</span>
+                                            }
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Footer */}
+                        <div className="px-6 pb-7 text-center">
+                            <p className="text-xs opacity-40">Vuelve pronto · {tenant_name}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Banner ── */}
             {settings?.banner_url && (
@@ -814,7 +1157,15 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                     <button
                                         key={val}
                                         type="button"
-                                        onClick={() => setField('type', val)}
+                                        onClick={() => {
+                                            setForm(f => ({
+                                                ...f,
+                                                type: val,
+                                                // Auto-seleccionar zona única al cambiar a domicilio
+                                                delivery_zone_idx: val === 'domicilio' && deliveryZones.length === 1 ? 0 : null,
+                                            }));
+                                            if (errors.type) setErrors(e => { const n = { ...e }; delete n.type; return n; });
+                                        }}
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors"
                                         style={{
                                             borderColor:     form.type === val ? s.primary : `${s.text}20`,
@@ -898,66 +1249,209 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                         {/* Dirección domicilio */}
                         {form.type === 'domicilio' && (
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>
+                                <label className="text-sm font-medium flex items-center gap-1.5" style={{ color: s.text }}>
+                                    <MapPin className="h-3.5 w-3.5" />
                                     Dirección de entrega
                                 </label>
-                                <textarea
-                                    rows={2}
-                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none resize-none"
-                                    style={{
-                                        borderColor:     errors.delivery_address ? '#ef4444' : `${s.text}25`,
-                                        backgroundColor: `${s.text}06`,
-                                        color:           s.text,
-                                    }}
-                                    placeholder="Calle, barrio, referencias..."
-                                    value={form.delivery_address}
-                                    onChange={e => setField('delivery_address', e.target.value)}
-                                />
+
+                                <div className="relative">
+                                    <input
+                                        ref={addressInputRef}
+                                        type="text"
+                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none pr-9"
+                                        style={{
+                                            borderColor:     errors.delivery_address || outOfCoverage
+                                                ? '#ef4444'
+                                                : addressValidated
+                                                ? '#22c55e'
+                                                : `${s.text}25`,
+                                            backgroundColor: `${s.text}06`,
+                                            color:           s.text,
+                                        }}
+                                        placeholder="Escribe tu dirección y selecciónala de la lista…"
+                                        value={form.delivery_address}
+                                        onChange={handleAddressInput}
+                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                                        onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
+                                        autoComplete="off"
+                                    />
+                                    {/* Indicador de estado */}
+                                    {form.delivery_address.trim() && (
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base">
+                                            {outOfCoverage          ? '🚫'
+                                             : addressValidated     ? '✓'
+                                             : loadingSuggestions   ? '⏳'
+                                             : ''}
+                                        </span>
+                                    )}
+
+                                    {/* Sugerencias Nominatim */}
+                                    {!googleMapsKey && showSuggestions && addressSuggestions.length > 0 && (
+                                        <div
+                                            ref={suggestionsRef}
+                                            className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border shadow-xl overflow-hidden"
+                                            style={{ backgroundColor: s.bg, borderColor: `${s.text}20` }}
+                                        >
+                                            {addressSuggestions.map((suggestion, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    className="w-full px-3 py-2.5 text-left text-xs transition-colors flex items-start gap-2"
+                                                    style={{
+                                                        color:        s.text,
+                                                        borderBottom: idx < addressSuggestions.length - 1 ? `1px solid ${s.text}10` : 'none',
+                                                    }}
+                                                    onMouseDown={e => { e.preventDefault(); selectNominatimSuggestion(suggestion); }}
+                                                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${s.text}08`}
+                                                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
+                                                >
+                                                    <MapPin className="h-3 w-3 shrink-0 mt-0.5 opacity-50" />
+                                                    <span className="leading-relaxed">{suggestion.display_name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Error o estado */}
                                 {errors.delivery_address && (
                                     <p className="text-xs text-red-500">{errors.delivery_address}</p>
+                                )}
+                                {outOfCoverage && !errors.delivery_address && (
+                                    <div className="flex items-start gap-1.5 rounded-xl border border-red-400/40 bg-red-400/10 px-3 py-2">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-red-500">
+                                            Esta dirección está fuera de nuestra zona de cobertura
+                                            {deliveryKm !== null ? ` (${deliveryKm.toFixed(1)} km)` : ''}.
+                                        </p>
+                                    </div>
+                                )}
+                                {addressNotValidated && !outOfCoverage && form.delivery_address.trim() && (
+                                    <p className="text-xs" style={{ color: s.text, opacity: 0.55 }}>
+                                        {googleMapsKey && mapsReady
+                                            ? 'Selecciona una dirección del menú de Google Maps para validarla.'
+                                            : 'Selecciona una opción de la lista de sugerencias para confirmar la dirección.'}
+                                    </p>
+                                )}
+                                {addressValidated && deliveryKm !== null && !outOfCoverage && (
+                                    <div className="flex items-center gap-1.5 text-xs" style={{ color: '#22c55e' }}>
+                                        <Check className="h-3 w-3" />
+                                        Dirección válida · {deliveryKm.toFixed(1)} km del restaurante
+                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Selector de zona de domicilio */}
-                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
+                        {/* Zona de entrega */}
+                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && !outOfCoverage && (
                             <div className="space-y-2">
                                 <label className="text-sm font-medium" style={{ color: s.text }}>
-                                    Zona de entrega <span style={{ color: s.primary }}>*</span>
+                                    Zona de entrega
                                 </label>
-                                <div className="space-y-1.5">
-                                    {deliveryZones.map((zone, idx) => {
-                                        const selected = form.delivery_zone_idx === idx;
-                                        return (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onClick={() => setForm(f => ({ ...f, delivery_zone_idx: idx }))}
-                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left"
-                                                style={{
-                                                    borderColor:     selected ? s.primary : `${s.text}20`,
-                                                    backgroundColor: selected ? `${s.primary}12` : 'transparent',
-                                                    color:           s.text,
-                                                }}
-                                            >
-                                                <span>
-                                                    <span className="font-medium">{zone.label}</span>
-                                                    <span className="opacity-55 ml-2 text-xs">
-                                                        {zone.min_km}–{zone.max_km} km
-                                                    </span>
+
+                                {zoneIsAutoDetected && selectedZone ? (
+                                    <div
+                                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
+                                        style={{
+                                            borderColor:     s.primary,
+                                            backgroundColor: `${s.primary}12`,
+                                            color:           s.text,
+                                        }}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
+                                            <span>
+                                                <span className="font-medium">{selectedZone.label}</span>
+                                                <span className="opacity-55 ml-2 text-xs">
+                                                    {selectedZone.min_km}–{selectedZone.max_km} km
                                                 </span>
-                                                <span className="font-bold shrink-0" style={{ color: selected ? s.primary : s.text }}>
-                                                    {zone.price === 0 ? 'Gratis' : fmt(zone.price)}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {deliveryMinOrder > 0 && (
-                                    <p className="text-xs opacity-55" style={{ color: s.text }}>
-                                        Pedido mínimo para domicilio: {fmt(deliveryMinOrder)}
-                                    </p>
+                                            </span>
+                                        </span>
+                                        <span className="font-bold shrink-0" style={{ color: s.primary }}>
+                                            {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            {deliveryZones.map((zone, idx) => {
+                                                const selected = form.delivery_zone_idx === idx;
+                                                return (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setForm(f => ({ ...f, delivery_zone_idx: idx }));
+                                                            if (errors.delivery_zone_idx) setErrors(e => { const n = { ...e }; delete n.delivery_zone_idx; return n; });
+                                                        }}
+                                                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left"
+                                                        style={{
+                                                            borderColor:     selected ? s.primary : missingZone ? '#ef4444' : `${s.text}20`,
+                                                            backgroundColor: selected ? `${s.primary}12` : 'transparent',
+                                                            color:           s.text,
+                                                        }}
+                                                    >
+                                                        <span>
+                                                            <span className="font-medium">{zone.label}</span>
+                                                            <span className="opacity-55 ml-2 text-xs">
+                                                                {zone.min_km}–{zone.max_km} km
+                                                            </span>
+                                                        </span>
+                                                        <span className="font-bold shrink-0" style={{ color: selected ? s.primary : s.text }}>
+                                                            {zone.price === 0 ? 'Gratis' : fmt(zone.price)}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {(missingZone || errors.delivery_zone_idx) && (
+                                            <p className="text-xs text-red-500">
+                                                {errors.delivery_zone_idx ?? 'Selecciona una zona de entrega para continuar.'}
+                                            </p>
+                                        )}
+                                    </>
                                 )}
+
+                                {/* Pedido mínimo */}
+                                {deliveryMinOrder > 0 && (
+                                    <div
+                                        className="rounded-xl px-3 py-2 text-xs font-medium"
+                                        style={{
+                                            backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
+                                            color:           belowMinOrder ? '#ef4444' : s.text,
+                                            opacity:         belowMinOrder ? 1 : 0.65,
+                                            border:          belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                                        }}
+                                    >
+                                        {belowMinOrder
+                                            ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
+                                            : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
+                                        }
+                                    </div>
+                                )}
+
+                                {/* Error backend de pedido mínimo */}
+                                {errors.delivery_min_order && (
+                                    <p className="text-xs text-red-500">{errors.delivery_min_order}</p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Pedido mínimo (cuando no hay zonas pero sí hay mínimo) */}
+                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length === 0 && deliveryMinOrder > 0 && (
+                            <div
+                                className="rounded-xl px-3 py-2 text-xs font-medium"
+                                style={{
+                                    backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
+                                    color:           belowMinOrder ? '#ef4444' : s.text,
+                                    opacity:         belowMinOrder ? 1 : 0.65,
+                                    border:          belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                                }}
+                            >
+                                {belowMinOrder
+                                    ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
+                                    : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
+                                }
                             </div>
                         )}
 
@@ -1050,7 +1544,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                     <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: `${s.text}15` }}>
                         <button
                             onClick={submitOrder}
-                            disabled={submitting || !canSubmit}
+                            disabled={submitting}
                             className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ backgroundColor: s.primary, color: '#ffffff' }}
                         >
@@ -1061,6 +1555,56 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                 : `Confirmar pedido · ${fmt(grandTotal)}`}
                         </button>
                     </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Popup de error de validación (dirección / zona / mínimo) ── */}
+            {warnModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-6"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+                    onClick={() => setWarnModal(null)}
+                >
+                    <div
+                        className="w-full max-w-sm rounded-3xl shadow-2xl"
+                        style={{ backgroundColor: s.bg }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="px-6 py-8 flex flex-col items-center text-center gap-4">
+                            {/* Ícono */}
+                            <div
+                                className="h-16 w-16 rounded-2xl flex items-center justify-center"
+                                style={{ backgroundColor: 'rgba(239,68,68,0.12)' }}
+                            >
+                                <AlertTriangle className="h-8 w-8 text-red-500" />
+                            </div>
+
+                            {/* Texto */}
+                            <div className="space-y-1.5">
+                                <h3
+                                    className="font-display text-lg font-bold"
+                                    style={{ color: s.text }}
+                                >
+                                    {warnModal.title}
+                                </h3>
+                                <p
+                                    className="text-sm leading-relaxed"
+                                    style={{ color: s.text, opacity: 0.65 }}
+                                >
+                                    {warnModal.message}
+                                </p>
+                            </div>
+
+                            {/* Botón corregir */}
+                            <button
+                                className="w-full py-3.5 rounded-2xl text-sm font-semibold mt-1"
+                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                onClick={() => setWarnModal(null)}
+                            >
+                                Corregir
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1131,13 +1675,125 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                         <p className="text-sm opacity-65 mb-4" style={{ color: s.text }}>
                             Gracias, {success.name}. Tu pedido ha sido recibido.
                         </p>
-                        <p className="font-display text-3xl font-bold mb-7" style={{ color: s.primary }}>
+                        <p className="font-display text-3xl font-bold mb-5" style={{ color: s.primary }}>
                             {fmt(success.total)}
                         </p>
+
+                        {/* Bloque de pago Nequi */}
+                        {success.paymentMethod === 'nequi' && (() => {
+                            const detail   = settings.payment_details?.nequi;
+                            const phone    = detail?.numero?.replace(/\D/g, '');
+                            const amount   = Math.round(success.total);
+                            const nequiUrl = detail?.link
+                                ? detail.link
+                                : phone
+                                    ? `https://www.nequi.com.co/cobrar?cuenta=${phone}&monto=${amount}`
+                                    : null;
+                            return (
+                                <div
+                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
+                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
+                                >
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
+                                        Paga con Nequi
+                                    </p>
+                                    {detail?.titular && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Titular: </span>
+                                            <strong>{detail.titular}</strong>
+                                        </p>
+                                    )}
+                                    {phone && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Número: </span>
+                                            <strong className="font-mono tracking-wider">{detail?.numero}</strong>
+                                        </p>
+                                    )}
+                                    <p className="text-sm" style={{ color: s.text }}>
+                                        <span className="opacity-60">Monto a pagar: </span>
+                                        <strong>{fmt(success.total)}</strong>
+                                    </p>
+                                    {detail?.nota && (
+                                        <p className="text-xs opacity-60" style={{ color: s.text }}>{detail.nota}</p>
+                                    )}
+                                    {nequiUrl ? (
+                                        <a
+                                            href={nequiUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mt-1"
+                                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                        >
+                                            Abrir Nequi para pagar →
+                                        </a>
+                                    ) : (
+                                        <p className="text-xs opacity-60" style={{ color: s.text }}>
+                                            Realiza la transferencia al número indicado y menciona tu pedido.
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Bloque de pago Daviplata */}
+                        {success.paymentMethod === 'daviplata' && (() => {
+                            const detail      = settings.payment_details?.daviplata;
+                            const phone       = detail?.numero?.replace(/\D/g, '');
+                            const daviplataUrl = detail?.link ?? null;
+                            return (
+                                <div
+                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
+                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
+                                >
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
+                                        Paga con Daviplata
+                                    </p>
+                                    {detail?.titular && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Titular: </span>
+                                            <strong>{detail.titular}</strong>
+                                        </p>
+                                    )}
+                                    {phone && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Número: </span>
+                                            <strong className="font-mono tracking-wider">{detail?.numero}</strong>
+                                        </p>
+                                    )}
+                                    <p className="text-sm" style={{ color: s.text }}>
+                                        <span className="opacity-60">Monto a pagar: </span>
+                                        <strong>{fmt(success.total)}</strong>
+                                    </p>
+                                    {detail?.nota && (
+                                        <p className="text-xs opacity-60" style={{ color: s.text }}>{detail.nota}</p>
+                                    )}
+                                    {daviplataUrl ? (
+                                        <a
+                                            href={daviplataUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mt-1"
+                                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                        >
+                                            Abrir Daviplata para pagar →
+                                        </a>
+                                    ) : (
+                                        <p className="text-xs opacity-60" style={{ color: s.text }}>
+                                            Realiza la transferencia al número indicado y menciona tu pedido.
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
                         <button
                             onClick={() => setSuccess(null)}
                             className="w-full py-3 rounded-2xl text-sm font-semibold"
-                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                            style={{
+                                backgroundColor: ['nequi', 'daviplata'].includes(success.paymentMethod) ? 'transparent' : s.primary,
+                                color:           ['nequi', 'daviplata'].includes(success.paymentMethod) ? s.primary : '#ffffff',
+                                border:          ['nequi', 'daviplata'].includes(success.paymentMethod) ? `1.5px solid ${s.primary}` : 'none',
+                            }}
                         >
                             Ver la carta
                         </button>

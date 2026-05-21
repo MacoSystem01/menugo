@@ -93,8 +93,9 @@ class OrderController extends Controller
             'delivered_at'     => $o->delivered_at?->format('d/m/Y H:i'),
         ];
 
-        // Pedidos activos: todo lo que no está cerrado, más los entregados sin cobro completo
+        // Pedidos activos: jornada actual (no EOD), excluye delivered/cancelled salvo unpaid delivered
         $orders = Order::with(['items.dish', 'table'])
+            ->whereNull('closed_at_eod')
             ->where(function ($q) {
                 $q->whereNotIn('status', ['delivered', 'cancelled'])
                   ->orWhere(fn($q) => $q->where('status', 'delivered')
@@ -104,8 +105,9 @@ class OrderController extends Controller
             ->get()
             ->map($mapOrder);
 
-        // Historial del día: entregados completamente cobrados + cancelados
+        // Historial del día: entregados completamente cobrados + cancelados (jornada actual)
         $historial = Order::with(['items.dish', 'table'])
+            ->whereNull('closed_at_eod')
             ->where(function ($q) {
                 $q->where(fn($q) => $q->where('status', 'delivered')
                       ->whereColumn('amount_paid', '>=', 'total'))
@@ -116,7 +118,32 @@ class OrderController extends Controller
             ->get()
             ->map($mapOrder);
 
-        return Inertia::render('Caja', compact('orders', 'historial'));
+        $cfg = \App\Models\CartaSetting::firstOrCreate([]);
+
+        // Detect if EOD close is due
+        $needsEod = false;
+        $schedule = $cfg->work_schedule ?? [];
+        $dayMap   = ['Sun' => 'dom', 'Mon' => 'lun', 'Tue' => 'mar', 'Wed' => 'mie', 'Thu' => 'jue', 'Fri' => 'vie', 'Sat' => 'sab'];
+        $todayKey = $dayMap[now()->format('D')] ?? null;
+        $todaySchedule = $todayKey ? ($schedule[$todayKey] ?? null) : null;
+
+        if ($todaySchedule && ($todaySchedule['activo'] ?? false) && isset($todaySchedule['cierre'])) {
+            $closingTime = \Carbon\Carbon::createFromFormat('H:i', $todaySchedule['cierre'])->setDateFrom(today());
+            $lastClosing = \App\Models\DailyClosing::whereDate('closed_at', today())->exists();
+
+            if (now()->gte($closingTime) && ! $lastClosing) {
+                $needsEod = true;
+            }
+        }
+
+        return Inertia::render('Caja', [
+            'orders'          => $orders,
+            'historial'       => $historial,
+            'paymentMethods'  => $cfg->payment_methods  ?? ['efectivo'],
+            'paymentDetails'  => $cfg->payment_details  ?? [],
+            'needs_eod'       => $needsEod,
+            'closing_time'    => $todaySchedule['cierre'] ?? null,
+        ]);
     }
 
     // ── Cierre de Caja: arqueo de efectivo ───────────────────────────────────
@@ -125,19 +152,20 @@ class OrderController extends Controller
     {
         $hoy = today();
 
-        $ordenesHoy = Order::with(['table'])
-            ->where(function ($q) {
-                $q->where(fn($q) => $q->where('status', 'delivered')->whereColumn('amount_paid', '>=', 'total'))
-                  ->orWhere('status', 'cancelled');
-            })
-            ->whereDate('created_at', $hoy)
+        // Todos los pedidos del día no cancelados (igual que "Pago Efectivo" en /caja)
+        $pedidosHoy = Order::whereDate('created_at', $hoy)
+            ->where('status', '!=', 'cancelled')
             ->get();
 
-        // Solo los entregados generan ingresos reales; los cancelados no se cuentan.
-        $entregados = $ordenesHoy->where('status', 'delivered');
+        // Efectivo: suma de min(amount_paid, total) para pedidos con método efectivo
+        $totalSistema = (float) $pedidosHoy
+            ->where('payment_method', 'efectivo')
+            ->sum(fn($o) => min((float) $o->amount_paid, (float) $o->total));
 
-        $totalSistema   = (float) $entregados->where('payment_method', 'efectivo')->sum('total');
-        $resumenMetodos = $entregados
+        // Resumen por método: solo pedidos saldados (amount_paid >= total)
+        $saldados = $pedidosHoy->filter(fn($o) => (float) $o->amount_paid >= (float) $o->total);
+
+        $resumenMetodos = $saldados
             ->whereNotNull('payment_method')
             ->groupBy('payment_method')
             ->map(fn($g) => [
@@ -148,7 +176,7 @@ class OrderController extends Controller
 
         return Inertia::render('Cierre/CierreCaja', [
             'totalSistema'    => $totalSistema,
-            'totalOrdenesHoy' => $entregados->count(),
+            'totalOrdenesHoy' => $saldados->count(),
             'resumenMetodos'  => $resumenMetodos,
         ]);
     }
@@ -159,12 +187,9 @@ class OrderController extends Controller
     {
         $hoy = today();
 
-        $transacciones = Order::with(['table'])
-            ->where(function ($q) {
-                $q->where(fn($q) => $q->where('status', 'delivered')->whereColumn('amount_paid', '>=', 'total'))
-                  ->orWhere('status', 'cancelled');
-            })
-            ->whereDate('created_at', $hoy)
+        // Todos los pedidos del día no cancelados con método electrónico (igual que "Pago Efectivo" en /caja)
+        $transacciones = Order::whereDate('created_at', $hoy)
+            ->where('status', '!=', 'cancelled')
             ->whereNotNull('payment_method')
             ->where('payment_method', '!=', 'efectivo')
             ->latest()
@@ -173,22 +198,24 @@ class OrderController extends Controller
         $agrupados = $transacciones
             ->groupBy('payment_method')
             ->map(fn($g, $method) => [
-                'method'         => $method,
-                'cantidad'       => $g->count(),
-                'total'          => (float) $g->sum('amount_paid'),
-                'transacciones'  => $g->map(fn($o) => [
+                'method'        => $method,
+                'cantidad'      => $g->count(),
+                'total'         => (float) $g->sum(fn($o) => min((float) $o->amount_paid, (float) $o->total)),
+                'transacciones' => $g->map(fn($o) => [
                     'id'             => $o->id,
                     'customer_name'  => $o->customer_name,
                     'payment_method' => $o->payment_method,
-                    'amount_paid'    => (float) $o->amount_paid,
+                    'amount_paid'    => (float) min((float) $o->amount_paid, (float) $o->total),
                     'created_at'     => $o->created_at->format('d/m/Y H:i'),
                 ])->values(),
             ])
             ->values();
 
+        $totalGeneral = (float) $transacciones->sum(fn($o) => min((float) $o->amount_paid, (float) $o->total));
+
         return Inertia::render('Cierre/CierreDatafono', [
             'agrupados'    => $agrupados,
-            'totalGeneral' => (float) $transacciones->sum('amount_paid'),
+            'totalGeneral' => $totalGeneral,
             'fecha'        => $hoy->format('d/m/Y'),
         ]);
     }

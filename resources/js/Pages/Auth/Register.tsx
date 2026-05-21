@@ -1,6 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler, useEffect, useState } from 'react';
-import { ArrowRight, ArrowLeft, Check, Utensils, Zap, Globe2 } from 'lucide-react';
+import { FormEventHandler, useEffect, useRef, useState } from 'react';
+import { ArrowRight, ArrowLeft, Check, Utensils, Zap, Globe2, MapPin } from 'lucide-react';
 import { LoginSearch } from '@/components/LoginSearch';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -58,6 +58,9 @@ export default function Register() {
         // paso 3
         name:                  '',   // nombre del establecimiento
         subdomain:             '',
+        restaurant_address:    '',
+        restaurant_lat:        null as number | null,
+        restaurant_lng:        null as number | null,
         // paso 4
         owner_name:            '',
         phone:                 '',
@@ -84,6 +87,42 @@ export default function Register() {
     const prev = () => setStep(s => Math.max(s - 1, 1));
 
     const submit: FormEventHandler = (e) => { e.preventDefault(); post('/register'); };
+
+    // ── Nominatim para dirección del establecimiento ──────────────────────────
+    const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
+    const [showAddrSugg,    setShowAddrSugg]    = useState(false);
+    const [addrLoading,     setAddrLoading]     = useState(false);
+    const [addrValidated,   setAddrValidated]   = useState(false);
+    const addrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const onAddressChange = (val: string) => {
+        setData('restaurant_address', val);
+        setData('restaurant_lat', null);
+        setData('restaurant_lng', null);
+        setAddrValidated(false);
+        if (addrTimeoutRef.current) clearTimeout(addrTimeoutRef.current);
+        if (val.trim().length < 3) { setAddrSuggestions([]); setShowAddrSugg(false); return; }
+        addrTimeoutRef.current = setTimeout(async () => {
+            setAddrLoading(true);
+            try {
+                const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4`, { headers: { 'Accept-Language': 'es' } });
+                const json = await res.json();
+                setAddrSuggestions(json);
+                setShowAddrSugg(json.length > 0);
+            } catch { /* ignorar */ } finally {
+                setAddrLoading(false);
+            }
+        }, 400);
+    };
+
+    const onAddrSelect = (s: { display_name: string; lat: string; lon: string }) => {
+        setData('restaurant_address', s.display_name);
+        setData('restaurant_lat', parseFloat(s.lat));
+        setData('restaurant_lng', parseFloat(s.lon));
+        setAddrValidated(true);
+        setShowAddrSugg(false);
+        setAddrSuggestions([]);
+    };
 
     const selectedType = ESTAB_TYPES.find(t => t.key === data.type);
     const selectedPlan = PLANS.find(p => p.key === data.plan);
@@ -275,6 +314,49 @@ export default function Register() {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Dirección del establecimiento */}
+                                <div className="space-y-1.5 relative">
+                                    <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                        Dirección del establecimiento
+                                        <span className="text-[10px] text-muted-foreground font-normal">(opcional)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={data.restaurant_address}
+                                        onChange={e => onAddressChange(e.target.value)}
+                                        placeholder="Ej: Carrera 5 #10-20, Cali"
+                                        className={INPUT}
+                                        autoComplete="off"
+                                    />
+                                    {showAddrSugg && (
+                                        <div className="absolute z-10 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                                            {addrLoading && (
+                                                <p className="px-4 py-2.5 text-xs text-muted-foreground">Buscando…</p>
+                                            )}
+                                            {addrSuggestions.map((s, i) => (
+                                                <button
+                                                    key={i}
+                                                    type="button"
+                                                    onClick={() => onAddrSelect(s)}
+                                                    className="w-full text-left px-4 py-2.5 text-xs text-foreground hover:bg-muted transition-colors border-b border-border last:border-0 leading-snug"
+                                                >
+                                                    {s.display_name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {addrValidated && (
+                                        <div className="flex items-center gap-1.5 text-xs" style={{ color: '#22c55e' }}>
+                                            <Check className="h-3 w-3" />
+                                            Ubicación confirmada · {data.restaurant_lat?.toFixed(5)}, {data.restaurant_lng?.toFixed(5)}
+                                        </div>
+                                    )}
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Necesaria para asignar automáticamente la zona de domicilio a tus clientes.
+                                    </p>
+                                </div>
                             </div>
                         )}
 

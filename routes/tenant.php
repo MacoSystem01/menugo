@@ -14,6 +14,7 @@ use App\Http\Controllers\DomicilioController;
 use App\Http\Controllers\InventarioController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\GastoController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\UserController;
@@ -289,6 +290,19 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
             ->middleware('perm:auditoria.ver')
             ->name('auditoria');
 
+        // ── Gastos ────────────────────────────────────────────────────────────
+        Route::get('/gastos',           [GastoController::class, 'index'])
+            ->middleware('perm:reporte.ver')
+            ->name('gastos');
+
+        Route::post('/gastos',          [GastoController::class, 'store'])
+            ->middleware('perm:reporte.ver')
+            ->name('gastos.store');
+
+        Route::delete('/gastos/{gasto}', [GastoController::class, 'destroy'])
+            ->middleware('perm:reporte.ver')
+            ->name('gastos.destroy');
+
         // ── Configuraciones ───────────────────────────────────────────────────
         Route::get('/configuracion/pagos',      [ConfiguracionController::class, 'pagos'])
             ->middleware('perm:carta.editar')
@@ -305,5 +319,17 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
         Route::post('/configuracion/domicilio', [ConfiguracionController::class, 'guardarDomicilio'])
             ->middleware('perm:carta.editar')
             ->name('configuracion.domicilio.guardar');
+
+        Route::get('/configuracion/horario',    [ConfiguracionController::class, 'horario'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.horario');
+
+        Route::post('/configuracion/horario',   [ConfiguracionController::class, 'guardarHorario'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.horario.guardar');
+
+        Route::post('/configuracion/cierre-jornada', [ConfiguracionController::class, 'cierreJornada'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.cierre-jornada');
     });
 });

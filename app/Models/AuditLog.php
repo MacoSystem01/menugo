@@ -23,7 +23,7 @@ class AuditLog extends Model
     public static function registrar(
         string $action,
         string $type,
-        int|string $typeId,
+        int|string|null $typeId,
         string $description,
         ?array $properties = null
     ): void {

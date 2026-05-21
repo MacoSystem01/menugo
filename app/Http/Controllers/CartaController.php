@@ -72,6 +72,8 @@ class CartaController extends Controller
             'delivery_address'  => 'required_if:type,domicilio|nullable|string|max:300',
             'delivery_phone'    => 'nullable|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
             'delivery_zone_idx' => 'nullable|integer|min:0',
+            'delivery_lat'      => 'nullable|numeric|between:-90,90',
+            'delivery_lng'      => 'nullable|numeric|between:-180,180',
             'payment_method'    => 'required|string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
             'notes'             => 'nullable|string|max:500',
             'confirmed'         => 'nullable|boolean',
@@ -110,14 +112,67 @@ class CartaController extends Controller
             return redirect('/carta')->withErrors(['items' => 'Ningún plato del pedido está disponible.']);
         }
 
-        // Resolve delivery fee from the selected zone
+        // ── Lógica de domicilio ────────────────────────────────────────────────
         $deliveryFee = 0;
-        if ($data['type'] === 'domicilio' && isset($data['delivery_zone_idx'])) {
+        if ($data['type'] === 'domicilio') {
             $cfg   = CartaSetting::firstOrCreate([]);
             $zones = $cfg->delivery_zones ?? [];
-            $zone  = $zones[$data['delivery_zone_idx']] ?? null;
-            if ($zone) {
-                $deliveryFee = (int) $zone['price'];
+
+            // Validar pedido mínimo contra el subtotal de productos (sin tarifa)
+            $minOrder = (int) ($cfg->delivery_min_order ?? 0);
+            if ($minOrder > 0 && $total < $minOrder) {
+                $fmtMin   = '$' . number_format($minOrder, 0, ',', '.');
+                $fmtTotal = '$' . number_format($total,    0, ',', '.');
+                return redirect('/carta')->withErrors([
+                    'delivery_min_order' => "Pedido mínimo para domicilio: {$fmtMin}. Tu pedido es {$fmtTotal}.",
+                ]);
+            }
+
+            // Zona requerida cuando hay zonas configuradas
+            if (!empty($zones) && !isset($data['delivery_zone_idx'])) {
+                return redirect('/carta')->withErrors([
+                    'delivery_zone_idx' => 'Selecciona una zona de entrega para continuar.',
+                ]);
+            }
+
+            // Validar que las coordenadas de entrega correspondan a la zona seleccionada
+            if (
+                !empty($zones)
+                && isset($data['delivery_zone_idx'])
+                && isset($data['delivery_lat'], $data['delivery_lng'])
+                && $cfg->restaurant_lat
+                && $cfg->restaurant_lng
+            ) {
+                $km          = $this->haversineKm(
+                    (float) $cfg->restaurant_lat, (float) $cfg->restaurant_lng,
+                    (float) $data['delivery_lat'],  (float) $data['delivery_lng']
+                );
+                $claimedZone = $zones[$data['delivery_zone_idx']] ?? null;
+                if ($claimedZone) {
+                    $withinZone = $km >= (float) $claimedZone['min_km'] && $km <= (float) $claimedZone['max_km'];
+                    $coveredByAny = collect($zones)->contains(
+                        fn($z) => $km >= (float) $z['min_km'] && $km <= (float) $z['max_km']
+                    );
+                    if (! $withinZone) {
+                        $fmtKm = number_format($km, 1, '.', '');
+                        if (! $coveredByAny) {
+                            return redirect('/carta')->withErrors([
+                                'delivery_address' => "La dirección está fuera de nuestra zona de cobertura ({$fmtKm} km).",
+                            ]);
+                        }
+                        return redirect('/carta')->withErrors([
+                            'delivery_zone_idx' => "La zona seleccionada no corresponde a tu dirección ({$fmtKm} km).",
+                        ]);
+                    }
+                }
+            }
+
+            // Resolver tarifa de la zona seleccionada
+            if (isset($data['delivery_zone_idx'])) {
+                $zone = $zones[$data['delivery_zone_idx']] ?? null;
+                if ($zone) {
+                    $deliveryFee = (int) $zone['price'];
+                }
             }
         }
         $total += $deliveryFee;
@@ -217,6 +272,9 @@ class CartaController extends Controller
             'delivery_zones.*.min_km'  => 'required|numeric|min:0',
             'delivery_zones.*.max_km'  => 'required|numeric',
             'delivery_zones.*.price'   => 'required|integer|min:0',
+            'restaurant_lat'           => 'nullable|numeric|between:-90,90',
+            'restaurant_lng'           => 'nullable|numeric|between:-180,180',
+            'restaurant_address'       => 'nullable|string|max:300',
         ]);
 
         // Store only non-empty social links
@@ -307,6 +365,16 @@ class CartaController extends Controller
 
     // ── Helper ────────────────────────────────────────────────────────────────
 
+    private function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $R    = 6371.0;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a    = sin($dLat / 2) ** 2
+              + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
     private function settingsArray(CartaSetting $s): array
     {
         return [
@@ -319,10 +387,16 @@ class CartaController extends Controller
             'slogan_size'        => $s->slogan_size,
             'banner_url'         => $s->banner_url,
             'payment_methods'    => $s->payment_methods    ?? ['efectivo'],
+            'payment_details'    => $s->payment_details    ?? [],
             'social_links'       => $s->social_links       ?? [],
             'delivery_enabled'   => (bool) ($s->delivery_enabled   ?? false),
             'delivery_min_order' => (int)  ($s->delivery_min_order ?? 0),
             'delivery_zones'     => $s->delivery_zones     ?? [],
+            'restaurant_lat'     => $s->restaurant_lat     ? (float) $s->restaurant_lat : null,
+            'restaurant_lng'     => $s->restaurant_lng     ? (float) $s->restaurant_lng : null,
+            'restaurant_address' => $s->restaurant_address ?? null,
+            'google_maps_key'    => env('GOOGLE_MAPS_API_KEY') ?: null,
+            'work_schedule'      => $s->work_schedule      ?? null,
         ];
     }
 }
