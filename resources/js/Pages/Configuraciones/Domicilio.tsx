@@ -4,16 +4,16 @@ import { useState } from 'react';
 import { Plus, Trash2, Save, Info, MapPin, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface Zona {
-    label:  string;
+    label: string;
     min_km: number | '';
     max_km: number | '';
-    price:  number | '';
+    price: number | '';
 }
 
 interface Props {
-    delivery_enabled:   boolean;
+    delivery_enabled: boolean;
     delivery_min_order: number;
-    delivery_zones:     Zona[];
+    delivery_zones: Zona[];
     flash?: { success?: string; error?: string };
 }
 
@@ -24,15 +24,15 @@ function fmt(n: number) {
 const ZONA_VACIA: Zona = { label: '', min_km: '', max_km: '', price: '' };
 
 export default function Domicilio({ delivery_enabled, delivery_min_order, delivery_zones, flash }: Props) {
-    const [enabled,    setEnabled]    = useState(delivery_enabled);
-    const [minOrder,   setMinOrder]   = useState<number | ''>(delivery_min_order ?? 0);
-    const [zonas,      setZonas]      = useState<Zona[]>(delivery_zones.length > 0 ? delivery_zones : []);
+    const [enabled, setEnabled] = useState(delivery_enabled);
+    const [minOrder, setMinOrder] = useState<number | ''>(delivery_min_order ?? 0);
+    const [zonas, setZonas] = useState<Zona[]>(delivery_zones.length > 0 ? delivery_zones : []);
     const [submitting, setSubmitting] = useState(false);
-    const [errors,     setErrors]     = useState<Record<number, string>>({});
+    const [errors, setErrors] = useState<Record<number, string>>({});
 
     function agregar() {
         const ultima = zonas[zonas.length - 1];
-        const minKm  = ultima && ultima.max_km !== '' ? ultima.max_km : 0;
+        const minKm = ultima && ultima.max_km !== '' ? ultima.max_km : 0;
         setZonas(prev => [...prev, { ...ZONA_VACIA, min_km: minKm as number }]);
     }
 
@@ -64,11 +64,11 @@ export default function Domicilio({ delivery_enabled, delivery_min_order, delive
         const newErrors: Record<number, string> = {};
         if (enabled) {
             zonas.forEach((f, i) => {
-                if (!f.label.trim())                                          newErrors[i] = 'El nombre de zona es requerido.';
-                else if (f.min_km === '')                                     newErrors[i] = 'El km mínimo es requerido.';
-                else if (f.max_km === '')                                     newErrors[i] = 'El km máximo es requerido.';
-                else if ((f.max_km as number) <= (f.min_km as number))       newErrors[i] = 'El km máximo debe ser mayor al mínimo.';
-                else if (f.price === '')                                      newErrors[i] = 'El precio es requerido.';
+                if (!f.label.trim()) newErrors[i] = 'El nombre de zona es requerido.';
+                else if (f.min_km === '') newErrors[i] = 'El km mínimo es requerido.';
+                else if (f.max_km === '') newErrors[i] = 'El km máximo es requerido.';
+                else if ((f.max_km as number) <= (f.min_km as number)) newErrors[i] = 'El km máximo debe ser mayor al mínimo.';
+                else if (f.price === '') newErrors[i] = 'El precio es requerido.';
             });
         }
         setErrors(newErrors);
@@ -79,9 +79,9 @@ export default function Domicilio({ delivery_enabled, delivery_min_order, delive
         if (!validar()) return;
         setSubmitting(true);
         router.post('/configuracion/domicilio', {
-            delivery_enabled:   enabled,
+            delivery_enabled: enabled,
             delivery_min_order: minOrder === '' ? 0 : minOrder,
-            delivery_zones:     enabled ? zonas : [],
+            delivery_zones: enabled ? zonas : [],
         }, {
             onFinish: () => setSubmitting(false),
         });
@@ -111,7 +111,7 @@ export default function Domicilio({ delivery_enabled, delivery_min_order, delive
                         <button type="button" onClick={() => setEnabled(e => !e)} className="shrink-0">
                             {enabled
                                 ? <ToggleRight className="h-9 w-9 text-accent" />
-                                : <ToggleLeft  className="h-9 w-9 text-muted-foreground" />
+                                : <ToggleLeft className="h-9 w-9 text-muted-foreground" />
                             }
                         </button>
                     </div>
@@ -151,7 +151,7 @@ export default function Domicilio({ delivery_enabled, delivery_min_order, delive
                     <div className="flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
                         <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
                         <p className="text-sm text-blue-400/90">
-                            Define zonas por kilómetro de distancia. El cliente seleccionará su zona al hacer el pedido y la tarifa se sumará al total.
+                            Define UN SOLO rango de Zona de Cobertura por kilómetro de distancia. El cliente tendrá presente el costo del Domicilio y el sistema lo sumará al total.
                         </p>
                     </div>
                 )}

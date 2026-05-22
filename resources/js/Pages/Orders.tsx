@@ -1,7 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, router } from '@inertiajs/react';
 import React, { useEffect, useRef, useState } from 'react';
-import { ShoppingBag, ChevronDown, ChevronUp, Printer, X } from 'lucide-react';
+import { ShoppingBag, ChevronDown, ChevronUp, Printer, X, Bell, Bike } from 'lucide-react';
 
 interface OrderItem {
     dish: string | null;
@@ -409,6 +409,31 @@ export default function Orders({ orders, tables, filters, flash }: Props) {
     const [printing,   setPrinting]   = useState<OrderRow | null>(null);
     const [localFilters, setLocal]    = useState<Filters>(filters);
 
+    // ── Alerta de domicilios listos sin repartidor ─────────────────────────────
+    type AlertOrder = { id: number; customer_name: string; delivery_address: string | null; ready_at: string | null };
+    const [deliveryAlert, setDeliveryAlert] = useState<{ count: number; orders: AlertOrder[] }>({ count: 0, orders: [] });
+    const prevAlertCount = useRef<number | null>(null);
+    const [alertFlash,   setAlertFlash]   = useState(false);
+
+    useEffect(() => {
+        async function fetchAlerts() {
+            try {
+                const res  = await fetch('/api/delivery-alerts', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) return;
+                const data = await res.json() as { count: number; orders: AlertOrder[] };
+                if (prevAlertCount.current !== null && data.count > prevAlertCount.current) {
+                    setAlertFlash(true);
+                    setTimeout(() => setAlertFlash(false), 4000);
+                }
+                prevAlertCount.current = data.count;
+                setDeliveryAlert(data);
+            } catch { /* red silenciosa */ }
+        }
+        fetchAlerts();
+        const id = setInterval(fetchAlerts, 20_000);
+        return () => clearInterval(id);
+    }, []);
+
     function applyFilters(newFilters: Filters) {
         setLocal(newFilters);
         router.get('/pedidos', newFilters as Record<string, string>, { preserveState: true });
@@ -427,6 +452,46 @@ export default function Orders({ orders, tables, filters, flash }: Props) {
 
             {flash?.success && (
                 <div className="mb-4 rounded-xl bg-accent/15 border border-accent/30 text-accent px-4 py-3 text-sm">{flash.success}</div>
+            )}
+
+            {/* ── Alerta: domicilios listos sin repartidor ── */}
+            {deliveryAlert.count > 0 && (
+                <div className={`mb-5 rounded-xl border px-4 py-3 flex items-center justify-between gap-3 transition-colors duration-700 ${
+                    alertFlash
+                        ? 'bg-red-500/20 border-red-500/50'
+                        : 'bg-amber-500/15 border-amber-500/30'
+                }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                        <span className="relative flex h-3 w-3 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                            <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+                        </span>
+                        <Bell className={`h-4 w-4 shrink-0 ${alertFlash ? 'text-red-400' : 'text-amber-400'}`} />
+                        <div className="min-w-0">
+                            <p className={`text-sm font-semibold ${alertFlash ? 'text-red-300' : 'text-amber-300'}`}>
+                                {deliveryAlert.count === 1
+                                    ? '1 pedido de domicilio listo — esperando repartidor'
+                                    : `${deliveryAlert.count} pedidos de domicilio listos — esperando repartidor`}
+                            </p>
+                            {deliveryAlert.orders.length > 0 && (
+                                <p className="text-xs text-amber-300/65 mt-0.5 truncate">
+                                    {deliveryAlert.orders.map(o => `#${o.id} ${o.customer_name}${o.ready_at ? ` (${o.ready_at})` : ''}`).join(' · ')}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <a
+                        href="/domicilio"
+                        className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 border transition-colors ${
+                            alertFlash
+                                ? 'text-red-300 border-red-500/40 hover:bg-red-500/20'
+                                : 'text-amber-300 border-amber-500/40 hover:bg-amber-500/20'
+                        }`}
+                    >
+                        <Bike className="h-3.5 w-3.5" />
+                        Ir a Domicilio
+                    </a>
+                </div>
             )}
 
             {/* Filtros */}

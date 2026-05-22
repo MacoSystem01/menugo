@@ -1,7 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
-import { MapPin, Bike, CheckCircle2, Phone, PackageCheck } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { MapPin, Bike, CheckCircle2, Phone, PackageCheck, Bell } from 'lucide-react';
 import type { PageProps } from '@/types';
 
 interface DeliveryOrder {
@@ -76,6 +76,21 @@ export default function Domicilio({ active, repartidores, flash }: Props) {
     const pending   = active.filter(o => o.status === 'ready');
     const delivered = active.filter(o => o.status === 'delivered');
 
+    // ── Alerta de pedidos sin repartidor ──────────────────────────────────────
+    const sinRepartidor  = pending.filter(o => !o.delivery_user).length;
+    const prevCountRef   = useRef<number | null>(null);
+    const [newFlash, setNewFlash] = useState(false);
+
+    useEffect(() => {
+        if (prevCountRef.current !== null && sinRepartidor > prevCountRef.current) {
+            setNewFlash(true);
+            const t = setTimeout(() => setNewFlash(false), 4000);
+            prevCountRef.current = sinRepartidor;
+            return () => clearTimeout(t);
+        }
+        prevCountRef.current = sinRepartidor;
+    }, [sinRepartidor]);
+
     function tomar(id: number) {
         router.post(`/domicilio/${id}/tomar`);
     }
@@ -89,6 +104,26 @@ export default function Domicilio({ active, repartidores, flash }: Props) {
             )}
             {flash?.error && (
                 <div className="mb-4 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 px-4 py-3 text-sm">{flash.error}</div>
+            )}
+
+            {/* ── Alerta: pedidos listos sin repartidor ── */}
+            {sinRepartidor > 0 && (
+                <div className={`mb-5 rounded-xl border px-4 py-3 flex items-center gap-3 transition-colors duration-700 ${
+                    newFlash
+                        ? 'bg-red-500/20 border-red-500/50'
+                        : 'bg-amber-500/15 border-amber-500/30'
+                }`}>
+                    <span className="relative flex h-3 w-3 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+                    </span>
+                    <Bell className={`h-4 w-4 shrink-0 ${newFlash ? 'text-red-400' : 'text-amber-400'}`} />
+                    <p className={`text-sm font-semibold ${newFlash ? 'text-red-300' : 'text-amber-300'}`}>
+                        {sinRepartidor === 1
+                            ? '1 pedido de domicilio listo — esperando repartidor'
+                            : `${sinRepartidor} pedidos de domicilio listos — esperando repartidor`}
+                    </p>
+                </div>
             )}
 
             {/* Pendientes de despacho */}

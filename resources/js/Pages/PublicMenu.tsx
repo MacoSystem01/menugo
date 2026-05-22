@@ -100,12 +100,13 @@ interface Category {
 }
 
 interface SocialLinks {
-    instagram?: string;
-    facebook?:  string;
-    whatsapp?:  string;
-    tiktok?:    string;
-    twitter?:   string;
-    youtube?:   string;
+    instagram?:        string;
+    facebook?:         string;
+    whatsapp?:         string;
+    whatsapp_message?: string;
+    tiktok?:           string;
+    twitter?:          string;
+    youtube?:          string;
 }
 
 interface DeliveryZone {
@@ -295,7 +296,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     const [addressSuggestions,   setAddressSuggestions]   = useState<Array<{display_name: string; lat: string; lon: string}>>([]);
     const [showSuggestions,      setShowSuggestions]      = useState(false);
     const [loadingSuggestions,   setLoadingSuggestions]   = useState(false);
-    const nominatimTimeoutRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const geocodeTimeoutRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suggestionsRef         = useRef<HTMLDivElement>(null);
 
     const [form, setForm] = useState({
@@ -343,8 +344,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             setAddressValidated(true);
             setOutOfCoverage(false);
 
-            // Calcular distancia y auto-seleccionar zona si hay ubicación del restaurante
-            if (restaurantLat && restaurantLng && deliveryZones.length > 0) {
+            // Zona única: tarifa plana, asignar siempre independiente de distancia
+            if (deliveryZones.length === 1) {
+                setForm(f => ({ ...f, delivery_zone_idx: 0, delivery_address: addr }));
+                setOutOfCoverage(false);
+                if (restaurantLat && restaurantLng) {
+                    setDeliveryKm(haversineKm(restaurantLat, restaurantLng, lat, lng));
+                }
+            } else if (restaurantLat && restaurantLng && deliveryZones.length > 1) {
                 const km      = haversineKm(restaurantLat, restaurantLng, lat, lng);
                 setDeliveryKm(km);
                 const zoneIdx = deliveryZones.findIndex(z => km >= z.min_km && km <= z.max_km);
@@ -356,7 +363,6 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                     setOutOfCoverage(true);
                 }
             } else {
-                // Sin ubicación del restaurante: solo validar dirección real, zona manual
                 setForm(f => ({ ...f, delivery_address: addr }));
             }
         });
@@ -373,13 +379,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         setDeliveryCoords(null);
         setDeliveryKm(null);
         setOutOfCoverage(false);
-        setForm(f => ({ ...f, delivery_zone_idx: null, delivery_address: val }));
+        setForm(f => ({ ...f, delivery_zone_idx: deliveryZones.length === 1 ? 0 : null, delivery_address: val }));
 
-        // Nominatim autocomplete cuando no hay Google Maps key
+        // Geocoder fallback cuando no hay Google Maps key
         if (!googleMapsKey) {
-            if (nominatimTimeoutRef.current) clearTimeout(nominatimTimeoutRef.current);
-            if (val.trim().length >= 5) {
-                nominatimTimeoutRef.current = setTimeout(() => fetchNominatim(val.trim()), 650);
+            if (geocodeTimeoutRef.current) clearTimeout(geocodeTimeoutRef.current);
+            if (val.trim().length >= 4) {
+                geocodeTimeoutRef.current = setTimeout(() => fetchGeocode(val.trim()), 500);
             } else {
                 setAddressSuggestions([]);
                 setShowSuggestions(false);
@@ -387,14 +393,37 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         }
     }
 
-    async function fetchNominatim(query: string) {
+    async function fetchGeocode(query: string) {
         setLoadingSuggestions(true);
         try {
-            const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=es`;
-            const res  = await fetch(url);
-            const data = await res.json() as Array<{display_name: string; lat: string; lon: string}>;
-            setAddressSuggestions(data);
-            setShowSuggestions(data.length > 0);
+            // Nominatim con countrycodes=co — resultados solo de Colombia, sin API key
+            const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&countrycodes=co&addressdetails=1&accept-language=es`;
+            const res  = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'MenuGo/1.0' } });
+            const data = await res.json() as Array<{
+                display_name: string;
+                lat:          string;
+                lon:          string;
+                address:      Record<string, string>;
+            }>;
+
+            const results = data.map(r => {
+                const a     = r.address ?? {};
+                const parts = [
+                    a.road ?? a.pedestrian ?? a.footway,
+                    a.house_number ? `#${a.house_number}` : null,
+                    a.neighbourhood ?? a.suburb ?? a.quarter,
+                    a.city ?? a.town ?? a.municipality,
+                    a.state,
+                ].filter(Boolean);
+                return {
+                    display_name: parts.length >= 2 ? parts.join(', ') : r.display_name,
+                    lat:          r.lat,
+                    lon:          r.lon,
+                };
+            });
+
+            setAddressSuggestions(results);
+            setShowSuggestions(results.length > 0);
         } catch {
             setAddressSuggestions([]);
             setShowSuggestions(false);
@@ -412,7 +441,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         setAddressSuggestions([]);
         setOutOfCoverage(false);
 
-        if (restaurantLat && restaurantLng && deliveryZones.length > 0) {
+        if (deliveryZones.length === 1) {
+            setForm(f => ({ ...f, delivery_zone_idx: 0, delivery_address: suggestion.display_name }));
+            setOutOfCoverage(false);
+            if (restaurantLat && restaurantLng) {
+                setDeliveryKm(haversineKm(restaurantLat, restaurantLng, lat, lng));
+            }
+        } else if (restaurantLat && restaurantLng && deliveryZones.length > 1) {
             const km      = haversineKm(restaurantLat, restaurantLng, lat, lng);
             setDeliveryKm(km);
             const zoneIdx = deliveryZones.findIndex(z => km >= z.min_km && km <= z.max_km);
@@ -460,7 +495,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         ? (deliveryZones[form.delivery_zone_idx] ?? null)
         : null;
     const deliveryFee = selectedZone?.price ?? 0;
-    const zoneIsAutoDetected = addressValidated && deliveryCoords !== null && restaurantLat !== null && restaurantLng !== null;
+    const zoneIsAutoDetected = addressValidated && deliveryCoords !== null
+        && (deliveryZones.length === 1 || (restaurantLat !== null && restaurantLng !== null));
     const grandTotal  = totalPrice + deliveryFee;
 
     // ── Validaciones de domicilio ───────────────────────────────────────────────
@@ -488,8 +524,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     const canSubmit         = (!tableIsOccupied || occupiedConfirmed)
         && !belowMinOrder
         && !missingZone
-        && !outOfCoverage
-        && !addressNotValidated;
+        && !outOfCoverage;
 
     function submitOrder() {
         if (submitting) return;
@@ -506,16 +541,6 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                 return;
             }
 
-            if (!addressValidated) {
-                setWarnModal({
-                    title:   'Dirección no válida',
-                    message: googleMapsKey && mapsReady
-                        ? 'Escribe tu dirección y selecciónala del menú de sugerencias de Google Maps para confirmar que es real.'
-                        : 'Escribe tu dirección y selecciónala de la lista de sugerencias para confirmar que es una ubicación real. No se aceptan direcciones inventadas.',
-                });
-                return;
-            }
-
             if (outOfCoverage) {
                 setWarnModal({
                     title:   'Fuera de zona de cobertura',
@@ -526,8 +551,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
 
             if (missingZone) {
                 setWarnModal({
-                    title:   'Selecciona tu zona de entrega',
-                    message: 'Debes elegir una zona de entrega para que podamos calcular el costo del domicilio.',
+                    title:   'Confirma tu dirección de entrega',
+                    message: 'Ingresa tu dirección y selecciónala de las sugerencias para que el sistema pueda asignarte la zona y tarifa de domicilio automáticamente.',
                 });
                 return;
             }
@@ -887,7 +912,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                         },
                         sl.whatsapp && {
                             key: 'whatsapp',
-                            href: `https://wa.me/${sl.whatsapp.replace(/\D/g, '')}`,
+                            href: `https://wa.me/${sl.whatsapp.replace(/\D/g, '')}${sl.whatsapp_message ? `?text=${encodeURIComponent(sl.whatsapp_message)}` : ''}`,
                             icon: <WaIcon />, label: 'WhatsApp',
                             bg:   'linear-gradient(135deg,#128C7E 0%,#25D366 100%)',
                             glow: 'rgba(37,211,102,0.45)',
@@ -1268,7 +1293,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                             backgroundColor: `${s.text}06`,
                                             color:           s.text,
                                         }}
-                                        placeholder="Escribe tu dirección y selecciónala de la lista…"
+                                        placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
                                         value={form.delivery_address}
                                         onChange={handleAddressInput}
                                         onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
@@ -1329,8 +1354,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                 {addressNotValidated && !outOfCoverage && form.delivery_address.trim() && (
                                     <p className="text-xs" style={{ color: s.text, opacity: 0.55 }}>
                                         {googleMapsKey && mapsReady
-                                            ? 'Selecciona una dirección del menú de Google Maps para validarla.'
-                                            : 'Selecciona una opción de la lista de sugerencias para confirmar la dirección.'}
+                                            ? 'Sugerencia: selecciona una dirección del menú de Google Maps para localización exacta.'
+                                            : 'Sugerencia: selecciona una opción de la lista para confirmar ubicación exacta.'}
                                     </p>
                                 )}
                                 {addressValidated && deliveryKm !== null && !outOfCoverage && (
@@ -1342,73 +1367,37 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                             </div>
                         )}
 
-                        {/* Zona de entrega */}
+                        {/* Zona de entrega - asignada automáticamente por el sistema */}
                         {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && !outOfCoverage && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>
-                                    Zona de entrega
-                                </label>
-
-                                {zoneIsAutoDetected && selectedZone ? (
-                                    <div
-                                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
-                                        style={{
-                                            borderColor:     s.primary,
-                                            backgroundColor: `${s.primary}12`,
-                                            color:           s.text,
-                                        }}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
-                                            <span>
-                                                <span className="font-medium">{selectedZone.label}</span>
-                                                <span className="opacity-55 ml-2 text-xs">
-                                                    {selectedZone.min_km}–{selectedZone.max_km} km
+                                {selectedZone && (
+                                    <>
+                                        <label className="text-sm font-medium" style={{ color: s.text }}>
+                                            Zona de entrega
+                                        </label>
+                                        <div
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
+                                            style={{
+                                                borderColor:     s.primary,
+                                                backgroundColor: `${s.primary}12`,
+                                                color:           s.text,
+                                            }}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
+                                                <span>
+                                                    <span className="font-medium">{selectedZone.label}</span>
+                                                    {deliveryZones.length > 1 && (
+                                                        <span className="opacity-55 ml-2 text-xs">
+                                                            {selectedZone.min_km}–{selectedZone.max_km} km
+                                                        </span>
+                                                    )}
                                                 </span>
                                             </span>
-                                        </span>
-                                        <span className="font-bold shrink-0" style={{ color: s.primary }}>
-                                            {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="space-y-1.5">
-                                            {deliveryZones.map((zone, idx) => {
-                                                const selected = form.delivery_zone_idx === idx;
-                                                return (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setForm(f => ({ ...f, delivery_zone_idx: idx }));
-                                                            if (errors.delivery_zone_idx) setErrors(e => { const n = { ...e }; delete n.delivery_zone_idx; return n; });
-                                                        }}
-                                                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm transition-colors text-left"
-                                                        style={{
-                                                            borderColor:     selected ? s.primary : missingZone ? '#ef4444' : `${s.text}20`,
-                                                            backgroundColor: selected ? `${s.primary}12` : 'transparent',
-                                                            color:           s.text,
-                                                        }}
-                                                    >
-                                                        <span>
-                                                            <span className="font-medium">{zone.label}</span>
-                                                            <span className="opacity-55 ml-2 text-xs">
-                                                                {zone.min_km}–{zone.max_km} km
-                                                            </span>
-                                                        </span>
-                                                        <span className="font-bold shrink-0" style={{ color: selected ? s.primary : s.text }}>
-                                                            {zone.price === 0 ? 'Gratis' : fmt(zone.price)}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
+                                            <span className="font-bold shrink-0" style={{ color: s.primary }}>
+                                                {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
+                                            </span>
                                         </div>
-                                        {(missingZone || errors.delivery_zone_idx) && (
-                                            <p className="text-xs text-red-500">
-                                                {errors.delivery_zone_idx ?? 'Selecciona una zona de entrega para continuar.'}
-                                            </p>
-                                        )}
                                     </>
                                 )}
 

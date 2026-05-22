@@ -10,7 +10,14 @@ class AddTenantHost extends Command
     protected $signature   = 'tenant:host {subdomain? : Subdominio del restaurante} {--write : Escribe directamente en el archivo hosts (requiere Administrador)}';
     protected $description = 'Agrega la entrada hosts para un subdominio de tenant en Windows';
 
-    private string $hostsFile = 'C:\\Windows\\System32\\drivers\\etc\\hosts';
+    private string $hostsFile  = 'C:\\Windows\\System32\\drivers\\etc\\hosts';
+    private string $scriptPath = '';
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->scriptPath = base_path('sync-hosts.ps1');
+    }
 
     public function handle(): void
     {
@@ -18,7 +25,7 @@ class AddTenantHost extends Command
         $write     = $this->option('write');
 
         $entries = $subdomain
-            ? ["{$subdomain}.Menugo.local"]
+            ? ["{$subdomain}.menugo.local"]
             : $this->allDomains();
 
         if (empty($entries)) {
@@ -38,14 +45,19 @@ class AddTenantHost extends Command
         return Tenant::with('domains')
             ->get()
             ->flatMap(fn($t) => $t->domains->pluck('domain'))
+            ->map(fn($d) => strtolower($d))
+            ->unique()
             ->toArray();
     }
 
     private function writeToHostsFile(array $entries): void
     {
         if (! is_writable($this->hostsFile)) {
-            $this->error('Sin permisos para escribir en el archivo hosts.');
-            $this->line('Ejecuta este comando desde una terminal con privilegios de Administrador.');
+            // Generate a PowerShell script the user can run as Administrator
+            $this->generatePs1Script();
+            $this->error('Sin permisos para escribir en el archivo hosts (Apache no es Administrador).');
+            $this->line("Script de sincronización generado en: <comment>{$this->scriptPath}</comment>");
+            $this->line('Haz clic derecho sobre ese archivo → <comment>Ejecutar con PowerShell (Administrador)</comment>');
             $this->newLine();
             $this->showInstructions($entries);
             return;
@@ -56,7 +68,7 @@ class AddTenantHost extends Command
 
         foreach ($entries as $domain) {
             $line = "127.0.0.1 {$domain}";
-            if (str_contains($current, $domain)) {
+            if (stripos($current, $domain) !== false) {
                 $this->line("<comment>Ya existe:</comment> {$line}");
                 continue;
             }
@@ -69,6 +81,51 @@ class AddTenantHost extends Command
             $this->newLine();
             $this->info("✓ {$added} entrada(s) agregada(s). Reinicia el navegador para aplicar los cambios.");
         }
+    }
+
+    private function generatePs1Script(): void
+    {
+        // Build script that adds all missing tenant domains
+        $allDomains = $this->allDomains();
+
+        $lines   = [];
+        $lines[] = '# MenuGo — Sincronizar hosts de tenants';
+        $lines[] = '# Clic derecho -> "Ejecutar con PowerShell" (acepta el UAC)';
+        $lines[] = '# Despues de ejecutar esto UNA VEZ, los proximos tenants se registran automaticamente.';
+        $lines[] = '';
+        $lines[] = '$hostsFile = "C:\Windows\System32\drivers\etc\hosts"';
+        $lines[] = '';
+        $lines[] = '# Paso 1: conceder escritura permanente al grupo Users';
+        $lines[] = 'Write-Host "Configurando permisos sobre el archivo hosts..." -ForegroundColor Yellow';
+        $lines[] = 'icacls $hostsFile /grant "BUILTIN\Users:(W)" | Out-Null';
+        $lines[] = 'Write-Host "Listo." -ForegroundColor Green';
+        $lines[] = '';
+        $lines[] = '# Paso 2: agregar dominios faltantes';
+        $lines[] = '$current = Get-Content $hostsFile -Raw';
+        $lines[] = '$added   = 0';
+        $lines[] = '';
+
+        foreach ($allDomains as $domain) {
+            $domain  = strtolower($domain);
+            $escaped = addslashes($domain);
+            $lines[] = "if (\$current -notmatch [regex]::Escape('{$escaped}')) {";
+            $lines[] = "    Add-Content \$hostsFile \"`n127.0.0.1 {$escaped}\"";
+            $lines[] = "    Write-Host 'Agregado: 127.0.0.1 {$escaped}' -ForegroundColor Green";
+            $lines[] = '    $added++';
+            $lines[] = "} else { Write-Host 'Ya existe: {$escaped}' -ForegroundColor DarkGray }";
+            $lines[] = '';
+        }
+
+        $lines[] = 'Write-Host ""';
+        $lines[] = 'if ($added -gt 0) {';
+        $lines[] = '    Write-Host "$added dominio(s) agregado(s). Reinicia el navegador." -ForegroundColor Cyan';
+        $lines[] = '} else {';
+        $lines[] = '    Write-Host "Todos los dominios ya estaban registrados." -ForegroundColor Green';
+        $lines[] = '}';
+        $lines[] = 'Write-Host ""';
+        $lines[] = 'Read-Host "Presiona Enter para cerrar"';
+
+        file_put_contents($this->scriptPath, implode(PHP_EOL, $lines));
     }
 
     private function showInstructions(array $entries): void

@@ -31,6 +31,7 @@ interface SocialLinks {
     instagram?: string;
     facebook?: string;
     whatsapp?: string;
+    whatsapp_message?: string;
     tiktok?: string;
     twitter?: string;
     youtube?: string;
@@ -336,7 +337,9 @@ function RestaurantLocationSection({
     design:   any;
     mapsKey:  string | null;
 }) {
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef                      = useRef<HTMLInputElement>(null);
+    const [geocoding, setGeocoding]     = useState(false);
+    const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!mapsKey || !inputRef.current) return;
@@ -353,10 +356,33 @@ function RestaurantLocationSection({
                 design.setData('restaurant_lng',     place.geometry.location.lng());
                 design.setData('restaurant_address', place.formatted_address ?? '');
                 if (inputRef.current) inputRef.current.value = place.formatted_address ?? '';
+                setGeocodeError(null);
             });
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mapsKey]);
+
+    async function geocodeWithNominatim() {
+        const addr = design.data.restaurant_address?.trim();
+        if (!addr) return;
+        setGeocoding(true);
+        setGeocodeError(null);
+        try {
+            const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&countrycodes=co&accept-language=es`;
+            const res  = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'MenuGo/1.0' } });
+            const data = await res.json() as Array<{ lat: string; lon: string }>;
+            if (data.length > 0) {
+                design.setData('restaurant_lat', parseFloat(data[0].lat));
+                design.setData('restaurant_lng', parseFloat(data[0].lon));
+            } else {
+                setGeocodeError('No se encontraron coordenadas para esta dirección. Intenta ser más específico.');
+            }
+        } catch {
+            setGeocodeError('Error al obtener coordenadas. Verifica tu conexión e intenta de nuevo.');
+        } finally {
+            setGeocoding(false);
+        }
+    }
 
     const hasCoords = design.data.restaurant_lat && design.data.restaurant_lng;
 
@@ -367,12 +393,12 @@ function RestaurantLocationSection({
                     Ubicación del restaurante
                     {!mapsKey && (
                         <span className="text-[10px] font-normal text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-full px-2 py-0.5">
-                            Requiere API Key de Google Maps en .env
+                            Autocompletar inactivo · configura GOOGLE_MAPS_API_KEY en .env
                         </span>
                     )}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                    Necesaria para calcular distancias y validar la zona de entrega del cliente.
+                    Las coordenadas permiten calcular distancias y asignar automáticamente la zona de entrega del cliente.
                 </p>
             </div>
 
@@ -385,17 +411,30 @@ function RestaurantLocationSection({
                     type="text"
                     defaultValue={design.data.restaurant_address ?? ''}
                     onInput={(e) => {
-                        // Si el usuario borra manualmente, limpiar coords
-                        if (!(e.target as HTMLInputElement).value) {
-                            design.setData('restaurant_lat',     null);
-                            design.setData('restaurant_lng',     null);
-                            design.setData('restaurant_address', '');
+                        const val = (e.target as HTMLInputElement).value;
+                        design.setData('restaurant_address', val);
+                        setGeocodeError(null);
+                        if (!val) {
+                            design.setData('restaurant_lat', null);
+                            design.setData('restaurant_lng', null);
                         }
                     }}
-                    placeholder={mapsKey ? 'Escribe la dirección y selecciona del menú…' : 'Configura GOOGLE_MAPS_API_KEY en .env primero'}
-                    disabled={!mapsKey}
-                    className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-40"
+                    placeholder={mapsKey ? 'Escribe la dirección y selecciona del menú…' : 'Escribe la dirección del establecimiento'}
+                    className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
+                {!mapsKey && design.data.restaurant_address && !hasCoords && (
+                    <button
+                        type="button"
+                        onClick={geocodeWithNominatim}
+                        disabled={geocoding}
+                        className="text-xs text-primary underline underline-offset-2 disabled:opacity-50 hover:no-underline transition-all"
+                    >
+                        {geocoding ? 'Obteniendo coordenadas…' : 'Geocodificar dirección (obtener coordenadas automáticamente)'}
+                    </button>
+                )}
+                {geocodeError && (
+                    <p className="text-xs text-red-400">{geocodeError}</p>
+                )}
             </div>
 
             {hasCoords ? (
@@ -409,7 +448,10 @@ function RestaurantLocationSection({
                 <div className="flex items-start gap-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2">
                     <span className="text-amber-400 shrink-0 mt-0.5">⚠</span>
                     <p className="text-xs text-amber-400">
-                        Sin coordenadas del restaurante. La zona de entrega <strong>no se asignará automáticamente</strong> a los clientes — configura la ubicación arriba para activar la detección por distancia.
+                        Sin coordenadas del restaurante. La zona de entrega <strong>no se asignará automáticamente</strong> a los clientes
+                        {mapsKey
+                            ? ' — escribe la dirección y selecciona del menú desplegable.'
+                            : ' — escribe la dirección y usa el botón para geocodificarla.'}
                     </p>
                 </div>
             )}
@@ -442,6 +484,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
             instagram: initialSettings.social_links?.instagram ?? '',
             facebook: initialSettings.social_links?.facebook ?? '',
             whatsapp: initialSettings.social_links?.whatsapp ?? '',
+            whatsapp_message: initialSettings.social_links?.whatsapp_message ?? '',
             tiktok: initialSettings.social_links?.tiktok ?? '',
             twitter: initialSettings.social_links?.twitter ?? '',
             youtube: initialSettings.social_links?.youtube ?? '',
@@ -947,25 +990,39 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                     </p>
                                 </div>
                                 {([
-                                    { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/tu_restaurante', type: 'url' },
-                                    { key: 'facebook', label: 'Facebook', placeholder: 'https://facebook.com/tu_restaurante', type: 'url' },
-                                    { key: 'whatsapp', label: 'WhatsApp', placeholder: '573001234567  (solo números con código de país)', type: 'tel' },
-                                    { key: 'tiktok', label: 'TikTok', placeholder: 'https://tiktok.com/@tu_restaurante', type: 'url' },
-                                    { key: 'twitter', label: 'X / Twitter', placeholder: 'https://x.com/tu_restaurante', type: 'url' },
-                                    { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@tu_restaurante', type: 'url' },
+                                    { key: 'instagram',        label: 'Instagram',                        placeholder: 'https://instagram.com/tu_restaurante',           type: 'url'      },
+                                    { key: 'facebook',         label: 'Facebook',                         placeholder: 'https://facebook.com/tu_restaurante',            type: 'url'      },
+                                    { key: 'whatsapp',         label: 'WhatsApp',                         placeholder: '573001234567  (solo números con código de país)', type: 'tel'      },
+                                    { key: 'whatsapp_message', label: 'Mensaje de bienvenida (WhatsApp)', placeholder: 'Ej: ¡Hola! Quisiera hacer un pedido...',          type: 'textarea' },
+                                    { key: 'tiktok',           label: 'TikTok',                           placeholder: 'https://tiktok.com/@tu_restaurante',             type: 'url'      },
+                                    { key: 'twitter',          label: 'X / Twitter',                      placeholder: 'https://x.com/tu_restaurante',                   type: 'url'      },
+                                    { key: 'youtube',          label: 'YouTube',                          placeholder: 'https://youtube.com/@tu_restaurante',            type: 'url'      },
                                 ] as const).map(({ key, label, placeholder, type }) => (
                                     <div key={key} className="space-y-1">
                                         <label className="text-xs font-medium text-muted-foreground">{label}</label>
-                                        <input
-                                            type={type}
-                                            className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                            placeholder={placeholder}
-                                            value={design.data.social_links[key]}
-                                            onChange={e => design.setData('social_links', {
-                                                ...design.data.social_links,
-                                                [key]: e.target.value,
-                                            })}
-                                        />
+                                        {type === 'textarea' ? (
+                                            <textarea
+                                                className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                                                rows={3}
+                                                placeholder={placeholder}
+                                                value={design.data.social_links[key] ?? ''}
+                                                onChange={e => design.setData('social_links', {
+                                                    ...design.data.social_links,
+                                                    [key]: e.target.value,
+                                                })}
+                                            />
+                                        ) : (
+                                            <input
+                                                type={type}
+                                                className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                                placeholder={placeholder}
+                                                value={design.data.social_links[key] ?? ''}
+                                                onChange={e => design.setData('social_links', {
+                                                    ...design.data.social_links,
+                                                    [key]: e.target.value,
+                                                })}
+                                            />
+                                        )}
                                         {design.errors[`social_links.${key}` as keyof typeof design.errors] && (
                                             <p className="text-xs text-red-400">
                                                 {design.errors[`social_links.${key}` as keyof typeof design.errors]}
@@ -1006,7 +1063,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                             <input
                                                 type="number"
                                                 min={0}
-                                                step={1000}
+                                                step={1}
                                                 className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                                                 value={design.data.delivery_min_order}
                                                 onChange={e => design.setData('delivery_min_order', parseInt(e.target.value) || 0)}
@@ -1015,118 +1072,166 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                         </div>
 
                                         {/* Zonas */}
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
+                                            {/* Anuncio contextual */}
+                                            <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+                                                <span className="text-primary shrink-0 text-xs mt-0.5">ℹ</span>
+                                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                                    {design.data.delivery_zones.length > 1
+                                                        ? 'Modo multi-zona: cada zona se asigna automáticamente por distancia entre el restaurante y el cliente. Requiere coordenadas del restaurante configuradas abajo.'
+                                                        : 'La Zona de Cobertura define el valor del domicilio que se suma al total del pedido. Se asigna automáticamente a todos los pedidos a domicilio. Para diferenciar tarifas por distancia, usa "+ Agregar zona adicional".'}
+                                                </p>
+                                            </div>
+
+                                            {/* Sin zonas */}
+                                            {design.data.delivery_zones.length === 0 && (
+                                                <p className="text-xs text-muted-foreground/50 italic px-1">
+                                                    Sin tarifa configurada. El domicilio estará activo sin cobro adicional.
+                                                </p>
+                                            )}
+
+                                            {/* Zona única simplificada */}
+                                            {design.data.delivery_zones.length === 1 && (
+                                                <div className="flex items-center gap-3 rounded-xl bg-muted/30 px-4 py-3">
+                                                    <span className="text-sm font-medium flex-1">
+                                                        {design.data.delivery_zones[0].label || 'Zona de Cobertura'}
+                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs text-muted-foreground">$</span>
+                                                        <input
+                                                            type="number" min={0} step={500}
+                                                            className="w-28 rounded-lg border border-input bg-input px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                            placeholder="0"
+                                                            value={design.data.delivery_zones[0].price}
+                                                            onChange={e => {
+                                                                const zones = [...design.data.delivery_zones];
+                                                                zones[0] = { ...zones[0], price: parseInt(e.target.value) || 0 };
+                                                                design.setData('delivery_zones', zones);
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => design.setData('delivery_zones', [])}
+                                                        className="flex items-center justify-center p-1 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Multi-zona: cabecera + filas */}
+                                            {design.data.delivery_zones.length > 1 && (
+                                                <>
+                                                    <div className="grid grid-cols-[1fr_52px_52px_80px_28px] gap-2 px-3">
+                                                        <span className="text-[10px] text-muted-foreground/50">NOMBRE DE ZONA</span>
+                                                        <span className="text-[10px] text-muted-foreground/50 text-center">KM MÍN.</span>
+                                                        <span className="text-[10px] text-muted-foreground/50 text-center">KM MÁX.</span>
+                                                        <span className="text-[10px] text-muted-foreground/50 text-center">TARIFA</span>
+                                                        <span />
+                                                    </div>
+                                                    {design.data.delivery_zones.map((zone, idx) => {
+                                                        const labelErr = design.errors[`delivery_zones.${idx}.label` as keyof typeof design.errors];
+                                                        const hasErr   = !!labelErr;
+                                                        return (
+                                                            <div key={idx} className="space-y-0.5">
+                                                                <div className="grid grid-cols-[1fr_52px_52px_80px_28px] items-center gap-2 rounded-xl bg-muted/30 px-3 py-2.5">
+                                                                    <input
+                                                                        className={`w-full rounded-lg border bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 ${hasErr ? 'border-red-500' : 'border-input'}`}
+                                                                        placeholder="Nombre de zona *"
+                                                                        value={zone.label}
+                                                                        onChange={e => {
+                                                                            const zones = [...design.data.delivery_zones];
+                                                                            zones[idx] = { ...zones[idx], label: e.target.value };
+                                                                            design.setData('delivery_zones', zones);
+                                                                        }}
+                                                                    />
+                                                                    <input
+                                                                        type="number" min={0} step={0.1}
+                                                                        className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                                        placeholder="0" value={zone.min_km}
+                                                                        onChange={e => {
+                                                                            const zones = [...design.data.delivery_zones];
+                                                                            zones[idx] = { ...zones[idx], min_km: parseFloat(e.target.value) || 0 };
+                                                                            design.setData('delivery_zones', zones);
+                                                                        }}
+                                                                    />
+                                                                    <input
+                                                                        type="number" min={0} step={0.1}
+                                                                        className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                                        placeholder="10" value={zone.max_km}
+                                                                        onChange={e => {
+                                                                            const zones = [...design.data.delivery_zones];
+                                                                            zones[idx] = { ...zones[idx], max_km: parseFloat(e.target.value) || 0 };
+                                                                            design.setData('delivery_zones', zones);
+                                                                        }}
+                                                                    />
+                                                                    <input
+                                                                        type="number" min={0} step={500}
+                                                                        className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                                        placeholder="0" value={zone.price}
+                                                                        onChange={e => {
+                                                                            const zones = [...design.data.delivery_zones];
+                                                                            zones[idx] = { ...zones[idx], price: parseInt(e.target.value) || 0 };
+                                                                            design.setData('delivery_zones', zones);
+                                                                        }}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => design.setData('delivery_zones',
+                                                                            design.data.delivery_zones.filter((_, i) => i !== idx)
+                                                                        )}
+                                                                        className="flex items-center justify-center p-1 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
+                                                                    >
+                                                                        <X className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                                {hasErr && (
+                                                                    <p className="text-[10px] text-red-400 pl-3">{labelErr as string}</p>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </>
+                                            )}
+
+                                            {/* Botón agregar */}
                                             <div className="flex items-center justify-between">
-                                                <label className="text-xs font-medium text-muted-foreground">
-                                                    Zonas de entrega
-                                                </label>
                                                 <button
                                                     type="button"
                                                     onClick={() => design.setData('delivery_zones', [
                                                         ...design.data.delivery_zones,
-                                                        { label: '', min_km: 0, max_km: 0, price: 0 },
+                                                        design.data.delivery_zones.length === 0
+                                                            ? { label: 'Zona de Cobertura', min_km: 0, max_km: 9999, price: 0 }
+                                                            : { label: '', min_km: 0, max_km: 0, price: 0 },
                                                     ])}
                                                     className="text-xs text-primary hover:underline font-medium"
                                                 >
-                                                    + Agregar zona
+                                                    {design.data.delivery_zones.length === 0
+                                                        ? '+ Agregar tarifa de domicilio'
+                                                        : '+ Agregar zona adicional'}
                                                 </button>
+                                                {design.data.delivery_zones.length > 0 && (
+                                                    <span className="text-xs text-muted-foreground/50">
+                                                        {design.data.delivery_zones.length} zona{design.data.delivery_zones.length !== 1 ? 's' : ''} configurada{design.data.delivery_zones.length !== 1 ? 's' : ''}
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            {design.data.delivery_zones.length === 0 && (
-                                                <p className="text-xs text-muted-foreground/50 italic">
-                                                    Sin zonas configuradas. Agrega al menos una zona para cobrar domicilio.
-                                                </p>
-                                            )}
-
-                                            {/* Cabecera de columnas */}
+                                            {/* Vista previa */}
                                             {design.data.delivery_zones.length > 0 && (
-                                                <div className="grid grid-cols-[1fr_52px_52px_80px_28px] gap-2 px-3">
-                                                    <span className="text-[10px] text-muted-foreground/50">NOMBRE DE ZONA</span>
-                                                    <span className="text-[10px] text-muted-foreground/50 text-center">KM MÍN.</span>
-                                                    <span className="text-[10px] text-muted-foreground/50 text-center">KM MÁX.</span>
-                                                    <span className="text-[10px] text-muted-foreground/50 text-center">TARIFA</span>
-                                                    <span />
-                                                </div>
-                                            )}
-
-                                            {design.data.delivery_zones.map((zone, idx) => {
-                                                const labelErr = design.errors[`delivery_zones.${idx}.label` as keyof typeof design.errors];
-                                                const hasErr   = !!labelErr;
-                                                return (
-                                                    <div key={idx} className="space-y-0.5">
-                                                        <div className="grid grid-cols-[1fr_52px_52px_80px_28px] items-center gap-2 rounded-xl bg-muted/30 px-3 py-2.5">
-                                                            <input
-                                                                className={`w-full rounded-lg border bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 ${hasErr ? 'border-red-500' : 'border-input'}`}
-                                                                placeholder="Nombre de zona *"
-                                                                value={zone.label}
-                                                                onChange={e => {
-                                                                    const zones = [...design.data.delivery_zones];
-                                                                    zones[idx] = { ...zones[idx], label: e.target.value };
-                                                                    design.setData('delivery_zones', zones);
-                                                                }}
-                                                            />
-                                                            <input
-                                                                type="number" min={0} step={0.1}
-                                                                className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                                placeholder="0"
-                                                                value={zone.min_km}
-                                                                onChange={e => {
-                                                                    const zones = [...design.data.delivery_zones];
-                                                                    zones[idx] = { ...zones[idx], min_km: parseFloat(e.target.value) || 0 };
-                                                                    design.setData('delivery_zones', zones);
-                                                                }}
-                                                            />
-                                                            <input
-                                                                type="number" min={0} step={0.1}
-                                                                className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                                placeholder="10"
-                                                                value={zone.max_km}
-                                                                onChange={e => {
-                                                                    const zones = [...design.data.delivery_zones];
-                                                                    zones[idx] = { ...zones[idx], max_km: parseFloat(e.target.value) || 0 };
-                                                                    design.setData('delivery_zones', zones);
-                                                                }}
-                                                            />
-                                                            <input
-                                                                type="number" min={0} step={500}
-                                                                className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                                placeholder="0"
-                                                                value={zone.price}
-                                                                onChange={e => {
-                                                                    const zones = [...design.data.delivery_zones];
-                                                                    zones[idx] = { ...zones[idx], price: parseInt(e.target.value) || 0 };
-                                                                    design.setData('delivery_zones', zones);
-                                                                }}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => design.setData('delivery_zones',
-                                                                    design.data.delivery_zones.filter((_, i) => i !== idx)
-                                                                )}
-                                                                className="flex items-center justify-center p-1 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
-                                                            >
-                                                                <X className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </div>
-                                                        {hasErr && (
-                                                            <p className="text-[10px] text-red-400 pl-3">{labelErr as string}</p>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-
-                                            {/* Vista previa de tarifas */}
-                                            {design.data.delivery_zones.length > 0 && (
-                                                <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5 mt-1">
+                                                <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5">
                                                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
                                                         Vista previa de tarifas
                                                     </p>
                                                     {design.data.delivery_zones.map((zone, idx) => (
                                                         <div key={idx} className="flex items-center justify-between text-xs">
-                                                            <span className="text-muted-foreground">
+                                                            <span className="text-muted-foreground flex items-center gap-1.5">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                                                                 {zone.label || <span className="italic opacity-40">Sin nombre</span>}
-                                                                {' '}
-                                                                <span className="opacity-40">{zone.min_km}–{zone.max_km} km</span>
+                                                                {design.data.delivery_zones.length > 1 && (
+                                                                    <span className="opacity-40">{zone.min_km}–{zone.max_km} km</span>
+                                                                )}
                                                             </span>
                                                             <span className="font-bold text-accent">
                                                                 {zone.price === 0 ? 'Gratis' : `$ ${zone.price.toLocaleString('es-CO')}`}

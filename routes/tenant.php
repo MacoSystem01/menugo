@@ -259,6 +259,10 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
             ->middleware('perm:domicilio.gestionar')
             ->name('domicilio.entregar');
 
+        Route::get('/api/delivery-alerts', [DomicilioController::class, 'alertas'])
+            ->middleware('perm:domicilio.ver')
+            ->name('delivery.alerts');
+
         // ── Inventario ────────────────────────────────────────────────────────
         Route::get('/inventario',                  [InventarioController::class, 'index'])
             ->middleware('perm:inventario.ver')

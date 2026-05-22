@@ -80,6 +80,29 @@ class DomicilioController extends Controller
         return back()->with('success', "Has tomado el pedido #{$order->id}.");
     }
 
+    // ── Alerta JSON: domicilios listos sin repartidor ─────────────────────────
+
+    public function alertas()
+    {
+        $orders = Order::where('type', 'domicilio')
+            ->where('status', 'ready')
+            ->whereNull('delivery_user_id')
+            ->whereNull('closed_at_eod')
+            ->latest()
+            ->get(['id', 'customer_name', 'delivery_address', 'ready_at'])
+            ->map(fn($o) => [
+                'id'               => $o->id,
+                'customer_name'    => $o->customer_name,
+                'delivery_address' => $o->delivery_address,
+                'ready_at'         => $o->ready_at?->format('H:i'),
+            ]);
+
+        return response()->json([
+            'count'  => $orders->count(),
+            'orders' => $orders->values(),
+        ]);
+    }
+
     // ── Marcar como entregado ─────────────────────────────────────────────────
 
     public function entregar(Order $order)
