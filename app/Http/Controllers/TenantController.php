@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PlatformPaymentMethod;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -24,34 +26,50 @@ class TenantController extends Controller
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9]+$/'],
             'owner_name'            => 'required|string|max:150',
-            'phone'                 => 'nullable|string|max:20',
+            'phone'                 => 'nullable|string|max:30',
             'email'                 => 'required|email|max:150',
             'password'              => 'required|string|min:8|confirmed',
             'restaurant_address'    => 'nullable|string|max:255',
             'restaurant_lat'        => 'nullable|numeric|between:-90,90',
             'restaurant_lng'        => 'nullable|numeric|between:-180,180',
+            'evidence'              => 'nullable|file|mimes:jpg,jpeg,png,pdf,webp|max:10240',
         ]);
 
         $subdomain  = strtolower($data['subdomain']);
         $fullDomain = "{$subdomain}.{$baseDomain}";
 
-        // Verificar que el subdominio no esté en uso
         if (\Stancl\Tenancy\Database\Models\Domain::where('domain', $fullDomain)->exists()) {
             return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
         }
 
-        // Crear tenant (dispara CreateDatabase + MigrateDatabase sincrónicamente)
+        // Determinar estado de pago según si se adjuntó evidencia
+        $hasEvidence   = $request->hasFile('evidence');
+        $paymentStatus = $hasEvidence ? 'pending_review' : 'pending_payment';
+
+        // Crear tenant — inactivo hasta que el admin confirme el pago
         $tenant = Tenant::create([
-            'id'   => Str::uuid(),
-            'name' => $data['name'],
-            'email'=> $data['email'],
-            'plan' => $data['plan'],
-            'type' => $data['type'],   // se guarda en columna data (JSON)
+            'id'             => Str::uuid(),
+            'name'           => $data['name'],
+            'owner_name'     => $data['owner_name'],
+            'email'          => $data['email'],
+            'plan'           => $data['plan'],
+            'type'           => $data['type'],
+            'active'         => false,
+            'payment_status' => $paymentStatus,
         ]);
 
         $tenant->domains()->create(['domain' => $fullDomain]);
 
-        // Entrar al contexto del tenant para crear el usuario dueño
+        // Guardar evidencia de pago (fuera del contexto tenant)
+        if ($hasEvidence) {
+            $evidencePath = $request->file('evidence')->store("payment-evidence/{$tenant->id}", 'public');
+            $tenant->update([
+                'payment_evidence_path' => $evidencePath,
+                'payment_evidence_at'   => now(),
+            ]);
+        }
+
+        // Crear usuario dueño en la BD del tenant
         tenancy()->initialize($tenant);
 
         $dispatcher = User::getEventDispatcher();
@@ -77,16 +95,14 @@ class TenantController extends Controller
 
         tenancy()->end();
 
-        // Intentar agregar el subdominio al hosts file automáticamente (solo si hay permisos)
         Artisan::call('tenant:host', ['subdomain' => $subdomain, '--write' => true]);
-        $hostsWritten = str_contains(Artisan::output(), 'Agregado');
 
         return redirect()->route('register.success')
-            ->with('tenant_name',  $data['name'])
-            ->with('tenant_url',   "http://{$fullDomain}")
-            ->with('tenant_email', $data['email'])
-            ->with('hosts_warning', $hostsWritten ? null
-                : "Agrega manualmente en el archivo hosts (como Administrador): 127.0.0.1 {$fullDomain}");
+            ->with('tenant_name',    $data['name'])
+            ->with('tenant_url',     "http://{$fullDomain}")
+            ->with('tenant_email',   $data['email'])
+            ->with('payment_status', $paymentStatus)
+            ->with('has_evidence',   $hasEvidence);
     }
 
     public function find(Request $request)
@@ -122,9 +138,11 @@ class TenantController extends Controller
         }
 
         return Inertia::render('Auth/RegisterSuccess', [
-            'tenantName'  => session('tenant_name'),
-            'tenantUrl'   => session('tenant_url'),
-            'tenantEmail' => session('tenant_email'),
+            'tenantName'    => session('tenant_name'),
+            'tenantUrl'     => session('tenant_url'),
+            'tenantEmail'   => session('tenant_email'),
+            'paymentStatus' => session('payment_status', 'active'),
+            'hasEvidence'   => session('has_evidence', false),
         ]);
     }
 
@@ -132,15 +150,18 @@ class TenantController extends Controller
     public function index()
     {
         $tenants = Tenant::with('domains')->latest()->get()->map(fn($t) => [
-            'id'         => $t->id,
-            'name'       => $t->name,
-            'email'      => $t->email,
-            'plan'       => $t->plan,
-            'active'     => $t->active ?? true,
-            'subdomain'  => $t->domains->first()?->domain,
-            'expires_at' => $t->expires_at,
-            'created_at' => $t->created_at->format('d/m/Y'),
-            'address'    => $this->getTenantAddress($t),
+            'id'                   => $t->id,
+            'name'                 => $t->name,
+            'email'                => $t->email,
+            'plan'                 => $t->plan,
+            'active'               => $t->active ?? true,
+            'payment_status'       => $t->payment_status ?? 'active',
+            'payment_evidence_path'=> $t->payment_evidence_path,
+            'payment_evidence_at'  => $t->payment_evidence_at,
+            'subdomain'            => $t->domains->first()?->domain,
+            'expires_at'           => $t->expires_at,
+            'created_at'           => $t->created_at->format('d/m/Y'),
+            'address'              => $this->getTenantAddress($t),
         ]);
 
         return Inertia::render('Admin/Tenants', compact('tenants'));
@@ -175,8 +196,9 @@ class TenantController extends Controller
             'restaurant_lng'        => 'nullable|numeric|between:-180,180',
         ]);
 
+        $baseDomain = parse_url(config('app.url'), PHP_URL_HOST);
         $subdomain  = strtolower($data['subdomain']);
-        $fullDomain = "{$subdomain}.Menugo.local";
+        $fullDomain = "{$subdomain}.{$baseDomain}";
 
         if (\Stancl\Tenancy\Database\Models\Domain::where('domain', $fullDomain)->exists()) {
             return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
@@ -294,5 +316,16 @@ class TenantController extends Controller
         $tenant->update(['active' => !($tenant->active ?? true)]);
         $status = ($tenant->active ?? true) ? 'activado' : 'desactivado';
         return back()->with('success', "El restaurante '{$tenant->name}' ha sido {$status}.");
+    }
+
+    public function activateTenant(string $id)
+    {
+        $tenant = Tenant::findOrFail($id);
+        $tenant->update([
+            'active'         => true,
+            'payment_status' => 'active',
+            'expires_at'     => now()->addDays(30),
+        ]);
+        return back()->with('success', "✅ '{$tenant->name}' activado correctamente. Pago confirmado.");
     }
 }

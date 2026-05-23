@@ -26,6 +26,14 @@ class AuthController extends Controller
                 return back()->withErrors(['email' => 'Las credenciales no son correctas.'])->onlyInput('email');
             }
 
+            // Bloquear acceso si el tenant está pendiente de activación de pago
+            if (tenant() && !(tenant()->active ?? true)) {
+                Auth::logout();
+                return back()->withErrors([
+                    'email' => 'Tu cuenta está pendiente de activación. Por favor espera la confirmación del pago.',
+                ])->onlyInput('email');
+            }
+
             $user = Auth::user();
 
             /** @var \App\Models\User $user */
@@ -98,7 +106,7 @@ class AuthController extends Controller
         $request->session()->save(); // write new empty session to disk before any redirect
 
         // Redirigir siempre a la página de bienvenida del dominio central
-        $welcomeUrl = rtrim(config('app.url'), '/') . '/';
+        $welcomeUrl = rtrim((string) config('app.url', ''), '/') . '/';
 
         if ($request->hasHeader('X-Inertia')) {
             return response('', 409)->header('X-Inertia-Location', $welcomeUrl);

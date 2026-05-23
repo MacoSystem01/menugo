@@ -1,60 +1,61 @@
-# MenuGo — Sincronizar hosts de tenants
-# ─────────────────────────────────────────────────────────────────────────────
-# EJECUCIÓN ÚNICA como Administrador:
-#   Clic derecho → "Ejecutar con PowerShell"  (acepta el UAC)
-#
-# Después de ejecutar esto UNA VEZ, cada nuevo tenant se registra
-# automáticamente en el archivo hosts sin necesidad de permisos adicionales.
-# ─────────────────────────────────────────────────────────────────────────────
+# MenuGo -- Sincronizar y normalizar hosts de tenants
+# Clic derecho -> "Ejecutar con PowerShell" (acepta el UAC)
+# Este script normaliza todos los dominios a lowercase y agrega los faltantes.
 
 $hostsFile = "C:\Windows\System32\drivers\etc\hosts"
 
-# ── PASO 1: conceder escritura permanente a todos los usuarios de Windows ──
-Write-Host ""
+# Paso 1: conceder escritura permanente al grupo de usuarios actuales
 Write-Host "Configurando permisos sobre el archivo hosts..." -ForegroundColor Yellow
-icacls $hostsFile /grant "BUILTIN\Users:(W)" | Out-Null
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "Permiso de escritura concedido. Los proximos tenants se registraran automaticamente." -ForegroundColor Green
-} else {
-    Write-Host "No se pudo configurar el permiso (puede que ya este establecido)." -ForegroundColor DarkGray
+icacls $hostsFile /grant "Usuarios:(W)" 2>$null | Out-Null
+icacls $hostsFile /grant "Users:(W)" 2>$null | Out-Null
+Write-Host "Listo." -ForegroundColor Green
+
+# Paso 2: leer contenido actual y filtrar entradas con mayusculas incorrectas
+$lines = Get-Content $hostsFile -Encoding ASCII
+$newLines = [System.Collections.Generic.List[string]]::new()
+
+foreach ($line in $lines) {
+    # Normalizar entradas .Menugo.local (capital M) -> se omiten y se reemplazan
+    if ($line -match '\.menugo\.local' -and $line -cmatch '\.Menugo\.local') {
+        Write-Host "Eliminando entrada con case incorrecto: $line" -ForegroundColor Yellow
+        continue
+    }
+    $newLines.Add($line)
 }
 
-# ── PASO 2: agregar dominios de tenants que falten ────────────────────────
-Write-Host ""
-Write-Host "Sincronizando dominios de tenants..." -ForegroundColor Yellow
-$current = Get-Content $hostsFile -Raw
-$added   = 0
+# Paso 3: agregar dominios requeridos si faltan
+$requiredDomains = @(
+    "menugo.local",
+    "prueba.menugo.local",
+    "prueba1.menugo.local",
+    "losmaschimbitas.menugo.local",
+    "latajada.menugo.local"
+)
 
-if ($current -notmatch [regex]::Escape('prueba.menugo.local')) {
-    Add-Content $hostsFile "`n127.0.0.1 prueba.menugo.local"
-    Write-Host 'Agregado: 127.0.0.1 prueba.menugo.local' -ForegroundColor Green
-    $added++
-} else { Write-Host 'Ya existe: prueba.menugo.local' -ForegroundColor DarkGray }
+$currentText = $newLines -join "`n"
+$added = 0
 
-if ($current -notmatch [regex]::Escape('losmaschimbitas.menugo.local')) {
-    Add-Content $hostsFile "`n127.0.0.1 losmaschimbitas.menugo.local"
-    Write-Host 'Agregado: 127.0.0.1 losmaschimbitas.menugo.local' -ForegroundColor Green
-    $added++
-} else { Write-Host 'Ya existe: losmaschimbitas.menugo.local' -ForegroundColor DarkGray }
+foreach ($domain in $requiredDomains) {
+    $escaped = [regex]::Escape($domain)
+    if ($currentText -notmatch "(?i)$escaped") {
+        $newLines.Add("127.0.0.1 $domain")
+        Write-Host "Agregado: 127.0.0.1 $domain" -ForegroundColor Green
+        $added++
+    } else {
+        Write-Host "Ya existe: $domain" -ForegroundColor DarkGray
+    }
+}
 
-if ($current -notmatch [regex]::Escape('prueba1.menugo.local')) {
-    Add-Content $hostsFile "`n127.0.0.1 prueba1.menugo.local"
-    Write-Host 'Agregado: 127.0.0.1 prueba1.menugo.local' -ForegroundColor Green
-    $added++
-} else { Write-Host 'Ya existe: prueba1.menugo.local' -ForegroundColor DarkGray }
+# Paso 4: escribir el archivo actualizado
+[System.IO.File]::WriteAllLines($hostsFile, $newLines, [System.Text.Encoding]::ASCII)
 
-if ($current -notmatch [regex]::Escape('latajada.menugo.local')) {
-    Add-Content $hostsFile "`n127.0.0.1 latajada.menugo.local"
-    Write-Host 'Agregado: 127.0.0.1 latajada.menugo.local' -ForegroundColor Green
-    $added++
-} else { Write-Host 'Ya existe: latajada.menugo.local' -ForegroundColor DarkGray }
-
-# ── Resultado ─────────────────────────────────────────────────────────────
 Write-Host ""
 if ($added -gt 0) {
-    Write-Host "$added dominio(s) agregado(s). Reinicia el navegador para aplicar los cambios." -ForegroundColor Cyan
+    Write-Host "$added dominio(s) agregado(s). Reinicia el navegador." -ForegroundColor Cyan
 } else {
-    Write-Host "Todos los dominios ya estaban registrados." -ForegroundColor Green
+    Write-Host "Todos los dominios ya estaban correctos." -ForegroundColor Green
 }
 Write-Host ""
-Read-Host "Presiona Enter para cerrar"
+Write-Host "=== Entradas MenuGo en hosts ===" -ForegroundColor Cyan
+Get-Content $hostsFile | Where-Object { $_ -match 'menugo' }
+Write-Host ""

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Advertisement;
+use App\Models\PlatformPaymentMethod;
 use App\Models\SliderLogo;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
@@ -37,6 +38,24 @@ class AdminDashboardController extends Controller
             ->orderBy('month')
             ->get();
 
+        // Tenants pendientes de activación (registro nuevo, pago no confirmado)
+        $pendingPayments = Tenant::with('domains')
+            ->whereIn('payment_status', ['pending_payment', 'pending_review'])
+            ->where('active', false)
+            ->latest()
+            ->get()
+            ->map(fn($t) => [
+                'id'             => $t->id,
+                'name'           => $t->name,
+                'owner_name'     => $t->owner_name,
+                'email'          => $t->email,
+                'plan'           => $t->plan,
+                'payment_status' => $t->payment_status,
+                'has_evidence'   => !is_null($t->payment_evidence_path),
+                'subdomain'      => $t->domains->first()?->domain,
+                'created_at'     => $t->created_at?->format('d/m/Y H:i'),
+            ]);
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'total'     => $total,
@@ -45,8 +64,9 @@ class AdminDashboardController extends Controller
                 'por_tipo'  => $porTipo,
                 'por_plan'  => $porPlan,
             ],
-            'lista'       => $lista,
-            'crecimiento' => $crecimiento,
+            'lista'           => $lista,
+            'crecimiento'     => $crecimiento,
+            'pendingPayments' => $pendingPayments,
         ]);
     }
 
@@ -55,15 +75,92 @@ class AdminDashboardController extends Controller
         $tenants = Tenant::all();
         $porPlan = $tenants->groupBy(fn($t) => $t->plan ?? 'basico')->map->count();
 
-        $prices = ['basico' => 25000, 'pro' => 55000, 'enterprise' => 120000];
-        $totalRevenue = $tenants->sum(fn($t) => $prices[$t->plan ?? 'basico'] ?? 25000);
+        $prices = ['mensual' => 30000, 'trimestral' => 80000, 'semestral' => 220000, 'anual' => 350000];
+        $totalRevenue = $tenants->where('payment_status', 'active')->sum(fn($t) => $prices[$t->plan ?? 'mensual'] ?? 30000);
+
+        $pendingTenants = Tenant::with('domains')
+            ->whereIn('payment_status', ['pending_payment', 'pending_review'])
+            ->latest()
+            ->get()
+            ->map(fn($t) => [
+                'id'                    => $t->id,
+                'name'                  => $t->name,
+                'email'                 => $t->email,
+                'plan'                  => $t->plan,
+                'payment_status'        => $t->payment_status,
+                'payment_evidence_path' => $t->payment_evidence_path
+                    ? Storage::disk('public')->url($t->payment_evidence_path)
+                    : null,
+                'payment_evidence_at'   => $t->payment_evidence_at,
+                'subdomain'             => $t->domains->first()?->domain,
+                'created_at'            => $t->created_at->format('d/m/Y H:i'),
+            ]);
+
+        $paymentMethods = PlatformPaymentMethod::orderBy('sort_order')->orderBy('id')->get();
 
         return Inertia::render('Admin/Billing', [
             'stats' => [
                 'por_plan'      => $porPlan,
                 'total_revenue' => $totalRevenue,
-            ]
+            ],
+            'pendingTenants' => $pendingTenants,
+            'paymentMethods' => $paymentMethods,
         ]);
+    }
+
+    // ── API pública: métodos de pago activos (usados en /register) ────────────
+
+    public function apiPaymentMethods()
+    {
+        $methods = PlatformPaymentMethod::active()->get(['id', 'name', 'account_info', 'instructions']);
+        return response()->json($methods);
+    }
+
+    // ── CRUD métodos de pago de la plataforma ─────────────────────────────────
+
+    public function storePaymentMethod(Request $request)
+    {
+        $request->validate([
+            'name'         => 'required|string|max:100',
+            'account_info' => 'required|string|max:255',
+            'instructions' => 'nullable|string|max:500',
+        ]);
+
+        $maxOrder = PlatformPaymentMethod::max('sort_order') ?? 0;
+        PlatformPaymentMethod::create([
+            'name'         => $request->name,
+            'account_info' => $request->account_info,
+            'instructions' => $request->instructions,
+            'active'       => true,
+            'sort_order'   => $maxOrder + 1,
+        ]);
+
+        return back()->with('success', "Método de pago '{$request->name}' agregado.");
+    }
+
+    public function updatePaymentMethod(Request $request, int $id)
+    {
+        $method = PlatformPaymentMethod::findOrFail($id);
+        $request->validate([
+            'name'         => 'required|string|max:100',
+            'account_info' => 'required|string|max:255',
+            'instructions' => 'nullable|string|max:500',
+        ]);
+        $method->update($request->only('name', 'account_info', 'instructions'));
+        return back()->with('success', 'Método de pago actualizado.');
+    }
+
+    public function destroyPaymentMethod(int $id)
+    {
+        PlatformPaymentMethod::findOrFail($id)->delete();
+        return back()->with('success', 'Método de pago eliminado.');
+    }
+
+    public function togglePaymentMethod(int $id)
+    {
+        $method = PlatformPaymentMethod::findOrFail($id);
+        $method->update(['active' => ! $method->active]);
+        return back()->with('success', $method->active ? 'Método activado.' : 'Método desactivado.');
     }
 
     // ── Publicidad ────────────────────────────────────────────────────────────────

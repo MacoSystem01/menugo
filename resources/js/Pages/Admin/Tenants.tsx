@@ -4,19 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 import {
     Power, Trash2, ExternalLink, Mail, Calendar,
     ShieldCheck, ShieldAlert, Utensils, Zap, MapPin,
-    Check, Pencil, X, Save,
+    Check, Pencil, X, Save, CheckCircle2, Clock,
 } from 'lucide-react';
 
 interface Tenant {
-    id:          string;
-    name:        string;
-    email:       string;
-    plan:        string;
-    active:      boolean;
-    subdomain:   string;
-    expires_at:  string | null;
-    created_at:  string;
-    address:     string | null;
+    id:             string;
+    name:           string;
+    email:          string;
+    plan:           string;
+    active:         boolean;
+    payment_status: string;
+    subdomain:      string;
+    expires_at:     string | null;
+    created_at:     string;
+    address:        string | null;
 }
 
 interface Props {
@@ -212,9 +213,10 @@ function EditModal({ tenant, onClose }: EditModalProps) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Tenants({ tenants, flash }: Props) {
-    const [showForm,     setShowForm]     = useState(false);
-    const [processingId, setProcessingId] = useState<string | null>(null);
+    const [showForm,      setShowForm]      = useState(false);
+    const [processingId,  setProcessingId]  = useState<string | null>(null);
     const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+    const [activatingId,  setActivatingId]  = useState<string | null>(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         type:                  'restaurante' as 'restaurante' | 'puesto',
@@ -288,6 +290,11 @@ export default function Tenants({ tenants, flash }: Props) {
     function toggleStatus(id: string) {
         setProcessingId(id);
         router.patch(`/admin/tenants/${id}/status`, {}, { onFinish: () => setProcessingId(null) });
+    }
+
+    function activateTenant(id: string) {
+        setActivatingId(id);
+        router.patch(`/admin/tenants/${id}/activate`, {}, { onFinish: () => setActivatingId(null) });
     }
 
     return (
@@ -503,14 +510,26 @@ export default function Tenants({ tenants, flash }: Props) {
 
                                     {/* Estado */}
                                     <td className="px-6 py-5">
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border ${
-                                            tenant.active
-                                                ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                                                : 'bg-red-500/10 text-red-600 border-red-500/20'
-                                        }`}>
-                                            {tenant.active ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                                            {tenant.active ? 'Activo' : 'Suspendido'}
-                                        </span>
+                                        <div className="flex flex-col gap-1.5">
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit ${
+                                                tenant.active
+                                                    ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                                                    : 'bg-red-500/10 text-red-600 border-red-500/20'
+                                            }`}>
+                                                {tenant.active ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
+                                                {tenant.active ? 'Activo' : 'Inactivo'}
+                                            </span>
+                                            {(tenant.payment_status === 'pending_payment' || tenant.payment_status === 'pending_review') && (
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider w-fit ${
+                                                    tenant.payment_status === 'pending_review'
+                                                        ? 'bg-amber-500/15 text-amber-600 border border-amber-500/25'
+                                                        : 'bg-muted text-muted-foreground border border-border'
+                                                }`}>
+                                                    <Clock className="h-2.5 w-2.5" />
+                                                    {tenant.payment_status === 'pending_review' ? 'Pago en revisión' : 'Pago pendiente'}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
 
                                     {/* Suscripción */}
@@ -530,7 +549,19 @@ export default function Tenants({ tenants, flash }: Props) {
 
                                     {/* Acciones */}
                                     <td className="px-6 py-5">
-                                        <div className="flex items-center justify-end gap-2">
+                                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                                            {/* Activar pago — solo para cuentas pendientes */}
+                                            {(tenant.payment_status === 'pending_payment' || tenant.payment_status === 'pending_review') && (
+                                                <button
+                                                    onClick={() => activateTenant(tenant.id)}
+                                                    disabled={activatingId === tenant.id}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-bold hover:bg-accent/90 transition-colors disabled:opacity-50"
+                                                    title="Confirmar pago y activar cuenta"
+                                                >
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                    {activatingId === tenant.id ? 'Activando…' : 'Activar'}
+                                                </button>
+                                            )}
                                             {/* Editar */}
                                             <button
                                                 onClick={() => setEditingTenant(tenant)}

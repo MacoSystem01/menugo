@@ -54,6 +54,10 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function () use ($adminPath
 // subdominios tenant y localhost. El controlador maneja el contexto correctamente.
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// ── API pública — métodos de pago (sin auth, usada en /register) ─────────────
+Route::get('/api/payment-methods', [AdminDashboardController::class, 'apiPaymentMethods'])
+    ->name('api.payment-methods');
+
 // ── Panel SuperAdmin ──────────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:administrador'])->prefix('admin')->group(function () {
     Route::get('/',                      [AdminDashboardController::class, 'index']);
@@ -61,8 +65,15 @@ Route::middleware(['auth', 'role:administrador'])->prefix('admin')->group(functi
     Route::post('/tenants',              [TenantController::class, 'store'])->name('admin.tenants.store');
     Route::put('/tenants/{id}',          [TenantController::class, 'update'])->name('admin.tenants.update');
     Route::patch('/tenants/{id}/status', [TenantController::class, 'toggleStatus'])->name('admin.tenants.toggle');
+    Route::patch('/tenants/{id}/activate', [TenantController::class, 'activateTenant'])->name('admin.tenants.activate');
     Route::delete('/tenants/{id}',       [TenantController::class, 'destroy'])->name('admin.tenants.destroy');
     Route::get('/billing',               [AdminDashboardController::class, 'billing'])->name('admin.billing');
+
+    // Métodos de pago de la plataforma
+    Route::post('/payment-methods',                       [AdminDashboardController::class, 'storePaymentMethod'])->name('admin.payment-methods.store');
+    Route::put('/payment-methods/{id}',                   [AdminDashboardController::class, 'updatePaymentMethod'])->name('admin.payment-methods.update');
+    Route::patch('/payment-methods/{id}/toggle',          [AdminDashboardController::class, 'togglePaymentMethod'])->name('admin.payment-methods.toggle');
+    Route::delete('/payment-methods/{id}',                [AdminDashboardController::class, 'destroyPaymentMethod'])->name('admin.payment-methods.destroy');
 
     // Publicidad MockUp
     Route::get('/publicidad',                          [AdminDashboardController::class, 'publicidad'])->name('admin.publicidad');

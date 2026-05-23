@@ -1,28 +1,49 @@
 import AppShell from '@/Layouts/AppShell';
-import { Head, Link } from '@inertiajs/react';
-import { Building2, Users, TrendingUp, Globe2, ShieldCheck, ShieldAlert, CreditCard } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import {
+    Building2, TrendingUp, Globe2, ShieldCheck, ShieldAlert, CreditCard,
+    Bell, Clock, Upload, CheckCircle2, User, ChevronRight, X,
+} from 'lucide-react';
+
+// ── Tipos ──────────────────────────────────────────────────────────────────────
 
 interface TenantRow {
-    id: string;
-    name: string;
-    type: string;
-    plan: string;
-    active: boolean;
-    subdomain: string | null;
+    id:         string;
+    name:       string;
+    type:       string;
+    plan:       string;
+    active:     boolean;
+    subdomain:  string | null;
     created_at: string;
+}
+
+interface PendingPayment {
+    id:             string;
+    name:           string;
+    owner_name:     string | null;
+    email:          string;
+    plan:           string;
+    payment_status: string;
+    has_evidence:   boolean;
+    subdomain:      string | null;
+    created_at:     string;
 }
 
 interface Props {
     stats: {
-        total: number;
-        activos: number;
+        total:     number;
+        activos:   number;
         inactivos: number;
-        por_tipo: Record<string, number>;
-        por_plan: Record<string, number>;
+        por_tipo:  Record<string, number>;
+        por_plan:  Record<string, number>;
     };
-    lista: TenantRow[];
-    crecimiento: { month: string; count: number }[];
+    lista:           TenantRow[];
+    crecimiento:     { month: string; count: number }[];
+    pendingPayments: PendingPayment[];
 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 const TIPO_LABEL: Record<string, string> = {
     restaurante: 'Restaurante',
@@ -34,23 +55,136 @@ const PLAN_CLASS: Record<string, string> = {
     semestral:   'bg-primary/20 text-primary',
     trimestral:  'bg-primary/15 text-primary',
     mensual:     'bg-muted text-muted-foreground',
-    pro:         'bg-blue-500/10 text-blue-500',
-    enterprise:  'bg-amber-500/10 text-amber-500',
 };
 
-export default function AdminDashboard({ stats, lista }: Props) {
+const PLAN_LABELS: Record<string, string> = {
+    mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
+};
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
+export default function AdminDashboard({ stats, lista, pendingPayments }: Props) {
+    const [activatingId,    setActivatingId]    = useState<string | null>(null);
+    const [dismissedIds,    setDismissedIds]    = useState<string[]>([]);
+
+    const visiblePending = pendingPayments.filter(p => !dismissedIds.includes(p.id));
+
+    function activateTenant(id: string) {
+        setActivatingId(id);
+        router.patch(`/admin/tenants/${id}/activate`, {}, { onFinish: () => setActivatingId(null) });
+    }
+
     const kpis = [
-        { label: 'Locales registrados', value: String(stats.total),     icon: Building2, color: 'text-primary' },
+        { label: 'Locales registrados', value: String(stats.total),     icon: Building2,  color: 'text-primary'    },
         { label: 'Locales activos',     value: String(stats.activos),   icon: ShieldCheck, color: 'text-green-500' },
-        { label: 'Locales inactivos',   value: String(stats.inactivos), icon: ShieldAlert, color: 'text-red-500' },
-        { label: 'Planes Pro/Ent.',     value: String((stats.por_plan.pro ?? 0) + (stats.por_plan.enterprise ?? 0)), icon: CreditCard, color: 'text-accent' },
+        { label: 'Locales inactivos',   value: String(stats.inactivos), icon: ShieldAlert, color: 'text-red-500'   },
+        { label: 'Pagos pendientes',    value: String(pendingPayments.length), icon: CreditCard, color: pendingPayments.length > 0 ? 'text-amber-500' : 'text-muted-foreground' },
     ];
 
     return (
         <AppShell variant="admin" title="Dashboard Global" subtitle="Gestión centralizada de la plataforma Menugo">
             <Head title="SuperAdmin - Dashboard" />
 
-            {/* KPIs */}
+            {/* ── Alerta de pagos pendientes ──────────────────────────────── */}
+            {visiblePending.length > 0 && (
+                <div className="mb-8 space-y-3">
+                    {/* Encabezado de la sección */}
+                    <div className="flex items-center gap-2.5">
+                        <div className="relative">
+                            <Bell className="h-5 w-5 text-amber-500" />
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">
+                                {visiblePending.length}
+                            </span>
+                        </div>
+                        <h2 className="font-display text-base font-bold text-foreground">
+                            Nuevos pagos pendientes de confirmación
+                        </h2>
+                    </div>
+
+                    {/* Tarjetas de alerta */}
+                    {visiblePending.map(p => (
+                        <div
+                            key={p.id}
+                            className={`relative rounded-2xl border px-5 py-4 ${
+                                p.has_evidence
+                                    ? 'border-amber-500/35 bg-amber-500/8'
+                                    : 'border-border bg-card'
+                            }`}
+                        >
+                            {/* Botón cerrar (ocultar de la vista sin activar) */}
+                            <button
+                                type="button"
+                                onClick={() => setDismissedIds(ids => [...ids, p.id])}
+                                className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                title="Ocultar esta alerta"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4 pr-6">
+                                {/* Info del registro */}
+                                <div className="flex-1 min-w-0 space-y-2">
+                                    {/* Nombre del negocio + badge */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-bold text-sm text-foreground">{p.name}</p>
+                                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                            p.has_evidence
+                                                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30'
+                                                : 'bg-muted text-muted-foreground border border-border'
+                                        }`}>
+                                            {p.has_evidence
+                                                ? <><Upload className="h-2.5 w-2.5" /> Con comprobante</>
+                                                : <><Clock className="h-2.5 w-2.5" /> Sin comprobante</>
+                                            }
+                                        </span>
+                                    </div>
+
+                                    {/* Titular del pago */}
+                                    <div className="flex items-center gap-1.5 text-xs text-foreground">
+                                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        <span>
+                                            <span className="text-muted-foreground">A nombre de: </span>
+                                            <strong>{p.owner_name ?? p.email}</strong>
+                                        </span>
+                                    </div>
+
+                                    {/* Detalles */}
+                                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                                        <span>{p.email}</span>
+                                        <span>·</span>
+                                        <span>Plan <strong className="text-foreground">{PLAN_LABELS[p.plan] ?? p.plan}</strong></span>
+                                        <span>·</span>
+                                        <span>{p.subdomain}</span>
+                                        <span>·</span>
+                                        <span>Registrado: {p.created_at}</span>
+                                    </div>
+                                </div>
+
+                                {/* Acciones */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Link
+                                        href="/admin/billing"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+                                    >
+                                        Ver en Facturación <ChevronRight className="h-3 w-3" />
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        onClick={() => activateTenant(p.id)}
+                                        disabled={activatingId === p.id}
+                                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-bold hover:bg-accent/90 transition-colors disabled:opacity-50"
+                                    >
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        {activatingId === p.id ? 'Activando…' : 'Confirmar y activar'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* ── KPIs ─────────────────────────────────────────────────────── */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {kpis.map(({ label, value, icon: Icon, color }) => (
                     <div key={label} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-lg hover:shadow-primary/5">
@@ -114,7 +248,7 @@ export default function AdminDashboard({ stats, lista }: Props) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-tighter ${PLAN_CLASS[t.plan] ?? 'bg-muted text-muted-foreground'}`}>
-                                                {t.plan}
+                                                {PLAN_LABELS[t.plan] ?? t.plan}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right text-[11px] font-mono text-muted-foreground">
@@ -134,13 +268,14 @@ export default function AdminDashboard({ stats, lista }: Props) {
                             <Globe2 className="h-4 w-4 text-primary" />
                             <h2 className="font-display text-base font-bold text-foreground">Distribución de Negocio</h2>
                         </div>
-                        
                         <div className="space-y-5">
                             <StatProgress label="Restaurantes" value={stats.por_tipo.restaurante ?? 0} total={stats.total} color="bg-primary" />
                             <StatProgress label="Puestos / Food Trucks" value={stats.por_tipo.puesto ?? 0} total={stats.total} color="bg-accent" />
-                            <div className="pt-4 border-t border-border mt-4">
-                                <StatProgress label="Plan Enterprise" value={stats.por_plan.enterprise ?? 0} total={stats.total} color="bg-amber-500" />
-                                <StatProgress label="Plan Pro" value={stats.por_plan.pro ?? 0} total={stats.total} color="bg-blue-500" />
+                            <div className="pt-4 border-t border-border">
+                                <StatProgress label="Plan Anual"      value={stats.por_plan.anual ?? 0}      total={stats.total} color="bg-accent" />
+                                <StatProgress label="Plan Semestral"  value={stats.por_plan.semestral ?? 0}  total={stats.total} color="bg-primary" />
+                                <StatProgress label="Plan Trimestral" value={stats.por_plan.trimestral ?? 0} total={stats.total} color="bg-blue-500" />
+                                <StatProgress label="Plan Mensual"    value={stats.por_plan.mensual ?? 0}    total={stats.total} color="bg-muted-foreground" />
                             </div>
                         </div>
                     </div>
@@ -151,8 +286,10 @@ export default function AdminDashboard({ stats, lista }: Props) {
                         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Suscripciones Activas</div>
                         <div className="font-display text-4xl font-bold mt-2">{stats.activos}</div>
                         <div className="mt-4 flex items-center justify-between text-[11px] text-zinc-400">
-                            <span>Ingresos est. mens.</span>
-                            <span className="font-mono text-white text-sm font-bold">$ {new Intl.NumberFormat('es-CO').format(stats.activos * 50000)}</span>
+                            <span>Pendientes de activar</span>
+                            <span className={`font-mono text-sm font-bold ${pendingPayments.length > 0 ? 'text-amber-400' : 'text-white'}`}>
+                                {pendingPayments.length}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -164,7 +301,7 @@ export default function AdminDashboard({ stats, lista }: Props) {
 function StatProgress({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
     const percent = total > 0 ? (value / total) * 100 : 0;
     return (
-        <div>
+        <div className="mb-4 last:mb-0">
             <div className="flex justify-between text-[11px] mb-1.5 uppercase tracking-wide font-semibold">
                 <span className="text-muted-foreground">{label}</span>
                 <span className="text-foreground">{value} <span className="text-[9px] opacity-40">({Math.round(percent)}%)</span></span>
@@ -175,4 +312,3 @@ function StatProgress({ label, value, total, color }: { label: string; value: nu
         </div>
     );
 }
-

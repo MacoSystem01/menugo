@@ -23,7 +23,7 @@ use Inertia\Inertia;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
-Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
+Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menugo.local'))
     ->middleware([
         'web',
         InitializeTenancyByDomain::class,
@@ -37,8 +37,6 @@ Route::domain('{tenant}.' . parse_url(config('app.url'), PHP_URL_HOST))
         Route::get('/forgot-password', fn() => Inertia::render('Auth/ForgotPassword'))->name('password.request');
         Route::post('/forgot-password', fn() => back())->name('password.email');
     });
-
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ── Carta pública (sin auth, acceso del cliente vía QR) ──────────────────
     Route::get('/carta', [CartaController::class, 'public'])->name('carta.public');

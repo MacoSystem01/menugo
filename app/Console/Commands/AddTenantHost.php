@@ -24,8 +24,9 @@ class AddTenantHost extends Command
         $subdomain = $this->argument('subdomain');
         $write     = $this->option('write');
 
-        $entries = $subdomain
-            ? ["{$subdomain}.menugo.local"]
+        $baseDomain = parse_url(config('app.url'), PHP_URL_HOST);
+        $entries    = $subdomain
+            ? ["{$subdomain}.{$baseDomain}"]
             : $this->allDomains();
 
         if (empty($entries)) {

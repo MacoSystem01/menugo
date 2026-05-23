@@ -1,7 +1,31 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler, useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowLeft, Check, Utensils, Zap, Globe2, MapPin } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Utensils, Zap, Globe2, MapPin, CreditCard, Upload, X, Clock, Landmark, Loader2 } from 'lucide-react';
 import { LoginSearch } from '@/components/LoginSearch';
+
+// ── Códigos de país ────────────────────────────────────────────────────────────
+const COUNTRY_CODES = [
+    { flag: '🇨🇴', name: 'Colombia',          dial: '+57'  },
+    { flag: '🇲🇽', name: 'México',             dial: '+52'  },
+    { flag: '🇦🇷', name: 'Argentina',          dial: '+54'  },
+    { flag: '🇨🇱', name: 'Chile',              dial: '+56'  },
+    { flag: '🇵🇪', name: 'Perú',               dial: '+51'  },
+    { flag: '🇻🇪', name: 'Venezuela',          dial: '+58'  },
+    { flag: '🇪🇨', name: 'Ecuador',            dial: '+593' },
+    { flag: '🇧🇴', name: 'Bolivia',            dial: '+591' },
+    { flag: '🇵🇾', name: 'Paraguay',           dial: '+595' },
+    { flag: '🇺🇾', name: 'Uruguay',            dial: '+598' },
+    { flag: '🇵🇦', name: 'Panamá',             dial: '+507' },
+    { flag: '🇨🇷', name: 'Costa Rica',         dial: '+506' },
+    { flag: '🇬🇹', name: 'Guatemala',          dial: '+502' },
+    { flag: '🇭🇳', name: 'Honduras',           dial: '+504' },
+    { flag: '🇳🇮', name: 'Nicaragua',          dial: '+505' },
+    { flag: '🇸🇻', name: 'El Salvador',        dial: '+503' },
+    { flag: '🇩🇴', name: 'Rep. Dominicana',    dial: '+1'   },
+    { flag: '🇪🇸', name: 'España',             dial: '+34'  },
+    { flag: '🇺🇸', name: 'Estados Unidos',     dial: '+1'   },
+    { flag: '🇧🇷', name: 'Brasil',             dial: '+55'  },
+] as const;
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type EstabType = 'restaurante' | 'puesto' | '';
@@ -39,6 +63,20 @@ function toSlug(str: string): string {
         .replace(/\s+/g, '');
 }
 
+// ── Tipo para métodos de pago ──────────────────────────────────────────────────
+interface PaymentMethod {
+    id:           number;
+    name:         string;
+    account_info: string;
+    instructions: string | null;
+}
+
+// ── Detecta si un string es una URL clickeable ─────────────────────────────────
+function isUrl(str: string): boolean {
+    try { return /^https?:\/\//i.test(str) && Boolean(new URL(str)); }
+    catch { return false; }
+}
+
 // ── Clase compartida para inputs ───────────────────────────────────────────────
 const INPUT = 'w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 transition';
 
@@ -49,6 +87,17 @@ export default function Register() {
         : '' as PlanKey;
 
     const [step, setStep] = useState(1);
+
+    // Estado local para el teléfono dividido en código + número
+    const [phoneCode,   setPhoneCode]   = useState('+57');
+    const [phoneNumber, setPhoneNumber] = useState('');
+
+    // Estado del modal de pago
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentMethods,   setPaymentMethods]   = useState<PaymentMethod[]>([]);
+    const [fetchingMethods,  setFetchingMethods]  = useState(false);
+    const [activeMethodIdx,  setActiveMethodIdx]  = useState(0);
+    const evidenceRef = useRef<HTMLInputElement>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         // paso 1
@@ -67,12 +116,30 @@ export default function Register() {
         email:                 '',
         password:              '',
         password_confirmation: '',
+        evidence:              null as File | null,
     });
 
     // Auto-generar subdominio a partir del nombre del establecimiento
     useEffect(() => {
         setData('subdomain', toSlug(data.name));
     }, [data.name]);
+
+    // Combinar código de país + número en el campo phone del formulario
+    useEffect(() => {
+        const num = phoneNumber.trim();
+        setData('phone', num ? `${phoneCode} ${num}` : '');
+    }, [phoneCode, phoneNumber]);
+
+    // Cargar métodos de pago al abrir el modal
+    useEffect(() => {
+        if (!showPaymentModal || paymentMethods.length > 0) return;
+        setFetchingMethods(true);
+        fetch('/api/payment-methods')
+            .then(r => r.json())
+            .then((data: PaymentMethod[]) => setPaymentMethods(data))
+            .catch(() => {})
+            .finally(() => setFetchingMethods(false));
+    }, [showPaymentModal]);
 
     // ── Validación por paso ──────────────────────────────────────────────────
     const ok: Record<number, boolean> = {
@@ -86,7 +153,14 @@ export default function Register() {
     const next = () => { if (ok[step]) setStep(s => Math.min(s + 1, 4)); };
     const prev = () => setStep(s => Math.max(s - 1, 1));
 
-    const submit: FormEventHandler = (e) => { e.preventDefault(); post('/register'); };
+    const submit: FormEventHandler = (e) => { e.preventDefault(); };
+
+    const openPaymentModal = () => { if (ok[4]) setShowPaymentModal(true); };
+
+    const confirmAndSubmit = () => {
+        setShowPaymentModal(false);
+        post('/register');
+    };
 
     // ── Nominatim para dirección del establecimiento ──────────────────────────
     const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
@@ -405,17 +479,34 @@ export default function Register() {
                                     {errors.owner_name && <p className="text-xs text-destructive">{errors.owner_name}</p>}
                                 </div>
 
-                                {/* Teléfono */}
+                                {/* Teléfono / WhatsApp — código + número */}
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium text-foreground">Teléfono / WhatsApp</label>
-                                    <input
-                                        type="tel"
-                                        value={data.phone}
-                                        onChange={e => setData('phone', e.target.value)}
-                                        placeholder="+57 300 000 0000"
-                                        autoComplete="tel"
-                                        className={INPUT}
-                                    />
+                                    <div className="flex rounded-xl border border-input bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/60 transition">
+                                        {/* Selector de código de país */}
+                                        <select
+                                            value={phoneCode}
+                                            onChange={e => setPhoneCode(e.target.value)}
+                                            autoComplete="tel-country-code"
+                                            className="shrink-0 bg-transparent pl-3 pr-2 py-2.5 text-sm text-foreground border-r border-input focus:outline-none cursor-pointer"
+                                            aria-label="Código de país"
+                                        >
+                                            {COUNTRY_CODES.map((c, i) => (
+                                                <option key={`${c.dial}-${i}`} value={c.dial}>
+                                                    {c.flag} {c.name} ({c.dial})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {/* Campo de número */}
+                                        <input
+                                            type="tel"
+                                            value={phoneNumber}
+                                            onChange={e => setPhoneNumber(e.target.value.replace(/[^\d\s\-]/g, ''))}
+                                            placeholder="300 000 0000"
+                                            autoComplete="tel-national"
+                                            className="flex-1 min-w-0 bg-transparent px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                                        />
+                                    </div>
                                     {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
                                 </div>
 
@@ -485,12 +576,13 @@ export default function Register() {
                                 </button>
                             ) : (
                                 <button
-                                    type="submit"
+                                    type="button"
+                                    onClick={openPaymentModal}
                                     disabled={processing || !ok[4]}
                                     className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-warm py-2.5 text-sm font-semibold text-primary-foreground shadow-glow hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition"
                                 >
                                     {processing ? 'Creando cuenta…' : 'Crear cuenta'}
-                                    {!processing && <ArrowRight className="h-4 w-4" />}
+                                    {!processing && <CreditCard className="h-4 w-4" />}
                                 </button>
                             )}
                         </div>
@@ -541,6 +633,216 @@ export default function Register() {
                 </div>
 
             </div>
+            {/* ── Modal de pago ──────────────────────────────────────────────── */}
+            {showPaymentModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+                    onClick={() => !processing && setShowPaymentModal(false)}
+                >
+                    <div
+                        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-card shadow-2xl flex flex-col overflow-hidden"
+                        style={{ maxHeight: '90vh' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border shrink-0">
+                            <div>
+                                <h2 className="font-display text-lg font-bold text-foreground">Completa tu pago</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">Elige el método y sube tu comprobante</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => !processing && setShowPaymentModal(false)}
+                                className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        {/* Plan seleccionado */}
+                        {selectedPlan && (
+                            <div className="px-6 pt-4 shrink-0">
+                                <div className="flex items-center gap-3 rounded-xl bg-primary/10 border border-primary/20 px-4 py-3">
+                                    <span className="text-2xl">{selectedPlan.emoji}</span>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-foreground">Plan {selectedPlan.name}</p>
+                                        <p className="text-xs text-muted-foreground">{selectedPlan.period}</p>
+                                    </div>
+                                    <span className="font-display text-xl font-bold text-primary">{selectedPlan.price}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Cuerpo scrollable */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+
+                            {/* Métodos de pago */}
+                            {fetchingMethods ? (
+                                <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    <span className="text-sm">Cargando métodos de pago…</span>
+                                </div>
+                            ) : paymentMethods.length === 0 ? (
+                                <div className="rounded-xl border border-border bg-muted/40 px-4 py-6 text-center">
+                                    <Landmark className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-40" />
+                                    <p className="text-sm text-muted-foreground">
+                                        No hay métodos de pago configurados. Contáctanos para proceder.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Medios de pago disponibles
+                                    </p>
+                                    {paymentMethods.map((m, i) => (
+                                        <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => setActiveMethodIdx(i)}
+                                            className={`w-full text-left rounded-xl border p-4 transition-all ${
+                                                activeMethodIdx === i
+                                                    ? 'border-primary bg-primary/8'
+                                                    : 'border-border bg-card hover:border-primary/40'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <Landmark className="h-4 w-4 shrink-0 text-primary" />
+                                                    <span className="font-semibold text-sm text-foreground truncate">{m.name}</span>
+                                                </div>
+                                                {activeMethodIdx === i && (
+                                                    <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+                                                        <Check className="h-3 w-3 text-primary-foreground" />
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {isUrl(m.account_info) ? (
+                                                <a
+                                                    href={m.account_info}
+                                                    target="_blank"
+                                                    rel="noreferrer noopener"
+                                                    onClick={e => e.stopPropagation()}
+                                                    className="inline-block mt-1.5 text-sm text-primary underline underline-offset-2 hover:text-primary/80 break-all transition-colors"
+                                                >
+                                                    {m.account_info}
+                                                </a>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground mt-1.5 font-mono tracking-wide">
+                                                    {m.account_info}
+                                                </p>
+                                            )}
+                                            {m.instructions && (
+                                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed opacity-80">
+                                                    {m.instructions}
+                                                </p>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Upload de evidencia */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Comprobante de pago
+                                    </p>
+                                    <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">opcional</span>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => evidenceRef.current?.click()}
+                                    className={`w-full rounded-xl border-2 border-dashed p-4 text-center transition-colors ${
+                                        data.evidence
+                                            ? 'border-primary bg-primary/5'
+                                            : 'border-border hover:border-primary/50 hover:bg-muted/40'
+                                    }`}
+                                >
+                                    {data.evidence ? (
+                                        <div className="flex items-center gap-3 text-left">
+                                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                                                <Check className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-foreground truncate">{data.evidence.name}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {(data.evidence.size / 1024).toFixed(0)} KB
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={e => { e.stopPropagation(); setData('evidence', null); }}
+                                                className="shrink-0 p-1 rounded-lg text-muted-foreground hover:text-destructive"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Upload className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">
+                                                Arrastra o <span className="text-primary font-medium">selecciona</span> tu comprobante
+                                            </p>
+                                            <p className="text-xs text-muted-foreground/70 mt-0.5">JPG, PNG, PDF, WebP · máx 10 MB</p>
+                                        </>
+                                    )}
+                                </button>
+                                <input
+                                    ref={evidenceRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                                    className="hidden"
+                                    onChange={e => {
+                                        const f = e.target.files?.[0] ?? null;
+                                        setData('evidence', f);
+                                        if (evidenceRef.current) evidenceRef.current.value = '';
+                                    }}
+                                />
+                            </div>
+
+                            {/* Info de tiempos de activación */}
+                            <div className="rounded-xl bg-muted/60 border border-border px-4 py-3 flex gap-3">
+                                <Clock className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+                                <div className="space-y-1 text-xs text-muted-foreground">
+                                    <p>
+                                        <strong className="text-foreground">Con comprobante:</strong>{' '}
+                                        activación en máx. <strong className="text-primary">6 horas</strong>
+                                    </p>
+                                    <p>
+                                        <strong className="text-foreground">Sin comprobante:</strong>{' '}
+                                        activación en máx. <strong className="text-foreground">24 horas</strong> una vez validemos el pago
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 pb-6 pt-3 border-t border-border space-y-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={confirmAndSubmit}
+                                disabled={processing}
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-warm py-3 text-sm font-semibold text-primary-foreground shadow-glow hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                            >
+                                {processing
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Registrando…</>
+                                    : <><CreditCard className="h-4 w-4" /> Confirmar y registrar</>
+                                }
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowPaymentModal(false)}
+                                disabled={processing}
+                                className="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
