@@ -22,7 +22,7 @@ class CleanDatabaseCommand extends Command
     {
         $this->info('Iniciando limpieza de base de datos...');
 
-        $tenants = Tenant::all();
+        $tenants = Tenant::withoutTrashed()->get();
 
         if ($tenants->isEmpty()) {
             $this->warn('No se encontraron sucursales (tenants) para limpiar.');

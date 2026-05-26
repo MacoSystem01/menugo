@@ -87,19 +87,20 @@ class TenantDatabaseSeeder extends Seeder
         }
 
         // ── Usuario de sistema (oculto, acceso total) ────────────────────────
+        // NOTA: 'is_system' NO está en User::$fillable (protección contra mass-assignment).
+        // Usamos firstOrCreate() para los campos normales, luego forceFill() para is_system.
         $system = User::firstOrCreate(
             ['email' => 'superadmin@menugo.com'],
             [
-                'name'      => 'MenuGo System',
-                'password'  => Hash::make('Admin@2026'),
-                'phone'     => null,
-                'active'    => true,
-                'is_system' => true,
+                'name'     => 'MenuGo System',
+                'password' => Hash::make('Admin@2026'),
+                'phone'    => null,
+                'active'   => true,
             ]
         );
 
-        // Garantizar siempre el rol gerente y la flag is_system
-        $system->update(['is_system' => true]);
+        // Garantizar siempre el rol gerente y la flag is_system (forceFill omite la whitelist)
+        $system->forceFill(['is_system' => true])->save();
         $system->syncRoles(['gerente']);
     }
 }

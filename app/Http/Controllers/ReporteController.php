@@ -23,6 +23,12 @@ class ReporteController extends Controller
 
     public function index(Request $request)
     {
+        // Validar fechas — evita queries con valores no controlados
+        $request->validate([
+            'desde' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'hasta' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
         $desde = $request->filled('desde') ? $request->desde : now()->startOfMonth()->format('Y-m-d');
         $hasta = $request->filled('hasta') ? $request->hasta : now()->format('Y-m-d');
 
@@ -79,6 +85,14 @@ class ReporteController extends Controller
 
     public function exportar(Request $request)
     {
+        // Validación estricta de todos los parámetros de exportación
+        $request->validate([
+            'tipo'    => 'nullable|string|in:caja,cierre_caja,cierre_datafono,pedidos,cocina,novedades,domicilio,mesa,inventario,gastos',
+            'formato' => 'nullable|string|in:xlsx,pdf,pos',
+            'desde'   => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'hasta'   => 'nullable|date_format:Y-m-d|before_or_equal:today',
+        ]);
+
         $tipo    = $request->input('tipo', 'pedidos');
         $formato = $request->input('formato', 'xlsx');
         $desde   = $request->input('desde', now()->startOfMonth()->format('Y-m-d'));
@@ -86,7 +100,8 @@ class ReporteController extends Controller
 
         [$titulo, $headers, $rows, $totals] = $this->buildReporte($tipo, $desde, $hasta);
 
-        $filename = "{$tipo}_{$desde}_{$hasta}";
+        // Sanitizar filename — previene header injection (solo alfanuméricos, guiones, _)
+        $filename = preg_replace('/[^a-z0-9_\-]/', '', "{$tipo}_{$desde}_{$hasta}");
 
         return match ($formato) {
             'pdf'  => $this->exportPdf($titulo, $headers, $rows, $totals, $desde, $hasta, $filename),
@@ -107,6 +122,7 @@ class ReporteController extends Controller
             'cocina'          => $this->reporteCocina($desde, $hasta),
             'novedades'       => $this->reporteNovedades($desde, $hasta),
             'domicilio'       => $this->reporteDomicilio($desde, $hasta),
+            'mesa'            => $this->reporteMesa($desde, $hasta),   // ← FIX: reporteMesa estaba definida pero nunca se llamaba
             'inventario'      => $this->reporteInventario($desde, $hasta),
             'gastos'          => $this->reporteGastos($desde, $hasta),
             default           => $this->reportePedidos($desde, $hasta),

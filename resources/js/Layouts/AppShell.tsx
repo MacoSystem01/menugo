@@ -1,6 +1,7 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { ReactNode, useEffect, useState } from 'react';
 import { PageProps, Role } from '@/types';
+import SystemAlertBanner from '@/components/SystemAlertBanner';
 
 // ── Iconos SVG inline ──────────────────────────────────────────────────────────
 const paths: Record<string, string> = {
@@ -391,6 +392,11 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
                     {children}
                 </div>
             </main>
+
+            {/* ── Alertas del sistema: solo visible para variant="admin" ────────
+                Aparece en TODAS las páginas del panel SuperAdmin automáticamente.
+                El componente hace polling a /admin/system-health cada 90s.     */}
+            {variant === 'admin' && <SystemAlertBanner />}
         </div>
     );
 }

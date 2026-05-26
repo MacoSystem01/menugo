@@ -1,11 +1,13 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     CreditCard, CheckCircle2, Clock, Zap, Crown, Building,
     Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save,
-    Eye, Check,
+    Eye, Check, Ban, History, ChevronLeft, ChevronRight,
+    Image, Store,
 } from 'lucide-react';
+import AdRequestTable, { type AdRequest } from '@/components/AdRequestTable';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -24,10 +26,21 @@ interface PendingTenant {
     email:                 string;
     plan:                  string;
     payment_status:        string;
+    deleted_at:            string | null;
     payment_evidence_path: string | null;
-    payment_evidence_at:   string | null;
     subdomain:             string;
     created_at:            string;
+}
+
+interface TenantHistoryItem {
+    id:             string;
+    name:           string;
+    email:          string;
+    plan:           string;
+    payment_status: string;
+    subdomain:      string | null;
+    created_at:     string;
+    deleted_at:     string | null;
 }
 
 interface Props {
@@ -35,8 +48,15 @@ interface Props {
         por_plan:      Record<string, number>;
         total_revenue: number;
     };
-    pendingTenants: PendingTenant[];
-    paymentMethods: PaymentMethod[];
+    pendingTenants:   PendingTenant[];
+    paymentMethods:   PaymentMethod[];
+    adRequestsBanner: AdRequest[];
+    adRequestsSlider: AdRequest[];
+    tenantHistory: {
+        activas:    TenantHistoryItem[];
+        inactivas:  TenantHistoryItem[];
+        eliminadas: TenantHistoryItem[];
+    };
     flash?: { success?: string };
 }
 
@@ -48,8 +68,72 @@ const PLAN_LABELS: Record<string, string> = {
     mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
 };
 
+const PER_PAGE = 5;
+
 function fmt(n: number) {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
+}
+
+// ── Paginación genérica ────────────────────────────────────────────────────────
+
+function usePager<T>(items: T[]) {
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(items.length / PER_PAGE));
+
+    // Evitar página huérfana si la lista encoge (fix anti-patrón render)
+    useEffect(() => {
+        if (page > totalPages) setPage(totalPages);
+    }, [page, totalPages]);
+
+    const slice = items.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+    return { page, setPage, totalPages, slice };
+}
+
+// ── Paginación UI reutilizable ──────────────────────────────────────────────────
+
+function Pager({ page, totalPages, setPage, total }: {
+    page: number; totalPages: number; setPage: (p: number) => void; total: number;
+}) {
+    if (totalPages <= 1) return null;
+    return (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20">
+            <p className="text-xs text-muted-foreground">
+                Página {page} de {totalPages} · {total} registros
+            </p>
+            <div className="flex items-center gap-1">
+                <button
+                    type="button"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPage(p)}
+                        className={`min-w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${
+                            p === page
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        {p}
+                    </button>
+                ))}
+                <button
+                    type="button"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    );
 }
 
 // ── Modal de método de pago ────────────────────────────────────────────────────
@@ -156,10 +240,37 @@ function MethodModal({ method, onClose }: MethodModalProps) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function Billing({ stats, pendingTenants, paymentMethods, flash }: Props) {
+type HistoryTab = 'activas' | 'inactivas' | 'eliminadas';
+
+export default function Billing({
+    stats, pendingTenants, paymentMethods,
+    adRequestsBanner, adRequestsSlider,
+    tenantHistory, flash,
+}: Props) {
     const [editingMethod,   setEditingMethod]   = useState<PaymentMethod | null | false>(false);
     const [activatingId,    setActivatingId]    = useState<string | null>(null);
     const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+    const [historyTab,      setHistoryTab]      = useState<HistoryTab>('activas');
+    const [historyPages,    setHistoryPages]    = useState<Record<HistoryTab, number>>({
+        activas: 1, inactivas: 1, eliminadas: 1,
+    });
+
+    // Paginadores para cada sección de pendientes
+    const tenantPager = usePager(pendingTenants);
+
+    // Corregir página del historial si la lista encoge tras una acción (p.ej. activar tenant)
+    useEffect(() => {
+        const tabs: HistoryTab[] = ['activas', 'inactivas', 'eliminadas'];
+        setHistoryPages(prev => {
+            const updated = { ...prev };
+            let changed = false;
+            tabs.forEach(tab => {
+                const total = Math.max(1, Math.ceil(tenantHistory[tab].length / PER_PAGE));
+                if (prev[tab] > total) { updated[tab] = total; changed = true; }
+            });
+            return changed ? updated : prev;
+        });
+    }, [tenantHistory]);
 
     const plans = [
         { key: 'mensual',    name: 'Mensual',    icon: Clock,  color: 'text-zinc-500'   },
@@ -191,12 +302,17 @@ export default function Billing({ stats, pendingTenants, paymentMethods, flash }
                 <MethodModal method={editingMethod} onClose={() => setEditingMethod(false)} />
             )}
 
-            {/* Modal de evidencia */}
+            {/* Modal de evidencia de pago */}
             {evidencePreview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setEvidencePreview(null)}>
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                    onClick={() => setEvidencePreview(null)}
+                >
                     <div className="relative max-w-lg w-full" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => setEvidencePreview(null)}
-                            className="absolute -top-4 -right-4 p-2 rounded-full bg-card text-foreground hover:bg-muted">
+                        <button
+                            onClick={() => setEvidencePreview(null)}
+                            className="absolute -top-4 -right-4 p-2 rounded-full bg-card text-foreground hover:bg-muted"
+                        >
                             <X className="h-4 w-4" />
                         </button>
                         {evidencePreview.toLowerCase().endsWith('.pdf')
@@ -214,7 +330,7 @@ export default function Billing({ stats, pendingTenants, paymentMethods, flash }
                 </div>
             )}
 
-            {/* ── Estadísticas de planes ── */}
+            {/* ── Estadísticas de planes ─────────────────────────────────────── */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
                 {plans.map(p => (
                     <div key={p.key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -237,68 +353,168 @@ export default function Billing({ stats, pendingTenants, paymentMethods, flash }
                 </div>
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Pendientes de Activación</p>
+                    {/* Usar pendingTenants.length como única fuente de verdad, consistente con la tabla */}
                     <p className="text-3xl font-display font-bold text-amber-500">{pendingTenants.length}</p>
                     <p className="text-xs text-muted-foreground mt-1">Cuentas esperando confirmación de pago</p>
                 </div>
             </div>
 
-            {/* ── Tenants pendientes ── */}
-            {pendingTenants.length > 0 && (
-                <section className="mb-10">
-                    <h2 className="text-lg font-display font-bold mb-4 flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-amber-500" />
-                        Cuentas pendientes de activación
-                    </h2>
-                    <div className="space-y-3">
-                        {pendingTenants.map(t => (
-                            <div key={t.id} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                    <div className="flex-1 min-w-0 space-y-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="font-semibold text-sm text-foreground">{t.name}</p>
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                                t.payment_status === 'pending_review'
-                                                    ? 'bg-amber-500/20 text-amber-600'
-                                                    : 'bg-muted text-muted-foreground'
-                                            }`}>
-                                                {t.payment_status === 'pending_review' ? 'Con comprobante' : 'Sin comprobante'}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">{t.email}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t.subdomain} · Plan {PLAN_LABELS[t.plan] ?? t.plan} · Registrado {t.created_at}
-                                        </p>
-                                    </div>
+            {/* ══════════════════════════════════════════════════════════════════
+                SECCIÓN 1 — Cuentas pendientes de activación (tabla paginada)
+            ══════════════════════════════════════════════════════════════════ */}
+            <section className="mb-10">
+                <h2 className="text-lg font-display font-bold mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-amber-500" />
+                    Cuentas pendientes de activación
+                    <span className="text-sm font-normal text-muted-foreground">({pendingTenants.length})</span>
+                </h2>
 
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {t.payment_evidence_path && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setEvidencePreview(t.payment_evidence_path!)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
-                                            >
-                                                <Eye className="h-3.5 w-3.5" /> Ver comprobante
-                                            </button>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => activateTenant(t.id)}
-                                            disabled={activatingId === t.id}
-                                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-bold hover:bg-accent/90 transition-colors disabled:opacity-50"
-                                        >
-                                            <Check className="h-3.5 w-3.5" />
-                                            {activatingId === t.id ? 'Activando…' : 'Activar cuenta'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                {pendingTenants.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/10 p-10 text-center">
+                        <CheckCircle2 className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                        <p className="text-sm font-semibold">Sin cuentas pendientes</p>
+                        <p className="text-xs text-muted-foreground mt-1">Todas las cuentas están activas o al día.</p>
                     </div>
-                </section>
-            )}
+                ) : (
+                    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-border bg-muted/40">
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Negocio</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap hidden sm:table-cell">Email</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap hidden md:table-cell">Plan</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Estado</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap hidden lg:table-cell">Registrado</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {tenantPager.slice.map(t => (
+                                        <tr
+                                            key={t.id}
+                                            className={`hover:bg-muted/20 transition-colors ${t.deleted_at ? 'opacity-60' : ''}`}
+                                        >
+                                            {/* Negocio */}
+                                            <td className="px-4 py-3 align-middle">
+                                                <p className={`font-semibold truncate max-w-40 ${t.deleted_at ? 'line-through text-muted-foreground' : ''}`}>
+                                                    {t.name}
+                                                </p>
+                                                {t.subdomain && (
+                                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{t.subdomain}</p>
+                                                )}
+                                            </td>
 
-            {/* ── Métodos de pago de la plataforma ── */}
-            <section>
+                                            {/* Email */}
+                                            <td className="px-4 py-3 align-middle text-xs text-muted-foreground truncate max-w-48 hidden sm:table-cell">
+                                                {t.email}
+                                            </td>
+
+                                            {/* Plan */}
+                                            <td className="px-4 py-3 align-middle hidden md:table-cell">
+                                                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                                    {PLAN_LABELS[t.plan] ?? t.plan}
+                                                </span>
+                                            </td>
+
+                                            {/* Estado */}
+                                            <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                                {t.deleted_at ? (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+                                                        <Ban className="h-2.5 w-2.5" /> Eliminada
+                                                    </span>
+                                                ) : (
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                                        t.payment_status === 'pending_review'
+                                                            ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                                                            : 'bg-muted text-muted-foreground border-border'
+                                                    }`}>
+                                                        {t.payment_status === 'pending_review' ? 'Con comprobante' : 'Sin comprobante'}
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* Registrado */}
+                                            <td className="px-4 py-3 align-middle text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell">
+                                                {t.created_at}
+                                            </td>
+
+                                            {/* Acciones */}
+                                            <td className="px-4 py-3 align-middle whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    {t.payment_evidence_path && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEvidencePreview(t.payment_evidence_path!)}
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors"
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" /> Comprobante
+                                                        </button>
+                                                    )}
+                                                    {!t.deleted_at && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => activateTenant(t.id)}
+                                                            disabled={activatingId === t.id}
+                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent/90 text-accent-foreground text-[11px] font-bold hover:bg-accent transition-colors disabled:opacity-50"
+                                                        >
+                                                            <Check className="h-3.5 w-3.5" />
+                                                            {activatingId === t.id ? 'Activando…' : 'Activar'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Pager
+                            page={tenantPager.page}
+                            totalPages={tenantPager.totalPages}
+                            setPage={tenantPager.setPage}
+                            total={pendingTenants.length}
+                        />
+                    </div>
+                )}
+            </section>
+
+            {/* ══════════════════════════════════════════════════════════════════
+                SECCIÓN 2 — Reporte Publicitario pendientes: Banner / MockUp
+            ══════════════════════════════════════════════════════════════════ */}
+            <section className="mb-10">
+                <h2 className="text-lg font-display font-bold mb-1 flex items-center gap-2">
+                    <Image className="h-5 w-5 text-violet-400" />
+                    Reporte Publicitario — Banner Principal
+                    <span className="text-sm font-normal text-muted-foreground">
+                        ({adRequestsBanner.length} pendiente{adRequestsBanner.length !== 1 ? 's' : ''})
+                    </span>
+                </h2>
+                <p className="text-xs text-muted-foreground mb-4">
+                    Solicitudes de banner pendientes de publicación o cancelación.
+                </p>
+                <AdRequestTable requests={adRequestsBanner} context="banner" hideHeader />
+            </section>
+
+            {/* ══════════════════════════════════════════════════════════════════
+                SECCIÓN 3 — Reporte Publicitario pendientes: Slider de Negocios
+            ══════════════════════════════════════════════════════════════════ */}
+            <section className="mb-10">
+                <h2 className="text-lg font-display font-bold mb-1 flex items-center gap-2">
+                    <Store className="h-5 w-5 text-blue-400" />
+                    Reporte Publicitario — Slider de Negocios
+                    <span className="text-sm font-normal text-muted-foreground">
+                        ({adRequestsSlider.length} pendiente{adRequestsSlider.length !== 1 ? 's' : ''})
+                    </span>
+                </h2>
+                <p className="text-xs text-muted-foreground mb-4">
+                    Solicitudes de logo en slider pendientes de publicación o cancelación.
+                </p>
+                <AdRequestTable requests={adRequestsSlider} context="slider" hideHeader />
+            </section>
+
+            {/* ── Métodos de pago de la plataforma ─────────────────────────────── */}
+            <section className="mb-10">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-display font-bold flex items-center gap-2">
                         <CreditCard className="h-5 w-5 text-primary" />
@@ -368,6 +584,116 @@ export default function Billing({ stats, pendingTenants, paymentMethods, flash }
                         ))}
                     </div>
                 )}
+            </section>
+
+            {/* ── Historial de cuentas ───────────────────────────────────────── */}
+            <section>
+                <h2 className="text-lg font-display font-bold mb-4 flex items-center gap-2">
+                    <History className="h-5 w-5 text-muted-foreground" />
+                    Historial de cuentas
+                </h2>
+
+                {/* Pestañas */}
+                <div className="flex gap-1 mb-4 p-1 rounded-xl bg-muted w-fit">
+                    {(
+                        [
+                            { key: 'activas',    label: 'Activas',    color: 'text-accent' },
+                            { key: 'inactivas',  label: 'Inactivas',  color: 'text-amber-500' },
+                            { key: 'eliminadas', label: 'Eliminadas', color: 'text-red-500' },
+                        ] as { key: HistoryTab; label: string; color: string }[]
+                    ).map(tab => {
+                        const count    = tenantHistory[tab.key].length;
+                        const isActive = historyTab === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => setHistoryTab(tab.key)}
+                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                                    isActive
+                                        ? 'bg-card text-foreground shadow-sm'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                {tab.label}
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                    isActive ? `bg-muted ${tab.color}` : 'bg-muted/60 text-muted-foreground'
+                                }`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Tabla de historial con paginación */}
+                {(() => {
+                    const list       = tenantHistory[historyTab];
+                    const page       = historyPages[historyTab];
+                    const totalPages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+                    // Clampear en caso de que historyPages esté un render por delante del useEffect corrector
+                    const safePage   = Math.min(page, totalPages);
+                    const slice      = list.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+                    const goTo = (p: number) => {
+                        setHistoryPages(prev => ({ ...prev, [historyTab]: p }));
+                    };
+
+                    if (list.length === 0) {
+                        return (
+                            <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+                                <CheckCircle2 className="h-7 w-7 text-muted-foreground/30 mx-auto mb-3" />
+                                <p className="text-sm text-muted-foreground">
+                                    No hay cuentas en esta categoría.
+                                </p>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-border bg-muted/40">
+                                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombre</th>
+                                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Email</th>
+                                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground hidden md:table-cell">Plan</th>
+                                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground hidden lg:table-cell">Subdominio</th>
+                                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                            {historyTab === 'eliminadas' ? 'Eliminado' : 'Registrado'}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {slice.map(t => (
+                                        <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <p className={`font-medium text-foreground truncate max-w-40 ${t.deleted_at ? 'line-through text-muted-foreground' : ''}`}>
+                                                    {t.name}
+                                                </p>
+                                                <p className="text-[11px] text-muted-foreground sm:hidden truncate">{t.email}</p>
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell truncate max-w-45">{t.email}</td>
+                                            <td className="px-4 py-3 hidden md:table-cell">
+                                                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">
+                                                    {PLAN_LABELS[t.plan] ?? t.plan}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground text-xs font-mono hidden lg:table-cell">
+                                                {t.subdomain ?? '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                                                {historyTab === 'eliminadas' ? (t.deleted_at ?? '—') : t.created_at}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            <Pager page={safePage} totalPages={totalPages} setPage={goTo} total={list.length} />
+                        </div>
+                    );
+                })()}
             </section>
         </AppShell>
     );

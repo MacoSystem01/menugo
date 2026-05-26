@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
     Power, Trash2, ExternalLink, Mail, Calendar,
     ShieldCheck, ShieldAlert, Utensils, Zap, MapPin,
-    Check, Pencil, X, Save, CheckCircle2, Clock,
+    Check, Pencil, X, Save, CheckCircle2, Clock, AlertTriangle,
 } from 'lucide-react';
 
 interface Tenant {
@@ -210,6 +210,97 @@ function EditModal({ tenant, onClose }: EditModalProps) {
     );
 }
 
+// ── Modal de confirmación de eliminación ──────────────────────────────────────
+
+interface DeleteModalProps {
+    tenant:    Tenant;
+    deleting:  boolean;
+    onConfirm: () => void;
+    onClose:   () => void;
+}
+
+function DeleteConfirmModal({ tenant, deleting, onConfirm, onClose }: DeleteModalProps) {
+    const isActive  = tenant.active;
+    const isPending = tenant.payment_status === 'pending_payment' || tenant.payment_status === 'pending_review';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+            <div className="w-full max-w-md rounded-3xl border border-border bg-card shadow-2xl" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="flex items-start gap-4 px-6 pt-6 pb-5">
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-red-500/10 border border-red-500/20">
+                        <Trash2 className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div className="flex-1">
+                        <h2 className="text-base font-bold text-foreground">Eliminar local permanentemente</h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">Esta acción no se puede deshacer.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+
+                <div className="px-6 pb-6 space-y-4">
+                    {/* Nombre del local */}
+                    <div className="rounded-2xl border border-border bg-muted/30 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-linear-to-br from-zinc-100 to-zinc-200 border border-zinc-300 flex items-center justify-center font-display font-bold text-zinc-600 shrink-0 text-sm">
+                                {tenant.name[0]}
+                            </div>
+                            <div>
+                                <p className="font-bold text-foreground text-sm">{tenant.name}</p>
+                                <p className="text-xs text-muted-foreground">{tenant.subdomain}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Advertencia si está activo */}
+                    {(isActive || isPending) && (
+                        <div className={`flex items-start gap-3 rounded-xl px-4 py-3 border ${
+                            isActive
+                                ? 'bg-red-500/8 border-red-500/25 text-red-700'
+                                : 'bg-amber-500/8 border-amber-500/25 text-amber-700'
+                        }`}>
+                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                            <p className="text-xs font-semibold leading-relaxed">
+                                {isActive
+                                    ? 'Este local está activo con una suscripción vigente. Al eliminarlo se desactivará el acceso y se borrará su base de datos operativa (menú, pedidos, usuarios).'
+                                    : 'Este local tiene un pago en proceso. El registro del pago y el comprobante adjunto quedarán preservados en el historial de facturación.'}
+                            </p>
+                        </div>
+                    )}
+
+                    <p className="text-xs text-muted-foreground">
+                        Se eliminará la base de datos operativa y el dominio <strong className="text-foreground">{tenant.subdomain}</strong>.
+                        El historial de registro y facturación queda conservado.
+                    </p>
+
+                    {/* Acciones */}
+                    <div className="flex justify-end gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={deleting}
+                            className="px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={deleting}
+                            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-50"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            {deleting ? 'Eliminando…' : 'Sí, eliminar permanentemente'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Tenants({ tenants, flash }: Props) {
@@ -217,6 +308,8 @@ export default function Tenants({ tenants, flash }: Props) {
     const [processingId,  setProcessingId]  = useState<string | null>(null);
     const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
     const [activatingId,  setActivatingId]  = useState<string | null>(null);
+    const [deleteTarget,  setDeleteTarget]  = useState<Tenant | null>(null);
+    const [deleting,      setDeleting]      = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         type:                  'restaurante' as 'restaurante' | 'puesto',
@@ -275,16 +368,12 @@ export default function Tenants({ tenants, flash }: Props) {
         });
     }
 
-    function handleDelete(tenant: Tenant) {
-        let message = `¿Estás seguro de eliminar permanentemente el local "${tenant.name}"?`;
-        if (tenant.active && !tenant.expires_at) {
-            message = `⚠️ ATENCIÓN: El local "${tenant.name}" se encuentra ACTIVO y sin fecha de vencimiento. \n\n¿Realmente deseas eliminarlo? Esta acción es irreversible.`;
-        } else if (tenant.active) {
-            message = `El local "${tenant.name}" está ACTIVO. ¿Deseas eliminarlo permanentemente?`;
-        }
-        if (!confirm(message)) return;
-        setProcessingId(tenant.id);
-        router.delete(`/admin/tenants/${tenant.id}`, { onFinish: () => setProcessingId(null) });
+    function confirmDelete() {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        router.delete(`/admin/tenants/${deleteTarget.id}`, {
+            onFinish: () => { setDeleting(false); setDeleteTarget(null); },
+        });
     }
 
     function toggleStatus(id: string) {
@@ -304,6 +393,16 @@ export default function Tenants({ tenants, flash }: Props) {
             {/* Modal de edición */}
             {editingTenant && (
                 <EditModal tenant={editingTenant} onClose={() => setEditingTenant(null)} />
+            )}
+
+            {/* Modal de confirmación de eliminación */}
+            {deleteTarget && (
+                <DeleteConfirmModal
+                    tenant={deleteTarget}
+                    deleting={deleting}
+                    onConfirm={confirmDelete}
+                    onClose={() => !deleting && setDeleteTarget(null)}
+                />
             )}
 
             {/* Flash */}
@@ -585,8 +684,8 @@ export default function Tenants({ tenants, flash }: Props) {
                                             </button>
                                             {/* Eliminar */}
                                             <button
-                                                onClick={() => handleDelete(tenant)}
-                                                disabled={processingId === tenant.id}
+                                                onClick={() => setDeleteTarget(tenant)}
+                                                disabled={deleting}
                                                 className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition-all"
                                                 title="Eliminar permanentemente"
                                             >

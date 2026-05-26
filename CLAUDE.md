@@ -1,21 +1,8 @@
-Lee el archivo CLAUDE.md que está en la raíz del proyecto antes de hacer cualquier cosa.
-
-Luego implementa la tarea activa "Tarifas de domicilio por rango de km" siguiendo exactamente este orden:
-
-1. Crea `database/migrations/tenant/0015_add_delivery_zones_to_carta_settings.php`
-2. Crea `database/migrations/tenant/0016_add_delivery_fee_to_orders.php`
-3. Edita `app/Models/CartaSetting.php` — agrega a $fillable y $casts los campos delivery_zones, delivery_min_order, delivery_enabled
-4. Edita `app/Models/Order.php` — agrega delivery_fee a $fillable
-5. Edita `app/Http/Controllers/CartaController.php` — los 3 cambios: settingsArray(), saveSettings() y placeOrder()
-6. Edita `resources/js/Pages/PublicMenu.tsx` — interfaz DeliveryZone, campo delivery_zone_idx en el form, selector de zona en checkout, línea de tarifa en resumen
-7. Edita `resources/js/Pages/Menu/Carta.tsx` — sección "Servicio a domicilio" con toggle, monto mínimo y lista de zonas editables
-
-Reglas de ejecución:
-- Lee cada archivo existente completo ANTES de editarlo
-- No toques ningún archivo que no esté en esa lista
-- Después de cada archivo, escribe "✓ [nombre del archivo] listo — siguiente: [nombre del próximo]"
-- Si encuentras algún conflicto o ambigüedad en la spec, descríbelo y propón la solución antes de continuar
-- Al terminar todos los archivos, ejecuta: php artisan tenants:artisan "migrate --path=database/migrations/tenant"
-- Luego ejecuta: npm run build
-- Si el build falla, lee el error, corrígelo y vuelve a correr npm run build
-- Al final reporta: archivos creados, archivos editados, resultado de la migración y resultado del build
+"Respetando la estructura, convenciones de código, nomenclatura y estilo existentes en el sistema actualmente, analiza el fragmento recibido para identificar y resolver los diferentes conflictos de variables o props compartidos con otros componentes, redundancias, efectos secundarios no intencionados, diferentes bug's y posibles errores de lógica y fallos de seguridad. Antes de aplicar cambios, valida mentalmente al menos 6 casos de uso distintos (caso base, caso borde, caso registro, caso anulación, caso bug's y caso de error) para garantizar que la edición no rompe funcionalidades existentes.
+Con lo anterior, debes de realizar diferentes inspecciones, revisiones y chekeos para organizar el sistema y lo solicitado, una vez realizado ello, comprueba con diferentes pruebas sus funciones y pericias para evitar conflictos y posibles choques con información editada que quizás sea utilizada por otro campo.
+Luego de ello, de las diferentes pruebas, chequeos, análizis y demás comprobaciones de funcionamiento, utilidad y calidad. ¿El Sistema por COMPLETO queda SIN CONFLICTOS Verdaderamente?.
+En caso que continue presentando conflictos luego de un chequeo realizado, ejecuta nueva mente el archivo "CLAUDE.md" por completo hasta resolver todo ello."
+Realizar por completo:
+* "Organizar "TODO" el sistema por completo para soportar más de +1000 usuarios simultaneamente, peticiones, interacciones en él, reforzando toda su arquitectura y encriptando los datos de Roles, Usuarios, SubDominios, Tenant's para tener un escalamiento a futuro de manera orizontal sin NINGÚN Problema ni conflicto. No termines hasta realizar mas de +4 pruebas en los diferentes aspectos, rutas y demás factores, ataques para su aumentar y corregir fallos en la seguridad corrigiendo todo, bug's que se pueden presentar y dejando la App 100% funcional y segura, revisando y realizando chequeo de todas sus rutas. No termines hasta que TODO quede como se pide, Limpio, sin Bug's y con estilo, repite Todo el proceso si es necesario para estar validando y revalidando todo.
+Tambien, Notifica en "/admin" cualquier conflicto o error presentado con toda la información mostrando y emitiendo una ventana emergente con una alerta notificando dicho caso. Solucionar "TODO" contra y conflicto alguno previsto para que la App Crezca sin problema alguno, solucionar TODO "debugging, de migraciones, manejo de integraciones, manejo de trafico, Manejo de roles, permisos y de seguridad avanzada" para la funcionalidad del Sistema sin problemas.
+" 

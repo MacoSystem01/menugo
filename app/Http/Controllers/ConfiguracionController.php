@@ -164,7 +164,8 @@ class ConfiguracionController extends Controller
             $order->update(['closed_at_eod' => $now]);
 
             if ($order->table) {
-                $order->table->update(['is_occupied' => false]);
+                // RestaurantTable usa el campo 'status', no 'is_occupied'
+                $order->table->update(['status' => 'free']);
                 $tablesFreed++;
             }
         }

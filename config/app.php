@@ -56,6 +56,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin Login Path (Security through obscurity)
+    |--------------------------------------------------------------------------
+    | Ruta de acceso del SuperAdmin. Configura en .env como ADMIN_LOGIN_PATH.
+    | Usar config('app.admin_login_path') en lugar de env() para que funcione
+    | correctamente con php artisan config:cache.
+    */
+    'admin_login_path' => env('ADMIN_LOGIN_PATH', 'sistema/acceso-control'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

@@ -1,4 +1,5 @@
 import AppShell from '@/Layouts/AppShell';
+// SystemAlertBanner ahora está en AppShell (variant="admin") — aparece en TODAS las páginas admin
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import {
@@ -63,11 +64,21 @@ const PLAN_LABELS: Record<string, string> = {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function AdminDashboard({ stats, lista, pendingPayments }: Props) {
+export default function AdminDashboard({ stats, lista, crecimiento, pendingPayments }: Props) {
     const [activatingId,    setActivatingId]    = useState<string | null>(null);
     const [dismissedIds,    setDismissedIds]    = useState<string[]>([]);
 
     const visiblePending = pendingPayments.filter(p => !dismissedIds.includes(p.id));
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const prevMonth    = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7);
+    const thisCount    = crecimiento.find(c => c.month === currentMonth)?.count ?? 0;
+    const prevCount    = crecimiento.find(c => c.month === prevMonth)?.count ?? 0;
+    const growthLabel  = thisCount > 0
+        ? `+${thisCount} este mes`
+        : prevCount > 0
+            ? `0 este mes`
+            : 'Sin datos';
 
     function activateTenant(id: string) {
         setActivatingId(id);
@@ -197,7 +208,7 @@ export default function AdminDashboard({ stats, lista, pendingPayments }: Props)
                         <div className="mt-4 font-display text-3xl font-bold">{value}</div>
                         <div className="mt-2 flex items-center text-[10px] text-muted-foreground">
                             <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-                            <span>+12% este mes</span>
+                            <span>{growthLabel}</span>
                         </div>
                     </div>
                 ))}

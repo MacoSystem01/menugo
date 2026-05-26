@@ -53,7 +53,9 @@ class AuthController extends Controller
 
             return redirect()->intended('/dashboard');
         } catch (\Throwable $e) {
-            return back()->withErrors(['email' => 'ERROR DEL SISTEMA: ' . $e->getMessage()])->onlyInput('email');
+            // Registrar el error real en logs sin exponer al usuario
+            logger()->error('Login error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return back()->withErrors(['email' => 'Ha ocurrido un error inesperado. Intenta de nuevo.'])->onlyInput('email');
         }
     }
 

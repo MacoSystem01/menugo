@@ -17,7 +17,7 @@ class CierreDiario extends Command
 
     public function handle(): int
     {
-        $tenants = Tenant::all();
+        $tenants = Tenant::withoutTrashed()->get();
 
         if ($tenants->isEmpty()) {
             $this->info('No hay tenants registrados.');

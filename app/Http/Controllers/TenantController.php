@@ -149,6 +149,9 @@ class TenantController extends Controller
 
     public function index()
     {
+        // NOTA: getTenantAddress() fue eliminada del listado para evitar el N+1 problem
+        // (inicializar la BD de cada tenant por cada fila es extremadamente lento).
+        // La dirección se muestra sólo en la vista de edición individual.
         $tenants = Tenant::with('domains')->latest()->get()->map(fn($t) => [
             'id'                   => $t->id,
             'name'                 => $t->name,
@@ -161,12 +164,16 @@ class TenantController extends Controller
             'subdomain'            => $t->domains->first()?->domain,
             'expires_at'           => $t->expires_at,
             'created_at'           => $t->created_at->format('d/m/Y'),
-            'address'              => $this->getTenantAddress($t),
+            // address eliminada del listado — evita N+1 (1 conexión BD por tenant)
         ]);
 
         return Inertia::render('Admin/Tenants', compact('tenants'));
     }
 
+    /**
+     * Obtiene la dirección de un tenant inicializando su BD.
+     * Sólo usar cuando se necesita para UN tenant específico, no en listados.
+     */
     private function getTenantAddress(Tenant $tenant): ?string
     {
         try {
@@ -272,9 +279,22 @@ class TenantController extends Controller
         }
 
         $name = $tenant->name;
-        $tenant->delete();
 
-        return back()->with('success', "Restaurante '{$name}' eliminado permanentemente.");
+        // Eliminar dominios para liberar el subdominio
+        $tenant->domains()->delete();
+
+        // Eliminar la base de datos del tenant usando IF EXISTS (seguro si no existe)
+        // Usamos SQL directo para evitar que Stancl relance la excepción desde sus listeners
+        try {
+            $dbName = $tenant->database()->getName();
+            \DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
+        } catch (\Throwable) {}
+
+        // Soft-delete sin disparar el evento 'deleted' de Eloquent (que Stancl escucha
+        // para hacer otro DROP DATABASE y causaría un segundo error)
+        $tenant->updateQuietly(['deleted_at' => now()]);
+
+        return back()->with('success', "Restaurante '{$name}' eliminado. El historial de facturación se conserva.");
     }
 
     public function update(Request $request, string $id)
@@ -293,6 +313,7 @@ class TenantController extends Controller
         $address = array_key_exists('restaurant_address', $data) ? $data['restaurant_address'] : false;
         unset($data['restaurant_address']);
 
+        // array_filter con fn($v) => $v !== null: preserva false y 0 (crítico para 'active' = false)
         $tenant->update(array_filter($data, fn($v) => $v !== null));
 
         if ($address !== false) {

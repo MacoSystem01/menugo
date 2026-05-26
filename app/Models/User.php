@@ -23,7 +23,9 @@ class User extends Authenticatable
         'password',
         'phone',
         'active',
-        'is_system',
+        // NOTA: 'is_system' NO está en fillable intencionalmente.
+        // Solo debe modificarse via forceFill() en seeders/migraciones de sistema.
+        // Ningún controlador debe permitir que un usuario externo establezca este flag.
     ];
 
     protected $hidden = [

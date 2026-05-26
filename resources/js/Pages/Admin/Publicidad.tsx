@@ -2,6 +2,7 @@ import AppShell from '@/Layouts/AppShell';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { Upload, Trash2, Eye, EyeOff, ImagePlus, ExternalLink, Info, Images } from 'lucide-react';
+import AdRequestTable, { type AdRequest } from '@/components/AdRequestTable';
 
 interface Ad {
     id:         number;
@@ -13,11 +14,12 @@ interface Ad {
 }
 
 interface Props {
-    ads:   Ad[];
+    ads:        Ad[];
+    adRequests: AdRequest[];
     flash?: { success?: string; error?: string };
 }
 
-export default function Publicidad({ ads, flash }: Props) {
+export default function Publicidad({ ads, adRequests, flash }: Props) {
     const fileRef              = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [dragging, setDragging] = useState(false);
@@ -246,7 +248,7 @@ export default function Publicidad({ ads, flash }: Props) {
 
                                         {/* Título overlay */}
                                         {ad.title && (
-                                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2.5">
+                                            <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/70 to-transparent px-3 py-2.5">
                                                 <p className="text-xs font-bold text-white leading-tight truncate">
                                                     {ad.title}
                                                 </p>
@@ -305,6 +307,10 @@ export default function Publicidad({ ads, flash }: Props) {
                     )}
                 </div>
             </div>
+
+            {/* ══ Reporte Publicitario ══════════════════════════════════════════════ */}
+            <AdRequestTable requests={adRequests} context="banner" />
+
         </AppShell>
     );
 }

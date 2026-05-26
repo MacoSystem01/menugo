@@ -1,19 +1,22 @@
 <?php
 
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdvertisingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TenantController;
 use App\Models\Advertisement;
 use App\Models\SliderLogo;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 // ── Públicas (dominio central Menugo.local) ───────────────────────────────────
 Route::get('/', function () {
     try {
+        // Usar el accessor image_url del modelo (Advertisement::getImageUrlAttribute)
+        // evita duplicar la lógica de Storage::disk('public')->url() y resuelve el
+        // falso positivo del IDE con url() en la interfaz Filesystem.
         $ads = Advertisement::where('active', true)->orderBy('sort_order')->orderBy('id')->get()->map(fn($a) => [
-            'image_url' => Storage::disk('public')->url($a->image_path),
+            'image_url' => $a->image_url,
             'title'     => $a->title,
             'url'       => $a->url,
         ])->values();
@@ -22,8 +25,9 @@ Route::get('/', function () {
     }
 
     try {
+        // Usar el accessor image_url del modelo (SliderLogo::getImageUrlAttribute)
         $sliderLogos = SliderLogo::where('active', true)->orderBy('sort_order')->orderBy('id')->get()->map(fn($s) => [
-            'image_url'     => Storage::disk('public')->url($s->image_path),
+            'image_url'     => $s->image_url,
             'business_name' => $s->business_name,
         ])->values();
     } catch (\Exception) {
@@ -35,7 +39,7 @@ Route::get('/', function () {
         'sliderLogos'    => $sliderLogos,
     ]);
 });
-Route::get('/welcome', fn() => Inertia::render('Welcome', ['advertisements' => []]));
+Route::get('/welcome', fn() => Inertia::render('Welcome', ['advertisements' => [], 'sliderLogos' => []]));
 Route::get('/pricing',          fn() => Inertia::render('Pricing'));
 Route::get('/register',         fn() => Inertia::render('Auth/Register'));
 Route::get('/register/success', [TenantController::class, 'registerSuccess'])->name('register.success');
@@ -43,7 +47,8 @@ Route::post('/register',        [TenantController::class, 'publicRegister'])->na
 Route::get('/tenant/find',      [TenantController::class, 'find'])->name('tenant.find');
 
 // ── Auth SuperAdmin (URL configurada en .env → ADMIN_LOGIN_PATH) ──────────────
-$adminPath = env('ADMIN_LOGIN_PATH', 'sistema/acceso-control');
+// config() funciona correctamente con php artisan config:cache; env() no.
+$adminPath = config('app.admin_login_path', env('ADMIN_LOGIN_PATH', 'sistema/acceso-control'));
 
 Route::middleware(['guest', 'throttle:10,1'])->group(function () use ($adminPath) {
     Route::get("/{$adminPath}",  [AuthController::class, 'showAdminLogin'])->name('admin.login');
@@ -58,9 +63,27 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/api/payment-methods', [AdminDashboardController::class, 'apiPaymentMethods'])
     ->name('api.payment-methods');
 
+// ── API pública — publicidad (modal en landing) ───────────────────────────────
+Route::get('/api/tenants/search', [AdvertisingController::class, 'searchTenants'])
+    ->name('api.tenants.search');
+
+// Verificar que el email pertenece a un Gerente/Admin del tenant
+Route::post('/api/advertising/verify-identity', [AdvertisingController::class, 'verifyIdentity'])
+    ->name('advertising.verify-identity')
+    ->middleware('throttle:20,1');
+
+Route::post('/api/advertising/request', [AdvertisingController::class, 'store'])
+    ->name('advertising.store')
+    ->middleware('throttle:10,5');
+
 // ── Panel SuperAdmin ──────────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:administrador'])->prefix('admin')->group(function () {
     Route::get('/',                      [AdminDashboardController::class, 'index']);
+
+    // ── Health Check del sistema (alertas en tiempo real) ─────────────────────
+    Route::get('/system-health', [AdminDashboardController::class, 'systemHealth'])
+        ->name('admin.system-health')
+        ->middleware('throttle:30,1');
     Route::get('/tenants',               [TenantController::class, 'index'])->name('admin.tenants');
     Route::post('/tenants',              [TenantController::class, 'store'])->name('admin.tenants.store');
     Route::put('/tenants/{id}',          [TenantController::class, 'update'])->name('admin.tenants.update');
@@ -86,4 +109,8 @@ Route::middleware(['auth', 'role:administrador'])->prefix('admin')->group(functi
     Route::post('/publicidad-slider',                        [AdminDashboardController::class, 'storeSliderLogo'])->name('admin.publicidad-slider.store');
     Route::patch('/publicidad-slider/{sliderLogo}/toggle',   [AdminDashboardController::class, 'toggleSliderLogo'])->name('admin.publicidad-slider.toggle');
     Route::delete('/publicidad-slider/{sliderLogo}',         [AdminDashboardController::class, 'deleteSliderLogo'])->name('admin.publicidad-slider.delete');
+
+    // Solicitudes publicitarias — acciones del administrador
+    Route::patch('/ad-requests/{id}/approve', [AdminDashboardController::class, 'approveAdRequest'])->name('admin.ad-requests.approve');
+    Route::patch('/ad-requests/{id}/reject',  [AdminDashboardController::class, 'rejectAdRequest'])->name('admin.ad-requests.reject');
 });

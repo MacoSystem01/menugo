@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
         $middleware->replace(
             \Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
@@ -39,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return '/login';
             }
 
-            return '/' . ltrim(env('ADMIN_LOGIN_PATH', 'sistema/acceso-control'), '/');
+            return '/' . ltrim(config('app.admin_login_path', env('ADMIN_LOGIN_PATH', 'sistema/acceso-control')), '/');
         });
 
         // Inertia envía X-XSRF-TOKEN automáticamente en todas las peticiones.

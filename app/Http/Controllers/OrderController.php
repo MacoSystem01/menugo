@@ -243,9 +243,16 @@ class OrderController extends Controller
 
     public function registrarPago(Request $request, Order $order)
     {
+        // Obtener métodos de pago dinámicamente desde la configuración del tenant
+        $allowedMethods = collect(\App\Models\CartaSetting::firstOrCreate([])->payment_methods ?? [])
+            ->merge(['efectivo']) // efectivo siempre disponible
+            ->unique()
+            ->values()
+            ->toArray();
+
         $request->validate([
             'amount_paid'    => 'required|numeric|min:0.01|max:9999999',
-            'payment_method' => 'nullable|string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
+            'payment_method' => ['nullable', 'string', \Illuminate\Validation\Rule::in($allowedMethods)],
         ]);
 
         if ($order->status === 'cancelled') {

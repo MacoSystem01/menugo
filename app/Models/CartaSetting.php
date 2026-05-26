@@ -31,7 +31,12 @@ class CartaSetting extends Model
 
     protected $casts = [
         'payment_methods'  => 'array',
-        'payment_details'  => 'array',
+        // payment_details contiene información bancaria sensible (números de cuenta,
+        // titulares, datos de PSE/Nequi/Daviplata) — se almacena ENCRIPTADA con AES-256.
+        // La encriptación es transparente: read/write siguen siendo arrays PHP normales.
+        // NOTA: si hay datos previos sin encriptar en la BD, el tenant debe re-guardar
+        // su configuración de pagos una vez para migrar al nuevo formato seguro.
+        'payment_details'  => 'encrypted:array',
         'social_links'     => 'array',
         'delivery_ranges'  => 'array',
         'delivery_enabled' => 'boolean',

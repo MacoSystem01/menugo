@@ -2,6 +2,7 @@ import AppShell from '@/Layouts/AppShell';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { Upload, Trash2, Eye, EyeOff, ImagePlus, Info, Store } from 'lucide-react';
+import AdRequestTable, { type AdRequest } from '@/components/AdRequestTable';
 
 interface Logo {
     id:            number;
@@ -12,11 +13,12 @@ interface Logo {
 }
 
 interface Props {
-    logos:  Logo[];
+    logos:      Logo[];
+    adRequests: AdRequest[];
     flash?: { success?: string; error?: string };
 }
 
-export default function PublicidadSlider({ logos, flash }: Props) {
+export default function PublicidadSlider({ logos, adRequests, flash }: Props) {
     const fileRef               = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [dragging, setDragging] = useState(false);
@@ -261,6 +263,10 @@ export default function PublicidadSlider({ logos, flash }: Props) {
                     )}
                 </div>
             </div>
+
+            {/* ══ Reporte Publicitario ══════════════════════════════════════════════ */}
+            <AdRequestTable requests={adRequests} context="slider" />
+
         </AppShell>
     );
 }

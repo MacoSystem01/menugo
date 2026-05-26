@@ -43,7 +43,7 @@ class AddTenantHost extends Command
 
     private function allDomains(): array
     {
-        return Tenant::with('domains')
+        return Tenant::withoutTrashed()->with('domains')
             ->get()
             ->flatMap(fn($t) => $t->domains->pluck('domain'))
             ->map(fn($d) => strtolower($d))
