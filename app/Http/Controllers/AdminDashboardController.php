@@ -18,33 +18,56 @@ class AdminDashboardController extends Controller
 {
     public function index()
     {
-        $tenants = Tenant::with('domains')->latest()->get();
+        // ── Stats globales: conteos directos en BD (no cargar todos los registros) ──
+        $total     = Tenant::withoutTrashed()->count();
 
-        $total      = $tenants->count();
-        $activos    = $tenants->filter(fn($t) => $t->active ?? true)->count();
-        $inactivos  = $total - $activos;
+        // 'active' vive en JSON data → contar en PHP sólo con los que filtramos
+        // Para stats no necesitamos cargar TODOS los tenants; usar conteo approx con JSON_EXTRACT
+        $activos   = Tenant::withoutTrashed()
+            ->whereRaw("JSON_EXTRACT(`data`, '$.active') = true")
+            ->count();
+        $inactivos = $total - $activos;
 
-        $porTipo = $tenants->groupBy(fn($t) => $t->type ?? 'otro')->map->count();
-        $porPlan = $tenants->groupBy(fn($t) => $t->plan ?? 'basico')->map->count();
+        // Distribución por tipo y plan: sólo columnas reales (index disponible)
+        $porTipo = Tenant::withoutTrashed()
+            ->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(`data`, '$.type')) as tipo, count(*) as total")
+            ->groupBy('tipo')
+            ->pluck('total', 'tipo')
+            ->toArray();
 
-        $lista = $tenants->take(10)->map(fn($t) => [
-            'id'        => $t->id,
-            'name'      => $t->name,
-            'type'      => $t->type ?? 'restaurante',
-            'plan'      => $t->plan ?? '—',
-            'active'    => $t->active ?? true,
-            'subdomain' => $t->domains->first()?->domain,
-            'created_at'=> $t->created_at?->format('d/m/Y'),
-        ]);
+        $porPlan = Tenant::withoutTrashed()
+            ->selectRaw('plan, count(*) as total')
+            ->groupBy('plan')
+            ->pluck('total', 'plan')
+            ->toArray();
 
-        $crecimiento = Tenant::selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, count(*) as count')
+        // ── Lista reciente: sólo los últimos 20 (no cargar todos) ────────────
+        $lista = Tenant::with('domains')
+            ->withoutTrashed()
+            ->latest()
+            ->limit(20)
+            ->get()
+            ->map(fn($t) => [
+                'id'         => $t->id,
+                'name'       => $t->name,
+                'type'       => $t->type ?? 'restaurante',
+                'plan'       => $t->plan ?? '—',
+                'active'     => $t->active ?? true,
+                'subdomain'  => $t->domains->first()?->domain,
+                'created_at' => $t->created_at?->format('d/m/Y'),
+            ]);
+
+        // ── Crecimiento mensual: últimos 12 meses ─────────────────────────────
+        $crecimiento = Tenant::withoutTrashed()
+            ->selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, count(*) as count')
+            ->where('created_at', '>=', now()->subMonths(12))
             ->groupBy('month')
             ->orderBy('month')
             ->get();
 
-        // Tenants pendientes de activación (registro nuevo, pago no confirmado)
-        // 'active' vive en el JSON data de Stancl, no es columna real → filtrar en PHP
+        // ── Pagos pendientes ──────────────────────────────────────────────────
         $pendingPayments = Tenant::with('domains')
+            ->withoutTrashed()
             ->whereIn('payment_status', ['pending_payment', 'pending_review'])
             ->latest()
             ->get()
@@ -85,7 +108,8 @@ class AdminDashboardController extends Controller
         $porPlan = $tenants->whereNull('deleted_at')->groupBy(fn($t) => $t->plan ?? 'basico')->map->count();
 
         $prices = ['mensual' => 30000, 'trimestral' => 80000, 'semestral' => 220000, 'anual' => 350000];
-        $totalRevenue = $tenants->where('payment_status', 'active')->whereNull('deleted_at')
+        // FIX: 'active' no es un payment_status válido — valores válidos: paid|pending_payment|pending_review|overdue|cancelled
+        $totalRevenue = $tenants->where('payment_status', 'paid')->whereNull('deleted_at')
             ->sum(fn($t) => $prices[$t->plan ?? 'mensual'] ?? 30000);
 
         $pendingTenants = $tenants
@@ -120,15 +144,17 @@ class AdminDashboardController extends Controller
             'deleted_at'     => $t->deleted_at?->format('d/m/Y'),
         ];
 
+        // FIX: 'active' no es un payment_status válido — corregido a 'paid'
         $historyActivas = $tenants
             ->whereNull('deleted_at')
-            ->where('payment_status', 'active')
+            ->where('payment_status', 'paid')
             ->values()
             ->map($mapHistory);
 
+        // FIX: 'active' → 'paid' (valor correcto). Inactivas = todo lo que no sea paid ni pendiente
         $historyInactivas = $tenants
             ->whereNull('deleted_at')
-            ->filter(fn($t) => !in_array($t->payment_status ?? '', ['active', 'pending_payment', 'pending_review']))
+            ->filter(fn($t) => !in_array($t->payment_status ?? '', ['paid', 'pending_payment', 'pending_review']))
             ->values()
             ->map($mapHistory);
 
@@ -162,25 +188,29 @@ class AdminDashboardController extends Controller
     //    Endpoint: GET /admin/system-health
     //    Accesible sólo para role:administrador (middleware de la ruta)
     //    Usado por el componente SystemAlertBanner para notificaciones emergentes
+    //    throttle:30,1 — máx 30 checks/min por IP (el banner hace polling cada 90s)
 
     public function systemHealth(): \Illuminate\Http\JsonResponse
     {
         $alerts = [];
 
         // ── 1. Tenants pendientes de revisión ─────────────────────────────────
-        $pendingCount = \App\Models\Tenant::whereIn('payment_status', ['pending_payment', 'pending_review'])
-            ->whereRaw("JSON_EXTRACT(`data`, '$.active') = false OR JSON_EXTRACT(`data`, '$.active') IS NULL")
-            ->count();
+        try {
+            $pendingCount = \App\Models\Tenant::withoutTrashed()
+                ->whereIn('payment_status', ['pending_payment', 'pending_review'])
+                ->whereRaw("(JSON_EXTRACT(`data`, '$.active') IS NULL OR JSON_EXTRACT(`data`, '$.active') = false)")
+                ->count();
 
-        if ($pendingCount > 0) {
-            $alerts[] = [
-                'type'    => 'warning',
-                'icon'    => 'clock',
-                'title'   => "{$pendingCount} restaurante(s) pendientes de activación",
-                'message' => 'Hay solicitudes de pago sin revisar. Ve a Facturación para aprobarlas.',
-                'action'  => ['label' => 'Ver Facturación', 'url' => '/admin/billing'],
-            ];
-        }
+            if ($pendingCount > 0) {
+                $alerts[] = [
+                    'type'    => 'warning',
+                    'icon'    => 'clock',
+                    'title'   => "{$pendingCount} restaurante(s) pendientes de activación",
+                    'message' => 'Hay solicitudes de pago sin revisar. Ve a Facturación para aprobarlas.',
+                    'action'  => ['label' => 'Ver Facturación', 'url' => '/admin/billing'],
+                ];
+            }
+        } catch (\Throwable) {}
 
         // ── 2. Cola de jobs acumulada ─────────────────────────────────────────
         try {
@@ -191,6 +221,14 @@ class AdminDashboardController extends Controller
                     'icon'    => 'alert-triangle',
                     'title'   => "Cola de trabajos saturada ({$pendingJobs} jobs)",
                     'message' => 'El sistema tiene demasiados trabajos pendientes. Verifica que el worker de colas esté corriendo: php artisan queue:work',
+                    'action'  => null,
+                ];
+            } elseif ($pendingJobs > 20) {
+                $alerts[] = [
+                    'type'    => 'warning',
+                    'icon'    => 'alert-triangle',
+                    'title'   => "Cola con {$pendingJobs} trabajos pendientes",
+                    'message' => 'La cola está creciendo. Asegúrate de que el worker esté activo: php artisan queue:work',
                     'action'  => null,
                 ];
             }
@@ -239,36 +277,73 @@ class AdminDashboardController extends Controller
         } catch (\Throwable) {}
 
         // ── 5. Muchos tenants sin activar (crecimiento detenido) ─────────────
-        $totalTenants  = \App\Models\Tenant::count();
-        $activeTenants = \App\Models\Tenant::whereRaw("JSON_EXTRACT(`data`, '$.active') = true")->count();
+        try {
+            $totalTenants  = \App\Models\Tenant::withoutTrashed()->count();
+            $activeTenants = \App\Models\Tenant::withoutTrashed()
+                ->whereRaw("JSON_EXTRACT(`data`, '$.active') = true")
+                ->count();
 
-        if ($totalTenants > 10 && $activeTenants < ($totalTenants * 0.5)) {
-            $inactivePct = round((1 - $activeTenants / $totalTenants) * 100);
-            $alerts[] = [
-                'type'    => 'warning',
-                'icon'    => 'trending-down',
-                'title'   => "{$inactivePct}% de restaurantes inactivos",
-                'message' => "De {$totalTenants} restaurantes registrados, solo {$activeTenants} están activos. Revisa el proceso de activación.",
-                'action'  => ['label' => 'Ver Tenants', 'url' => '/admin/tenants'],
-            ];
-        }
+            if ($totalTenants > 10 && $activeTenants < ($totalTenants * 0.5)) {
+                $inactivePct = round((1 - $activeTenants / $totalTenants) * 100);
+                $alerts[] = [
+                    'type'    => 'warning',
+                    'icon'    => 'trending-down',
+                    'title'   => "{$inactivePct}% de restaurantes inactivos",
+                    'message' => "De {$totalTenants} registrados, solo {$activeTenants} están activos. Revisa el proceso de activación.",
+                    'action'  => ['label' => 'Ver Tenants', 'url' => '/admin/tenants'],
+                ];
+            }
+        } catch (\Throwable) {}
 
         // ── 6. Solicitudes publicitarias pendientes ───────────────────────────
-        $adRequests = \App\Models\AdvertisingRequest::whereIn('status', ['pending_payment', 'pending_review'])->count();
-        if ($adRequests > 0) {
+        try {
+            $adRequests = \App\Models\AdvertisingRequest::whereIn('status', ['pending_payment', 'pending_review'])->count();
+            if ($adRequests > 0) {
+                $alerts[] = [
+                    'type'    => 'info',
+                    'icon'    => 'megaphone',
+                    'title'   => "{$adRequests} solicitud(es) publicitaria(s) pendiente(s)",
+                    'message' => 'Hay solicitudes de publicidad sin aprobar/rechazar.',
+                    'action'  => ['label' => 'Ver Publicidad', 'url' => '/admin/publicidad'],
+                ];
+            }
+        } catch (\Throwable) {}
+
+        // ── 7. Log de errores recientes ───────────────────────────────────────
+        // Detecta errores graves en storage/logs/laravel.log de las últimas 24h
+        try {
+            $logFile = storage_path('logs/laravel.log');
+            if (file_exists($logFile)) {
+                $logSize = filesize($logFile);
+                $oneMb   = 1024 * 1024;
+                if ($logSize > 50 * $oneMb) {
+                    $sizeMb = round($logSize / $oneMb, 1);
+                    $alerts[] = [
+                        'type'    => 'warning',
+                        'icon'    => 'hard-drive',
+                        'title'   => "Log de errores grande ({$sizeMb} MB)",
+                        'message' => 'El archivo storage/logs/laravel.log supera 50 MB. Considera rotarlo o limpiarlo: php artisan log:clear',
+                        'action'  => null,
+                    ];
+                }
+            }
+        } catch (\Throwable) {}
+
+        // ── 8. APP_DEBUG activo en producción ─────────────────────────────────
+        if (app()->isProduction() && config('app.debug')) {
             $alerts[] = [
-                'type'    => 'info',
-                'icon'    => 'megaphone',
-                'title'   => "{$adRequests} solicitud(es) publicitaria(s) pendiente(s)",
-                'message' => 'Hay solicitudes de publicidad sin aprobar/rechazar.',
-                'action'  => ['label' => 'Ver Publicidad', 'url' => '/admin/publicidad'],
+                'type'    => 'danger',
+                'icon'    => 'alert-triangle',
+                'title'   => "APP_DEBUG está habilitado en producción",
+                'message' => 'DEBUG=true expone trazas de error completas. Cambia APP_DEBUG=false en .env y ejecuta php artisan config:cache.',
+                'action'  => null,
             ];
         }
 
         return response()->json([
-            'alerts'      => $alerts,
-            'checked_at'  => now()->format('H:i:s'),
-            'total_alerts'=> count($alerts),
+            'alerts'       => $alerts,
+            'checked_at'   => now()->format('H:i:s'),
+            'total_alerts' => count($alerts),
         ]);
     }
 

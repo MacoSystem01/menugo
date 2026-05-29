@@ -141,7 +141,8 @@ class TenantController extends Controller
             'tenantName'    => session('tenant_name'),
             'tenantUrl'     => session('tenant_url'),
             'tenantEmail'   => session('tenant_email'),
-            'paymentStatus' => session('payment_status', 'active'),
+            // FIX: default 'active' no es un payment_status válido — usar 'pending_payment'
+            'paymentStatus' => session('payment_status', 'pending_payment'),
             'hasEvidence'   => session('has_evidence', false),
         ]);
     }
@@ -158,7 +159,7 @@ class TenantController extends Controller
             'email'                => $t->email,
             'plan'                 => $t->plan,
             'active'               => $t->active ?? true,
-            'payment_status'       => $t->payment_status ?? 'active',
+            'payment_status'       => $t->payment_status ?? 'paid', // FIX: fallback 'active' era inválido
             'payment_evidence_path'=> $t->payment_evidence_path,
             'payment_evidence_at'  => $t->payment_evidence_at,
             'subdomain'            => $t->domains->first()?->domain,
@@ -187,6 +188,9 @@ class TenantController extends Controller
         }
     }
 
+    // Valores válidos de payment_status — usados en store(), update() y activateTenant()
+    private const VALID_PAYMENT_STATUSES = ['pending_payment', 'pending_review', 'paid', 'overdue', 'cancelled'];
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -201,6 +205,8 @@ class TenantController extends Controller
             'restaurant_address'    => 'nullable|string|max:255',
             'restaurant_lat'        => 'nullable|numeric|between:-90,90',
             'restaurant_lng'        => 'nullable|numeric|between:-180,180',
+            // payment_status opcional al crear desde el admin — default 'paid' (ya confirmado)
+            'payment_status'        => 'nullable|in:pending_payment,pending_review,paid,overdue,cancelled',
         ]);
 
         $baseDomain = parse_url(config('app.url'), PHP_URL_HOST);
@@ -212,13 +218,14 @@ class TenantController extends Controller
         }
 
         $tenant = Tenant::create([
-            'id'         => Str::uuid(),
-            'name'       => $data['name'],
-            'email'      => $data['email'],
-            'plan'       => $data['plan'],
-            'type'       => $data['type'],
-            'active'     => true,
-            'expires_at' => now()->addDays(30),
+            'id'             => Str::uuid(),
+            'name'           => $data['name'],
+            'email'          => $data['email'],
+            'plan'           => $data['plan'],
+            'type'           => $data['type'],
+            'active'         => true,
+            'payment_status' => $data['payment_status'] ?? 'paid', // tenant admin siempre inicia como pagado
+            'expires_at'     => now()->addDays(30),
         ]);
 
         $tenant->domains()->create(['domain' => $fullDomain]);
@@ -308,6 +315,8 @@ class TenantController extends Controller
             'active'             => 'nullable|boolean',
             'expires_at'         => 'nullable|date',
             'restaurant_address' => 'nullable|string|max:255',
+            // Validar payment_status — evita que se guarden valores inválidos como 'active'
+            'payment_status'     => 'nullable|in:pending_payment,pending_review,paid,overdue,cancelled',
         ]);
 
         $address = array_key_exists('restaurant_address', $data) ? $data['restaurant_address'] : false;
@@ -344,7 +353,7 @@ class TenantController extends Controller
         $tenant = Tenant::findOrFail($id);
         $tenant->update([
             'active'         => true,
-            'payment_status' => 'active',
+            'payment_status' => 'paid', // FIX: 'active' no es un valor válido — valores válidos: pending_payment|pending_review|paid|overdue|cancelled
             'expires_at'     => now()->addDays(30),
         ]);
         return back()->with('success', "✅ '{$tenant->name}' activado correctamente. Pago confirmado.");

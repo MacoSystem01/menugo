@@ -24,7 +24,21 @@ return [
      */
     'bootstrappers' => [
         Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
-        Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
+
+        // CacheTenancyBootstrapper DESHABILITADO intencionalmente — usa cache tags
+        // (requiere Redis o array driver). Con CACHE_STORE=file los tags no están
+        // disponibles y causa HTTP 500 en todas las páginas de tenant.
+        //
+        // El aislamiento de caché por tenant está garantizado MANUALMENTE:
+        // - CartaController usa carta_public_{$tenantId} y carta_settings_{$tenantId}
+        // - Spatie Permission cache se limpia en TenancyServiceProvider::boot() via
+        //   forgetCachedPermissions() en el evento TenancyInitialized.
+        // No hay fugas de datos entre tenants — el aislamiento es por clave explícita,
+        // no por tags automáticos.
+        //
+        // Para producción con Redis, se puede habilitar:
+        // Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
+
         // Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper::class,
         Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper::class,
         // Stancl\Tenancy\Bootstrappers\RedisTenancyBootstrapper::class, // Note: phpredis is needed

@@ -755,7 +755,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
 </head>
 <body>
     <div class="header">
-        <img src="/logo-trans.png" alt="${tenant_name}" />
+        <img src="${'/logo-trans.png'}" alt="${tenant_name}" />
         <h1>${tenant_name}</h1>
         ${design.data.slogan ? `<p class="slogan">${design.data.slogan}</p>` : ''}
     </div>
@@ -853,7 +853,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                 <ColorField label="Color de texto" value={design.data.text_color} onChange={v => design.setData('text_color', v)} />
                             </div>
 
-                            {/* Logo */}
+                            {/* Tamaño del logo */}
                             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
                                 <h3 className="text-sm font-semibold">Tamaño del logo</h3>
                                 <div className="flex flex-wrap gap-2">
@@ -861,9 +861,9 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                         <SizeBtn key={v} label={l} active={design.data.logo_size === v} onClick={() => design.setData('logo_size', v)} />
                                     ))}
                                 </div>
-                                <div className="mt-3 flex items-end gap-3 p-3 rounded-xl bg-muted/30 border border-border">
+                                <div className="flex items-end gap-3 p-3 rounded-xl bg-muted/30 border border-border">
                                     <img src="/logo-trans.png" alt="Logo preview" className={`${LOGO_SIZES[design.data.logo_size] ?? 'h-12'} w-auto object-contain`} />
-                                    <span className="text-xs text-muted-foreground">Vista previa del logo</span>
+                                    <span className="text-xs text-muted-foreground">Vista previa</span>
                                 </div>
                             </div>
 
@@ -1274,7 +1274,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
 
                                 {/* Header */}
                                 <div className="text-center px-8 pt-8 pb-6 border-b" style={{ borderColor: `${design.data.primary_color}22` }}>
-                                    <img src="/logo-trans.png" alt={tenant_name} className={`${LOGO_SIZES[design.data.logo_size] ?? 'h-12'} w-auto mx-auto mb-3`} />
+                                    <img src={'/logo-trans.png'} alt={tenant_name} className={`${LOGO_SIZES[design.data.logo_size] ?? 'h-12'} w-auto mx-auto mb-3`} />
                                     <h1 className={`font-display font-bold tracking-tight ${NAME_SIZES[design.data.name_size] ?? 'text-2xl'}`}
                                         style={{ color: design.data.text_color }}>
                                         {tenant_name}
@@ -1414,7 +1414,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                                     style={{ borderColor: design.data.primary_color || '#ff6b00' }}
                                                 >
                                                     <div className="w-full h-full bg-gradient-to-br from-white to-gray-100 flex items-center justify-center p-1.5">
-                                                        <img src="/logo-trans.png" alt="Logo" className="w-full h-full object-contain drop-shadow-md scale-110" />
+                                                        <img src={'/logo-trans.png'} alt="Logo" className="w-full h-full object-contain drop-shadow-md scale-110" />
                                                     </div>
                                                 </div>
                                             </div>

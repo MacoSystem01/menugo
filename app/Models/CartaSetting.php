@@ -63,4 +63,5 @@ class CartaSetting extends Model
             ? Storage::disk('public')->url($this->banner_image)
             : null;
     }
+
 }

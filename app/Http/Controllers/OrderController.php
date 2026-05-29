@@ -98,8 +98,8 @@ class OrderController extends Controller
             ->whereNull('closed_at_eod')
             ->where(function ($q) {
                 $q->whereNotIn('status', ['delivered', 'cancelled'])
-                  ->orWhere(fn($q) => $q->where('status', 'delivered')
-                      ->whereColumn('amount_paid', '<', 'total'));
+                    ->orWhere(fn($q) => $q->where('status', 'delivered')
+                        ->whereColumn('amount_paid', '<', 'total'));
             })
             ->oldest()
             ->get()
@@ -110,8 +110,8 @@ class OrderController extends Controller
             ->whereNull('closed_at_eod')
             ->where(function ($q) {
                 $q->where(fn($q) => $q->where('status', 'delivered')
-                      ->whereColumn('amount_paid', '>=', 'total'))
-                  ->orWhere('status', 'cancelled');
+                    ->whereColumn('amount_paid', '>=', 'total'))
+                    ->orWhere('status', 'cancelled');
             })
             ->whereDate('created_at', today())
             ->latest()

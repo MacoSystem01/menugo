@@ -78,7 +78,10 @@ class Order extends Model
 
     public function recalculateTotal(): void
     {
-        $this->total = $this->items()->sum(DB::raw('quantity * unit_price'));
+        // Suma todos los ítems (quantity × unit_price) y suma el delivery_fee si aplica.
+        // delivery_fee es propio del pedido y no está en order_items.
+        $itemsTotal  = $this->items()->sum(DB::raw('quantity * unit_price'));
+        $this->total = $itemsTotal + (float) ($this->delivery_fee ?? 0);
         $this->save();
     }
 }

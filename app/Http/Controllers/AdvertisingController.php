@@ -23,13 +23,15 @@ class AdvertisingController extends Controller
             return response()->json([]);
         }
 
+        // FIX: 'active' no es un payment_status válido — filtrar por 'paid' y active=true
         $tenants = Tenant::with('domains')
             ->where(function ($query) use ($q) {
                 $query->where('name', 'like', "%{$q}%")
                       ->orWhereHas('domains', fn($d) => $d->where('domain', 'like', "%{$q}%"));
             })
             ->whereNull('deleted_at')
-            ->where('payment_status', 'active')
+            ->where('payment_status', 'paid')
+            ->whereRaw("JSON_EXTRACT(`data`, '$.active') = true")
             ->limit(6)
             ->get()
             ->map(fn($t) => [
@@ -50,8 +52,10 @@ class AdvertisingController extends Controller
             'email'     => 'required|email',
         ]);
 
+        // FIX: 'active' no es un payment_status válido — verificar que sea 'paid' y active=true
         $tenant = Tenant::whereNull('deleted_at')
-            ->where('payment_status', 'active')
+            ->where('payment_status', 'paid')
+            ->whereRaw("JSON_EXTRACT(`data`, '$.active') = true")
             ->find($request->tenant_id);
 
         if (!$tenant) {
@@ -123,8 +127,10 @@ class AdvertisingController extends Controller
 
         // ── Re-verificación de identidad al enviar (si se eligió tenant) ─────
         if ($request->filled('tenant_id')) {
+            // FIX: 'active' no es un payment_status válido — verificar que sea 'paid' y active=true
             $tenant = Tenant::whereNull('deleted_at')
-                ->where('payment_status', 'active')
+                ->where('payment_status', 'paid')
+                ->whereRaw("JSON_EXTRACT(`data`, '$.active') = true")
                 ->find($request->tenant_id);
 
             if (!$tenant) {

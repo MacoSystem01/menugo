@@ -30,7 +30,11 @@ export default function Login() {
                     {/* Logo */}
                     <div className="flex items-center gap-3 z-10">
                         <div className="bg-white rounded-full p-2 shadow-md">
-                            <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
+                            <img
+                                src="/logo-trans.png"
+                                alt="Menugo"
+                                className="h-12 w-auto object-contain"
+                            />
                         </div>
                         <span className="text-2xl font-display font-bold text-foreground">Menugo</span>
                     </div>
@@ -78,7 +82,11 @@ export default function Login() {
                         {/* Logo mobile */}
                         <div className="flex lg:hidden justify-center">
                             <div className="bg-white rounded-full p-2 shadow-md">
-                                <img src="/logo-trans.png" alt="Menugo" className="h-12 w-auto" />
+                                <img
+                                    src="/logo-trans.png"
+                                    alt="Menugo"
+                                    className="h-12 w-auto object-contain"
+                                />
                             </div>
                         </div>
 

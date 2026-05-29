@@ -52,6 +52,8 @@ class CategoryController extends Controller
             'sort_order' => $category->sort_order,
         ]);
 
+        CartaController::invalidarCachePublica();
+
         return back()->with('success', "Categoría '{$data['name']}' creada.");
     }
 
@@ -94,6 +96,8 @@ class CategoryController extends Controller
             'new' => $data,
         ]);
 
+        CartaController::invalidarCachePublica();
+
         return back()->with('success', 'Categoría actualizada.');
     }
 
@@ -111,6 +115,8 @@ class CategoryController extends Controller
             $category->update(['sort_order' => $tmp]);
         }
 
+        CartaController::invalidarCachePublica();
+
         return back();
     }
 
@@ -125,6 +131,8 @@ class CategoryController extends Controller
         $category->delete();
 
         AuditLog::registrar('delete', 'Categoría', $id, "Categoría '{$name}' eliminada");
+
+        CartaController::invalidarCachePublica();
 
         return back()->with('success', 'Categoría eliminada.');
     }

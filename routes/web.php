@@ -60,11 +60,15 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function () use ($adminPath
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // ── API pública — métodos de pago (sin auth, usada en /register) ─────────────
+// throttle:30,1 → máx 30 req/min por IP (suficiente para el formulario de registro)
 Route::get('/api/payment-methods', [AdminDashboardController::class, 'apiPaymentMethods'])
+    ->middleware('throttle:30,1')
     ->name('api.payment-methods');
 
 // ── API pública — publicidad (modal en landing) ───────────────────────────────
+// throttle:30,1 → protege contra scraping de subdominios registrados
 Route::get('/api/tenants/search', [AdvertisingController::class, 'searchTenants'])
+    ->middleware('throttle:30,1')
     ->name('api.tenants.search');
 
 // Verificar que el email pertenece a un Gerente/Admin del tenant

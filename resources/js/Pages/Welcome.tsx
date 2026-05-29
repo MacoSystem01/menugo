@@ -346,10 +346,22 @@ function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-8">
 
                 <Link href="/" className="flex items-center gap-3 group shrink-0">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-warm opacity-40 blur-md rounded-full group-hover:opacity-70 transition-opacity" />
-                        <div className="relative bg-white rounded-full p-2 shadow-glow transition-transform group-hover:scale-110">
-                            <img src="/logo-trans.png" alt="Menugo" className="h-14 sm:h-20 w-auto" />
+                    {/*
+                        Logo grande sin recorte:
+                        - Contenedor con dimensiones IGUALES (72×72 px) → círculo perfecto
+                        - overflow-hidden → rounded-full hace clip real del contenido
+                        - Sin padding interno → imagen usa todo el espacio disponible
+                        - object-contain → escala el logo sin distorsión ni recorte
+                        - 72 px cabe en el header h-20 (80 px) con 4 px de margen arriba/abajo
+                    */}
+                    <div className="relative shrink-0">
+                        <div className="absolute -inset-1 bg-gradient-warm opacity-40 blur-md rounded-full group-hover:opacity-70 transition-opacity" />
+                        <div className="relative h-[72px] w-[72px] rounded-full bg-white shadow-glow overflow-hidden transition-transform group-hover:scale-110">
+                            <img
+                                src="/logo-trans.png"
+                                alt="Menugo"
+                                className="h-full w-full object-contain"
+                            />
                         </div>
                     </div>
                     <span className="font-display text-2xl sm:text-3xl font-bold tracking-tight">

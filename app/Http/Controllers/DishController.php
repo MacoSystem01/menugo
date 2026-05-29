@@ -63,6 +63,8 @@ class DishController extends Controller
             'category_id' => $dish->category_id,
         ]);
 
+        CartaController::invalidarCachePublica();
+
         return back()->with('success', "Plato '{$data['name']}' creado.");
     }
 
@@ -85,6 +87,8 @@ class DishController extends Controller
             'new' => $data,
         ]);
 
+        CartaController::invalidarCachePublica();
+
         return back()->with('success', 'Plato actualizado.');
     }
 
@@ -95,6 +99,8 @@ class DishController extends Controller
         $dish->delete();
 
         AuditLog::registrar('delete', 'Plato', $id, "Plato '{$name}' eliminado");
+
+        CartaController::invalidarCachePublica();
 
         return back()->with('success', 'Plato eliminado.');
     }

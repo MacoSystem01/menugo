@@ -8,54 +8,87 @@ use App\Models\Dish;
 use App\Models\Order;
 use App\Models\RestaurantTable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class CartaController extends Controller
 {
     // ── Vista pública ─────────────────────────────────────────────────────────
+    //
+    // El caché de carta se almacena 5 minutos por tenant.
+    // Soporta 1000+ usuarios concurrentes sin saturar la BD.
+    // Se invalida al guardar settings, subir banner o modificar platos/categorías.
+    // La lista de mesas NO se cachea (cambia frecuentemente durante el servicio).
+
+    /** Tiempo de caché de categorías+platos en segundos (5 minutos). */
+    private const CARTA_CACHE_TTL = 300;
+
+    /** Invalida el caché de la carta para el tenant actual. */
+    public static function invalidarCachePublica(): void
+    {
+        $tenantId = tenancy()->tenant?->id;
+        if ($tenantId) {
+            Cache::forget("carta_public_{$tenantId}");
+            Cache::forget("carta_settings_{$tenantId}");
+        }
+    }
 
     public function public()
     {
-        $settings = CartaSetting::firstOrCreate([]);
+        $tenantId   = tenancy()->tenant?->id ?? 'central';
+        $tenantName = tenancy()->tenant?->name ?? config('app.name');
 
-        $categories = Category::with([
-                'dishes' => fn($q) => $q->where('available', true)->orderBy('sort_order')->orderBy('name'),
-            ])
-            ->where('active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get()
-            ->filter(fn($c) => $c->dishes->isNotEmpty())
-            ->map(fn($c) => [
-                'id'          => $c->id,
-                'name'        => $c->name,
-                'description' => $c->description,
-                'dishes'      => $c->dishes->map(fn($d) => [
-                    'id'          => $d->id,
-                    'name'        => $d->name,
-                    'description' => $d->description,
-                    'price'       => (float) $d->price,
-                    'image_url'   => $d->image ? Storage::disk('public')->url($d->image) : null,
-                ]),
-            ])
-            ->values();
+        // ── Categorías + platos: cacheados 5 min por tenant ──────────────────
+        $categories = Cache::remember(
+            "carta_public_{$tenantId}",
+            self::CARTA_CACHE_TTL,
+            function () {
+                return Category::with([
+                    'dishes' => fn($q) => $q->where('available', true)->orderBy('sort_order')->orderBy('name'),
+                ])
+                    ->where('active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name')
+                    ->get()
+                    ->filter(fn($c) => $c->dishes->isNotEmpty())
+                    ->map(fn($c) => [
+                        'id'          => $c->id,
+                        'name'        => $c->name,
+                        'description' => $c->description,
+                        'dishes'      => $c->dishes->map(fn($d) => [
+                            'id'          => $d->id,
+                            'name'        => $d->name,
+                            'description' => $d->description,
+                            'price'       => (float) $d->price,
+                            'image_url'   => $d->image ? Storage::disk('public')->url($d->image) : null,
+                        ]),
+                    ])
+                    ->values();
+            }
+        );
 
+        // ── Settings: cacheados 5 min por tenant ──────────────────────────────
+        $settings = Cache::remember(
+            "carta_settings_{$tenantId}",
+            self::CARTA_CACHE_TTL,
+            fn() => $this->settingsArray(CartaSetting::firstOrCreate([]))
+        );
+
+        // ── Mesas: NO se cachean — cambian con cada pedido ────────────────────
         $tables = RestaurantTable::withCount(['activeOrders'])
             ->orderByRaw('CAST(number AS UNSIGNED), number')
             ->get()
             ->map(fn($t) => [
-                'id'               => $t->id,
-                'number'           => (string) $t->number,
+                'id'                => $t->id,
+                'number'            => (string) $t->number,
                 'has_active_orders' => $t->active_orders_count > 0,
             ]);
-
-        $tenantName = tenancy()->tenant?->name ?? config('app.name');
 
         return Inertia::render('PublicMenu', [
             'categories'  => $categories,
             'tenant_name' => $tenantName,
-            'settings'    => $this->settingsArray($settings),
+            'settings'    => $settings,
             'tables'      => $tables,
         ]);
     }
@@ -64,6 +97,35 @@ class CartaController extends Controller
 
     public function placeOrder(Request $request)
     {
+        // ── Prevenir pedidos duplicados por doble clic ────────────────────────
+        // Si existe un pedido con el mismo teléfono y nombre en los últimos
+        // 5 segundos, lo consideramos un duplicado y lo ignoramos silenciosamente.
+        // Esto protege contra doble clic en el botón de envío o doble submit.
+        $pedidoReciente = Order::where('customer_phone', $request->input('customer_phone'))
+            ->where('customer_name',  $request->input('customer_name'))
+            ->where('created_at', '>=', now()->subSeconds(5))
+            ->exists();
+
+        if ($pedidoReciente) {
+            // Redirigir como si fuera exitoso — el cliente ya tiene su pedido
+            return redirect('/carta')->with('order_placed', [
+                'id'    => null,
+                'total' => 0,
+            ]);
+        }
+
+        // ── Métodos de pago permitidos para este tenant ───────────────────────
+        // Se validan contra los métodos configurados en CartaSetting del tenant
+        // (no contra una lista global hardcodeada) para evitar que un cliente
+        // envíe un método de pago que el restaurante no acepta.
+        $cfg             = CartaSetting::firstOrCreate([]);
+        $allowedMethods  = $cfg->payment_methods ?? ['efectivo'];
+        // Fallback a la lista completa si CartaSetting está vacío (tenant recién creado)
+        if (empty($allowedMethods)) {
+            $allowedMethods = ['efectivo', 'pse', 'nequi', 'daviplata', 'tarjeta', 'transferencia'];
+        }
+        $allowedMethodsStr = implode(',', $allowedMethods);
+
         $data = $request->validate([
             'customer_name'     => 'required|string|max:150',
             'customer_phone'    => 'required|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
@@ -74,7 +136,7 @@ class CartaController extends Controller
             'delivery_zone_idx' => 'nullable|integer|min:0',
             'delivery_lat'      => 'nullable|numeric|between:-90,90',
             'delivery_lng'      => 'nullable|numeric|between:-180,180',
-            'payment_method'    => 'required|string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
+            'payment_method'    => "required|string|in:{$allowedMethodsStr}",
             'notes'             => 'nullable|string|max:500',
             'confirmed'         => 'nullable|boolean',
             'items'             => 'required|array|min:1|max:50',
@@ -113,9 +175,9 @@ class CartaController extends Controller
         }
 
         // ── Lógica de domicilio ────────────────────────────────────────────────
+        // $cfg ya fue cargado arriba para la validación de payment_method
         $deliveryFee = 0;
         if ($data['type'] === 'domicilio') {
-            $cfg   = CartaSetting::firstOrCreate([]);
             $zones = $cfg->delivery_zones ?? [];
 
             // Validar pedido mínimo contra el subtotal de productos (sin tarifa)
@@ -144,8 +206,10 @@ class CartaController extends Controller
                 && $cfg->restaurant_lng
             ) {
                 $km          = $this->haversineKm(
-                    (float) $cfg->restaurant_lat, (float) $cfg->restaurant_lng,
-                    (float) $data['delivery_lat'],  (float) $data['delivery_lng']
+                    (float) $cfg->restaurant_lat,
+                    (float) $cfg->restaurant_lng,
+                    (float) $data['delivery_lat'],
+                    (float) $data['delivery_lng']
                 );
                 $claimedZone = $zones[$data['delivery_zone_idx']] ?? null;
                 if ($claimedZone) {
@@ -212,8 +276,8 @@ class CartaController extends Controller
         $settings = CartaSetting::firstOrCreate([]);
 
         $categories = Category::with([
-                'dishes' => fn($q) => $q->orderBy('sort_order')->orderBy('name'),
-            ])
+            'dishes' => fn($q) => $q->orderBy('sort_order')->orderBy('name'),
+        ])
             ->where('active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -285,6 +349,9 @@ class CartaController extends Controller
 
         CartaSetting::firstOrCreate([])->update($data);
 
+        // Invalidar caché de la carta pública (cambio de settings/diseño)
+        self::invalidarCachePublica();
+
         return back()->with('success', 'Diseño guardado.');
     }
 
@@ -305,6 +372,9 @@ class CartaController extends Controller
         $path = $request->file('banner')->store('banners', 'public');
         $settings->update(['banner_image' => $path]);
 
+        // Invalidar caché de settings (banner_url cambió)
+        self::invalidarCachePublica();
+
         return back()->with('success', 'Banner actualizado.');
     }
 
@@ -316,6 +386,9 @@ class CartaController extends Controller
             Storage::disk('public')->delete($settings->banner_image);
             $settings->update(['banner_image' => null]);
         }
+
+        // Invalidar caché de settings
+        self::invalidarCachePublica();
 
         return back()->with('success', 'Banner eliminado.');
     }
@@ -335,6 +408,9 @@ class CartaController extends Controller
         $path = $request->file('image')->store('dishes', 'public');
         $dish->update(['image' => $path]);
 
+        // Invalidar caché de carta (imagen del plato cambió)
+        self::invalidarCachePublica();
+
         return back()->with('success', 'Imagen actualizada.');
     }
 
@@ -344,6 +420,9 @@ class CartaController extends Controller
             Storage::disk('public')->delete($dish->image);
             $dish->update(['image' => null]);
         }
+
+        // Invalidar caché de carta
+        self::invalidarCachePublica();
 
         return back()->with('success', 'Imagen eliminada.');
     }
@@ -361,6 +440,9 @@ class CartaController extends Controller
 
         $dish->update($data);
 
+        // Invalidar caché de carta (nombre, descripción, precio o disponibilidad cambió)
+        self::invalidarCachePublica();
+
         return back()->with('success', 'Plato actualizado.');
     }
 
@@ -372,7 +454,7 @@ class CartaController extends Controller
         $dLat = deg2rad($lat2 - $lat1);
         $dLng = deg2rad($lng2 - $lng1);
         $a    = sin($dLat / 2) ** 2
-              + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
         return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 

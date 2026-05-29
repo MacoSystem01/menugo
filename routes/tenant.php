@@ -41,7 +41,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     // ── Carta pública (sin auth, acceso del cliente vía QR) ──────────────────
     Route::get('/carta', [CartaController::class, 'public'])->name('carta.public');
     Route::post('/carta/pedido', [CartaController::class, 'placeOrder'])
-        ->middleware('throttle:30,1')
+    ->middleware('throttle:60,1')
         ->name('carta.pedido');
 
     // ── Panel restaurante (requiere auth) ─────────────────────────────────────
