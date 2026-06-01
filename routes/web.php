@@ -88,6 +88,9 @@ Route::middleware(['auth', 'role:administrador'])->prefix('admin')->group(functi
     Route::get('/system-health', [AdminDashboardController::class, 'systemHealth'])
         ->name('admin.system-health')
         ->middleware('throttle:30,1');
+    Route::post('/clear-log', [AdminDashboardController::class, 'clearLog'])
+        ->name('admin.clear-log')
+        ->middleware('throttle:5,1');
     Route::get('/tenants',               [TenantController::class, 'index'])->name('admin.tenants');
     Route::post('/tenants',              [TenantController::class, 'store'])->name('admin.tenants.store');
     Route::put('/tenants/{id}',          [TenantController::class, 'update'])->name('admin.tenants.update');

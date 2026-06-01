@@ -10,6 +10,7 @@ use App\Models\RestaurantTable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CartaController extends Controller
@@ -85,11 +86,19 @@ class CartaController extends Controller
                 'has_active_orders' => $t->active_orders_count > 0,
             ]);
 
+        // ── Pre-selección de mesa por QR ──────────────────────────────────────
+        $initialTableId = null;
+        $mesaQr = request()->query('mesa');
+        if (is_string($mesaQr) && Str::isUuid($mesaQr)) {
+            $initialTableId = RestaurantTable::where('qr_code', $mesaQr)->value('id');
+        }
+
         return Inertia::render('PublicMenu', [
-            'categories'  => $categories,
-            'tenant_name' => $tenantName,
-            'settings'    => $settings,
-            'tables'      => $tables,
+            'categories'       => $categories,
+            'tenant_name'      => $tenantName,
+            'settings'         => $settings,
+            'tables'           => $tables,
+            'initial_table_id' => $initialTableId,
         ]);
     }
 
@@ -190,54 +199,9 @@ class CartaController extends Controller
                 ]);
             }
 
-            // Zona requerida cuando hay zonas configuradas
-            if (!empty($zones) && !isset($data['delivery_zone_idx'])) {
-                return redirect('/carta')->withErrors([
-                    'delivery_zone_idx' => 'Selecciona una zona de entrega para continuar.',
-                ]);
-            }
-
-            // Validar que las coordenadas de entrega correspondan a la zona seleccionada
-            if (
-                !empty($zones)
-                && isset($data['delivery_zone_idx'])
-                && isset($data['delivery_lat'], $data['delivery_lng'])
-                && $cfg->restaurant_lat
-                && $cfg->restaurant_lng
-            ) {
-                $km          = $this->haversineKm(
-                    (float) $cfg->restaurant_lat,
-                    (float) $cfg->restaurant_lng,
-                    (float) $data['delivery_lat'],
-                    (float) $data['delivery_lng']
-                );
-                $claimedZone = $zones[$data['delivery_zone_idx']] ?? null;
-                if ($claimedZone) {
-                    $withinZone = $km >= (float) $claimedZone['min_km'] && $km <= (float) $claimedZone['max_km'];
-                    $coveredByAny = collect($zones)->contains(
-                        fn($z) => $km >= (float) $z['min_km'] && $km <= (float) $z['max_km']
-                    );
-                    if (! $withinZone) {
-                        $fmtKm = number_format($km, 1, '.', '');
-                        if (! $coveredByAny) {
-                            return redirect('/carta')->withErrors([
-                                'delivery_address' => "La dirección está fuera de nuestra zona de cobertura ({$fmtKm} km).",
-                            ]);
-                        }
-                        return redirect('/carta')->withErrors([
-                            'delivery_zone_idx' => "La zona seleccionada no corresponde a tu dirección ({$fmtKm} km).",
-                        ]);
-                    }
-                }
-            }
-
-            // Resolver tarifa de la zona seleccionada
-            if (isset($data['delivery_zone_idx'])) {
-                $zone = $zones[$data['delivery_zone_idx']] ?? null;
-                if ($zone) {
-                    $deliveryFee = (int) $zone['price'];
-                }
-            }
+            // La tarifa de domicilio es asignada por el staff (Gerente/Admin)
+            // al procesar el pedido — el cliente no selecciona zona desde la carta.
+            // Se registra $deliveryFee = 0 en el pedido y el staff ajusta el costo.
         }
         $total += $deliveryFee;
 
@@ -355,6 +319,42 @@ class CartaController extends Controller
         return back()->with('success', 'Diseño guardado.');
     }
 
+    // ── Logo de la carta ─────────────────────────────────────────────────────
+
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'logo' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        $settings = CartaSetting::firstOrCreate([]);
+
+        if ($settings->logo_image) {
+            Storage::disk('public')->delete($settings->logo_image);
+        }
+
+        $path = $request->file('logo')->store('logos', 'public');
+        $settings->update(['logo_image' => $path]);
+
+        self::invalidarCachePublica();
+
+        return back()->with('success', 'Logo actualizado.');
+    }
+
+    public function deleteLogo()
+    {
+        $settings = CartaSetting::firstOrCreate([]);
+
+        if ($settings->logo_image) {
+            Storage::disk('public')->delete($settings->logo_image);
+            $settings->update(['logo_image' => null]);
+        }
+
+        self::invalidarCachePublica();
+
+        return back()->with('success', 'Logo eliminado.');
+    }
+
     // ── Banner ────────────────────────────────────────────────────────────────
 
     public function uploadBanner(Request $request)
@@ -468,6 +468,7 @@ class CartaController extends Controller
             'name_size'          => $s->name_size,
             'slogan'             => $s->slogan,
             'slogan_size'        => $s->slogan_size,
+            'logo_url'           => $s->logo_url,
             'banner_url'         => $s->banner_url,
             'payment_methods'    => $s->payment_methods    ?? ['efectivo'],
             'payment_details'    => $s->payment_details    ?? [],
@@ -478,7 +479,6 @@ class CartaController extends Controller
             'restaurant_lat'     => $s->restaurant_lat     ? (float) $s->restaurant_lat : null,
             'restaurant_lng'     => $s->restaurant_lng     ? (float) $s->restaurant_lng : null,
             'restaurant_address' => $s->restaurant_address ?? null,
-            'google_maps_key'    => env('GOOGLE_MAPS_API_KEY') ?: null,
             'work_schedule'      => $s->work_schedule      ?? null,
         ];
     }

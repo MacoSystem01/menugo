@@ -216,7 +216,7 @@ function SubMenu({
 
 // ── Sidebar content (reutilizado en desktop y mobile) ─────────────────────────
 function SidebarContent({
-    nav, currentPath, openIndex, setOpenIndex, user, badge, onNavigate,
+    nav, currentPath, openIndex, setOpenIndex, user, badge, logoUrl, onNavigate,
 }: {
     nav: NavItem[];
     currentPath: string;
@@ -224,15 +224,16 @@ function SidebarContent({
     setOpenIndex: (i: number | null) => void;
     user: { name: string; role: string };
     badge: { label: string; className: string };
+    logoUrl: string;
     onNavigate?: () => void;
 }) {
     return (
         <>
             {/* Logo + badge */}
             <div className="px-4 py-6 border-b border-sidebar-border flex flex-col items-center justify-center text-center">
-                <Link href="/" onClick={onNavigate} className="block transition-transform hover:scale-105">
+                <Link href="/dashboard" onClick={onNavigate} className="block transition-transform hover:scale-105">
                     <div className="mx-auto h-24 w-24 bg-white rounded-full flex items-center justify-center p-3 shadow-[0_0_20px_rgba(255,255,255,0.1)] border border-white/10">
-                        <img src="/logo-trans.png" alt="Menugo" className="h-full w-full object-contain" />
+                        <img src={logoUrl} alt="Menugo" className="h-full w-full object-contain" />
                     </div>
                 </Link>
                 <span className={`mt-4 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase tracking-wider ${badge.className}`}>
@@ -324,10 +325,13 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
     // Cerrar sidebar móvil al cambiar de URL
     useEffect(() => { setMobileOpen(false); }, [url]);
 
+    const logoUrl = (props as any).tenant_logo_url ?? '/logo-trans.png';
+
     const sidebarProps = {
         nav, currentPath: url, openIndex, setOpenIndex,
         user: { name: user?.name ?? '', role },
         badge,
+        logoUrl,
     };
 
     return (

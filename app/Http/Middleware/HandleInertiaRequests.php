@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CartaSetting;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -63,10 +64,28 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        $tenantName    = '';
+        $tenantAddress = '';
+        $tenantPhone   = '';
+        $tenantLogoUrl = null;
+        try {
+            if (function_exists('tenant') && tenant()) {
+                $tenantName    = tenant('name')    ?? '';
+                $tenantAddress = tenant('address') ?? '';
+                $tenantPhone   = tenant('phone')   ?? '';
+                $settings = CartaSetting::first();
+                $tenantLogoUrl = $settings?->logo_url;
+            }
+        } catch (\Throwable) {}
+
         return [
             ...parent::share($request),
-            'auth'   => ['user' => $authUser],
-            'flash'  => [
+            'auth'            => ['user' => $authUser],
+            'tenant_name'     => $tenantName,
+            'tenant_address'  => $tenantAddress,
+            'tenant_phone'    => $tenantPhone,
+            'tenant_logo_url' => $tenantLogoUrl,
+            'flash'       => [
                 'success' => $request->session()->get('success'),
                 'error'   => $request->session()->get('error'),
                 'warning' => $request->session()->get('warning'),

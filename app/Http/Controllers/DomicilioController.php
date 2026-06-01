@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\CartaSetting;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class DomicilioController extends Controller
                 'delivery_phone'   => $o->delivery_phone,
                 'status'           => $o->status,
                 'total'            => (float) $o->total,
+                'delivery_fee'     => (float) ($o->delivery_fee ?? 0),
                 'delivery_user'    => $o->deliveryUser?->name,
                 'delivery_user_id' => $o->delivery_user_id,
                 'items_count'      => $o->items->count(),
@@ -40,7 +42,10 @@ class DomicilioController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return Inertia::render('Domicilio', compact('active', 'repartidores'));
+        $cfg            = CartaSetting::firstOrCreate([]);
+        $delivery_zones = $cfg->delivery_zones ?? [];
+
+        return Inertia::render('Domicilio', compact('active', 'repartidores', 'delivery_zones'));
     }
 
     // ── Asignar repartidor ────────────────────────────────────────────────────
@@ -67,6 +72,11 @@ class DomicilioController extends Controller
     {
         if ($order->type !== 'domicilio' || $order->status !== 'ready') {
             return back()->withErrors(['error' => 'El pedido no está disponible para entrega.']);
+        }
+
+        $zones = CartaSetting::firstOrCreate([])->delivery_zones ?? [];
+        if (!empty($zones) && (float) ($order->delivery_fee ?? 0) === 0.0) {
+            return back()->withErrors(['error' => 'Asigna una tarifa de domicilio antes de despachar este pedido.']);
         }
 
         if ($order->delivery_user_id && $order->delivery_user_id !== auth()->user()?->id) {
@@ -109,6 +119,11 @@ class DomicilioController extends Controller
     {
         if ($order->type !== 'domicilio' || $order->status !== 'ready') {
             return back()->withErrors(['error' => 'El pedido no está en estado correcto.']);
+        }
+
+        $zones = CartaSetting::firstOrCreate([])->delivery_zones ?? [];
+        if (!empty($zones) && (float) ($order->delivery_fee ?? 0) === 0.0) {
+            return back()->withErrors(['error' => 'Asigna una tarifa de domicilio antes de marcar como entregado.']);
         }
 
         $order->update(['status' => 'delivered', 'delivered_at' => now()]);

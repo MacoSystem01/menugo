@@ -81,6 +81,14 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
             ->middleware('perm:carta.editar')
             ->name('carta.settings.save');
 
+        Route::post('/menu/carta/logo',                        [CartaController::class, 'uploadLogo'])
+            ->middleware('perm:carta.editar')
+            ->name('carta.logo.upload');
+
+        Route::delete('/menu/carta/logo',                      [CartaController::class, 'deleteLogo'])
+            ->middleware('perm:carta.editar')
+            ->name('carta.logo.delete');
+
         Route::post('/menu/carta/banner',                      [CartaController::class, 'uploadBanner'])
             ->middleware('perm:carta.editar')
             ->name('carta.banner.upload');
@@ -151,6 +159,10 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         Route::get('/caja/cierre/datafono',    [OrderController::class, 'cierreDatafono'])
             ->middleware('perm:caja.gestionar')
             ->name('caja.cierre.datafono');
+
+        Route::post('/caja/{order}/tarifa-domicilio', [OrderController::class, 'asignarTarifaDomicilio'])
+            ->middleware('perm:caja.gestionar')
+            ->name('caja.tarifa-domicilio');
 
         Route::post('/caja/{order}/cobrar',    [OrderController::class, 'cobrar'])
             ->middleware('perm:caja.gestionar')

@@ -12,6 +12,7 @@ interface DeliveryOrder {
     delivery_phone: string | null;
     status: string;
     total: number;
+    delivery_fee: number;
     delivery_user: string | null;
     delivery_user_id: number | null;
     items_count: number;
@@ -20,14 +21,22 @@ interface DeliveryOrder {
     delivered_at: string | null;
 }
 
+interface DeliveryZone {
+    label:  string;
+    min_km: number;
+    max_km: number;
+    price:  number;
+}
+
 interface Repartidor {
     id: number;
     name: string;
 }
 
 interface Props {
-    active: DeliveryOrder[];
-    repartidores: Repartidor[];
+    active:         DeliveryOrder[];
+    repartidores:   Repartidor[];
+    delivery_zones: DeliveryZone[];
     flash?: { success?: string; error?: string };
 }
 
@@ -62,7 +71,7 @@ function AsignarForm({ order, repartidores }: { order: DeliveryOrder; repartidor
     );
 }
 
-export default function Domicilio({ active, repartidores, flash }: Props) {
+export default function Domicilio({ active, repartidores, delivery_zones, flash }: Props) {
     const { auth } = usePage<PageProps>().props;
 
     const isAdmin      = auth.user.roles.includes('administrador') || auth.user.roles.includes('gerente');
@@ -185,33 +194,56 @@ export default function Domicilio({ active, repartidores, flash }: Props) {
                                 {order.items_count} ítem{order.items_count !== 1 ? 's' : ''} · {order.created_at}
                             </div>
 
+                            {/* Bloqueo: tarifa no asignada */}
+                            {delivery_zones.length > 0 && order.delivery_fee === 0 && (
+                                <div className="mb-2 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-xs text-red-400 font-medium">
+                                    <span className="shrink-0 mt-0.5">⚠</span>
+                                    <span>Sin tarifa de domicilio. Asígnala en <strong>Caja → Pedido → Tarifa de domicilio</strong> para poder despachar.</span>
+                                </div>
+                            )}
+
                             {/* Acciones */}
-                            <div className="space-y-2">
-                                {/* Asignar repartidor (admin/gerente) */}
-                                {isAdmin && !order.delivery_user && (
-                                    <AsignarForm order={order} repartidores={repartidores} />
-                                )}
+                            {(() => {
+                                const bloqueado = delivery_zones.length > 0 && order.delivery_fee === 0;
+                                return (
+                                    <div className="space-y-2">
+                                        {/* Asignar repartidor (admin/gerente) */}
+                                        {isAdmin && !order.delivery_user && (
+                                            <AsignarForm order={order} repartidores={repartidores} />
+                                        )}
 
-                                {/* Tomar pedido (personal de domicilio) */}
-                                {isRepartidor && !order.delivery_user_id && (
-                                    <button
-                                        onClick={() => tomar(order.id)}
-                                        className="w-full flex items-center justify-center gap-2 rounded-xl border border-blue-500/50 bg-blue-500/10 py-2.5 text-xs font-bold text-blue-400 hover:bg-blue-500/20 transition-colors"
-                                    >
-                                        <PackageCheck className="h-4 w-4" /> Tomar pedido
-                                    </button>
-                                )}
+                                        {/* Tomar pedido (personal de domicilio) */}
+                                        {isRepartidor && !order.delivery_user_id && (
+                                            <button
+                                                onClick={() => !bloqueado && tomar(order.id)}
+                                                disabled={bloqueado}
+                                                className={`w-full flex items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition-colors ${
+                                                    bloqueado
+                                                        ? 'border-border bg-muted/30 text-muted-foreground cursor-not-allowed opacity-50'
+                                                        : 'border-blue-500/50 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
+                                                }`}
+                                            >
+                                                <PackageCheck className="h-4 w-4" /> Tomar pedido
+                                            </button>
+                                        )}
 
-                                {/* Marcar entregado (solo si tiene repartidor) */}
-                                {order.delivery_user && (
-                                    <button
-                                        onClick={() => router.post(`/domicilio/${order.id}/entregar`)}
-                                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-500 py-2.5 text-xs font-bold text-white shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:bg-green-400 hover:shadow-[0_0_20px_rgba(34,197,94,0.5)] transition-all"
-                                    >
-                                        <CheckCircle2 className="h-4 w-4" /> Notificar Entregado
-                                    </button>
-                                )}
-                            </div>
+                                        {/* Marcar entregado (solo si tiene repartidor) */}
+                                        {order.delivery_user && (
+                                            <button
+                                                onClick={() => !bloqueado && router.post(`/domicilio/${order.id}/entregar`)}
+                                                disabled={bloqueado}
+                                                className={`w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all ${
+                                                    bloqueado
+                                                        ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                                                        : 'bg-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:bg-green-400 hover:shadow-[0_0_20px_rgba(34,197,94,0.5)]'
+                                                }`}
+                                            >
+                                                <CheckCircle2 className="h-4 w-4" /> Notificar Entregado
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ))}
                 </div>

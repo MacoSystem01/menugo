@@ -52,6 +52,7 @@ interface CartaSettings {
     name_size:          string;
     slogan:             string | null;
     slogan_size:        string;
+    logo_url:           string | null;
     banner_url:         string | null;
     payment_methods:    string[];
     social_links:       SocialLinks;
@@ -61,7 +62,6 @@ interface CartaSettings {
     restaurant_lat:     number | null;
     restaurant_lng:     number | null;
     restaurant_address: string | null;
-    google_maps_key:    string | null;
 }
 
 interface DishForm {
@@ -83,6 +83,16 @@ function fmt(n: number) {
     return new Intl.NumberFormat('es-CO', {
         style: 'currency', currency: 'COP', maximumFractionDigits: 0,
     }).format(n);
+}
+
+function escapeHtml(str: string | null | undefined): string {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // ── Mapas de tamaño ───────────────────────────────────────────────────────────
@@ -313,148 +323,85 @@ function EditModal({ dish, onClose }: { dish: Dish; onClose: () => void }) {
     );
 }
 
-// ── Ubicación del restaurante (Google Maps autocomplete) ─────────────────────
-
-function loadMapsScript(key: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        if ((window as any).google?.maps?.places) { resolve(); return; }
-        if (document.getElementById('gm-carta')) { resolve(); return; }
-        const s = document.createElement('script');
-        s.id  = 'gm-carta';
-        s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=es`;
-        s.async = true;
-        s.onload  = () => resolve();
-        s.onerror = () => reject();
-        document.head.appendChild(s);
-    });
-}
+// ── Ubicación del restaurante ─────────────────────────────────────────────────
 
 function RestaurantLocationSection({
-    design,
-    mapsKey,
+    address,
+    onChange,
 }: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    design:   any;
-    mapsKey:  string | null;
+    address:  string;
+    onChange: (val: string) => void;
 }) {
-    const inputRef                      = useRef<HTMLInputElement>(null);
-    const [geocoding, setGeocoding]     = useState(false);
-    const [geocodeError, setGeocodeError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!mapsKey || !inputRef.current) return;
-        loadMapsScript(mapsKey).then(() => {
-            if (!inputRef.current) return;
-            const ac = new (window as any).google.maps.places.Autocomplete(inputRef.current, {
-                types:  ['address'],
-                fields: ['formatted_address', 'geometry'],
-            });
-            ac.addListener('place_changed', () => {
-                const place = ac.getPlace();
-                if (!place.geometry?.location) return;
-                design.setData('restaurant_lat',     place.geometry.location.lat());
-                design.setData('restaurant_lng',     place.geometry.location.lng());
-                design.setData('restaurant_address', place.formatted_address ?? '');
-                if (inputRef.current) inputRef.current.value = place.formatted_address ?? '';
-                setGeocodeError(null);
-            });
-        });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mapsKey]);
-
-    async function geocodeWithNominatim() {
-        const addr = design.data.restaurant_address?.trim();
-        if (!addr) return;
-        setGeocoding(true);
-        setGeocodeError(null);
-        try {
-            const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1&countrycodes=co&accept-language=es`;
-            const res  = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'MenuGo/1.0' } });
-            const data = await res.json() as Array<{ lat: string; lon: string }>;
-            if (data.length > 0) {
-                design.setData('restaurant_lat', parseFloat(data[0].lat));
-                design.setData('restaurant_lng', parseFloat(data[0].lon));
-            } else {
-                setGeocodeError('No se encontraron coordenadas para esta dirección. Intenta ser más específico.');
-            }
-        } catch {
-            setGeocodeError('Error al obtener coordenadas. Verifica tu conexión e intenta de nuevo.');
-        } finally {
-            setGeocoding(false);
-        }
-    }
-
-    const hasCoords = design.data.restaurant_lat && design.data.restaurant_lng;
-
     return (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
             <div>
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                    Ubicación del restaurante
-                    {!mapsKey && (
-                        <span className="text-[10px] font-normal text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-full px-2 py-0.5">
-                            Autocompletar inactivo · configura GOOGLE_MAPS_API_KEY en .env
-                        </span>
-                    )}
-                </h3>
+                <h3 className="text-sm font-semibold">Ubicación del restaurante</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                    Las coordenadas permiten calcular distancias y asignar automáticamente la zona de entrega del cliente.
+                    Dirección del establecimiento que aparece en los tickets y datos del negocio.
                 </p>
             </div>
-
             <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
                     Dirección del establecimiento
                 </label>
                 <input
-                    ref={inputRef}
                     type="text"
-                    defaultValue={design.data.restaurant_address ?? ''}
-                    onInput={(e) => {
-                        const val = (e.target as HTMLInputElement).value;
-                        design.setData('restaurant_address', val);
-                        setGeocodeError(null);
-                        if (!val) {
-                            design.setData('restaurant_lat', null);
-                            design.setData('restaurant_lng', null);
-                        }
-                    }}
-                    placeholder={mapsKey ? 'Escribe la dirección y selecciona del menú…' : 'Escribe la dirección del establecimiento'}
+                    value={address}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder="Ej: Carrera 5 # 10-20, Cali"
                     className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                {!mapsKey && design.data.restaurant_address && !hasCoords && (
+            </div>
+        </div>
+    );
+}
+
+// ── Vista previa iframe ────────────────────────────────────────────────────────
+
+function PreviewFrame({ publicUrl }: { publicUrl: string }) {
+    const [rev, setRev] = useState(0);
+
+    return (
+        <div className="rounded-2xl border border-border overflow-hidden shadow-sm flex flex-col">
+            {/* Barra superior */}
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-muted/30 border-b border-border">
+                <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex gap-1.5 shrink-0">
+                        <span className="h-3 w-3 rounded-full bg-red-400/60" />
+                        <span className="h-3 w-3 rounded-full bg-yellow-400/60" />
+                        <span className="h-3 w-3 rounded-full bg-green-400/60" />
+                    </div>
+                    <span className="text-xs text-muted-foreground truncate font-mono">{publicUrl}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
                     <button
                         type="button"
-                        onClick={geocodeWithNominatim}
-                        disabled={geocoding}
-                        className="text-xs text-primary underline underline-offset-2 disabled:opacity-50 hover:no-underline transition-all"
+                        onClick={() => setRev(r => r + 1)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1 rounded-lg hover:bg-muted"
+                        title="Recargar vista previa"
                     >
-                        {geocoding ? 'Obteniendo coordenadas…' : 'Geocodificar dirección (obtener coordenadas automáticamente)'}
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Recargar
                     </button>
-                )}
-                {geocodeError && (
-                    <p className="text-xs text-red-400">{geocodeError}</p>
-                )}
+                    <a
+                        href={publicUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors px-2.5 py-1 rounded-lg hover:bg-primary/10"
+                    >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Abrir
+                    </a>
+                </div>
             </div>
-
-            {hasCoords ? (
-                <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
-                    <span className="h-2 w-2 rounded-full bg-accent shrink-0" />
-                    <span className="text-xs text-accent font-medium">
-                        Ubicación confirmada · {Number(design.data.restaurant_lat).toFixed(5)}, {Number(design.data.restaurant_lng).toFixed(5)}
-                    </span>
-                </div>
-            ) : (
-                <div className="flex items-start gap-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2">
-                    <span className="text-amber-400 shrink-0 mt-0.5">⚠</span>
-                    <p className="text-xs text-amber-400">
-                        Sin coordenadas del restaurante. La zona de entrega <strong>no se asignará automáticamente</strong> a los clientes
-                        {mapsKey
-                            ? ' — escribe la dirección y selecciona del menú desplegable.'
-                            : ' — escribe la dirección y usa el botón para geocodificarla.'}
-                    </p>
-                </div>
-            )}
+            {/* iframe */}
+            <iframe
+                key={rev}
+                src="/carta"
+                className="w-full border-0"
+                style={{ height: '78vh' }}
+                title="Vista previa de la carta"
+            />
         </div>
     );
 }
@@ -466,7 +413,6 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
     const [editing, setEditing] = useState<Dish | null>(null);
     const [activeTab, setActiveTab] = useState<'builder' | 'design' | 'preview'>('builder');
     const qrRef = useRef<HTMLDivElement>(null);
-    const printRef = useRef<HTMLDivElement>(null);
 
     // ── Formulario de diseño (local, guardado explícitamente) ─────────────────
     const design = useForm({
@@ -496,6 +442,34 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
         restaurant_lng:      initialSettings.restaurant_lng      ?? null as number | null,
         restaurant_address:  initialSettings.restaurant_address  ?? '',
     });
+
+    // ── Logo de la carta ─────────────────────────────────────────────────────
+    const logoInputRef = useRef<HTMLInputElement>(null);
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [logoError, setLogoError]         = useState<string | null>(null);
+    const [logoUrl, setLogoUrl]             = useState<string | null>(initialSettings.logo_url ?? null);
+
+    function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (logoInputRef.current) logoInputRef.current.value = '';
+        if (!file) return;
+        if (!ALLOWED_TYPES.includes(file.type)) { setLogoError('Formato no válido. Usa JPG, PNG o WebP.'); return; }
+        if (file.size > MAX_BYTES) { setLogoError(`El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. El máximo es 2 MB.`); return; }
+        setLogoError(null);
+        const fd = new FormData();
+        fd.append('logo', file);
+        setLogoUploading(true);
+        router.post('/menu/carta/logo', fd, {
+            forceFormData: true,
+            onSuccess: () => { setLogoUrl(URL.createObjectURL(file)); setLogoUploading(false); },
+            onError: (errors) => { setLogoUploading(false); setLogoError((errors as any).logo ?? 'No se pudo subir el logo.'); },
+        });
+    }
+
+    function deleteLogo() {
+        if (!confirm('¿Eliminar el logo personalizado?')) return;
+        router.delete('/menu/carta/logo', { onSuccess: () => setLogoUrl(null) });
+    }
 
     // ── Banner ────────────────────────────────────────────────────────────────
     const bannerRef = useRef<HTMLInputElement>(null);
@@ -632,13 +606,13 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                 <tr class="dish-row">
                     <td class="dish-img-cell">
                         ${d.image_url
-                            ? `<img src="${d.image_url}" alt="${d.name}" />`
+                            ? `<img src="${escapeHtml(d.image_url)}" alt="${escapeHtml(d.name)}" />`
                             : `<div class="dish-img-placeholder"></div>`
                         }
                     </td>
                     <td class="dish-info">
-                        <div class="dish-name">${d.name}</div>
-                        ${d.description ? `<div class="dish-desc">${d.description}</div>` : ''}
+                        <div class="dish-name">${escapeHtml(d.name)}</div>
+                        ${d.description ? `<div class="dish-desc">${escapeHtml(d.description)}</div>` : ''}
                     </td>
                     <td class="dish-price">${fmt(d.price)}</td>
                 </tr>
@@ -648,9 +622,9 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
             return `
                 <table class="category">
                     <thead>
-                        <tr><th class="cat-title" colspan="3">${cat.name}</th></tr>
+                        <tr><th class="cat-title" colspan="3">${escapeHtml(cat.name)}</th></tr>
                         ${cat.description
-                            ? `<tr><th class="cat-desc" colspan="3">${cat.description}</th></tr>`
+                            ? `<tr><th class="cat-desc" colspan="3">${escapeHtml(cat.description)}</th></tr>`
                             : ''}
                     </thead>
                     <tbody>${rowsHtml}</tbody>
@@ -662,7 +636,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
-    <title>Carta — ${tenant_name}</title>
+    <title>Carta — ${escapeHtml(tenant_name)}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -755,9 +729,9 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
 </head>
 <body>
     <div class="header">
-        <img src="${'/logo-trans.png'}" alt="${tenant_name}" />
-        <h1>${tenant_name}</h1>
-        ${design.data.slogan ? `<p class="slogan">${design.data.slogan}</p>` : ''}
+        <img src="${'/logo-trans.png'}" alt="${escapeHtml(tenant_name)}" />
+        <h1>${escapeHtml(tenant_name)}</h1>
+        ${design.data.slogan ? `<p class="slogan">${escapeHtml(design.data.slogan)}</p>` : ''}
     </div>
     ${categoriesHtml || '<p style="text-align:center;opacity:.5">La carta está vacía.</p>'}
     <footer>Carta digital generada con Menugo</footer>
@@ -771,12 +745,6 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
             win.print();
         });
     }
-
-    // ── Preview styles ────────────────────────────────────────────────────────
-    const previewStyle = {
-        backgroundColor: design.data.bg_color,
-        color: design.data.text_color,
-    } as React.CSSProperties;
 
     return (
         <AppShell title="Carta" subtitle="Diseña tu carta y compártela con un código QR">
@@ -853,6 +821,50 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                 <ColorField label="Color de texto" value={design.data.text_color} onChange={v => design.setData('text_color', v)} />
                             </div>
 
+                            {/* Ingresar Logo */}
+                            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+                                <h3 className="text-sm font-semibold">Logo de la carta</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Sube el logo que aparecerá en tu carta pública. JPG · PNG · WebP · máx 2 MB.
+                                </p>
+
+                                {logoUrl ? (
+                                    <div className="relative rounded-xl overflow-hidden border border-border bg-muted/20 p-4 flex items-center gap-4">
+                                        <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain shrink-0" />
+                                        <div className="flex flex-col gap-2">
+                                            <button type="button" onClick={() => logoInputRef.current?.click()}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
+                                                <Upload className="h-3.5 w-3.5" /> Cambiar logo
+                                            </button>
+                                            <button type="button" onClick={deleteLogo}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors">
+                                                <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button type="button" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}
+                                        className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-7 text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-colors disabled:cursor-wait">
+                                        {logoUploading
+                                            ? <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                                            : <>
+                                                <Upload className="h-7 w-7" />
+                                                <span className="text-sm font-medium">Subir logo</span>
+                                            </>
+                                        }
+                                    </button>
+                                )}
+
+                                {logoError && (
+                                    <div className="flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/25 px-3 py-2.5 text-xs text-red-400">
+                                        <span className="flex-1">{logoError}</span>
+                                        <button type="button" onClick={() => setLogoError(null)}><X className="h-3.5 w-3.5" /></button>
+                                    </div>
+                                )}
+
+                                <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoChange} />
+                            </div>
+
                             {/* Tamaño del logo */}
                             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
                                 <h3 className="text-sm font-semibold">Tamaño del logo</h3>
@@ -862,7 +874,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                     ))}
                                 </div>
                                 <div className="flex items-end gap-3 p-3 rounded-xl bg-muted/30 border border-border">
-                                    <img src="/logo-trans.png" alt="Logo preview" className={`${LOGO_SIZES[design.data.logo_size] ?? 'h-12'} w-auto object-contain`} />
+                                    <img src={logoUrl ?? '/logo-trans.png'} alt="Logo preview" className={`${LOGO_SIZES[design.data.logo_size] ?? 'h-12'} w-auto object-contain`} />
                                     <span className="text-xs text-muted-foreground">Vista previa</span>
                                 </div>
                             </div>
@@ -1038,7 +1050,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                     <div>
                                         <h3 className="text-sm font-semibold">Servicio a domicilio</h3>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            Activa el domicilio y configura las tarifas por zona.
+                                            Activa el domicilio y define el costo de envío.
                                         </p>
                                     </div>
                                     <button
@@ -1054,201 +1066,32 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
                                 </div>
 
                                 {design.data.delivery_enabled && (
-                                    <div className="space-y-4 pt-2 border-t border-border">
-                                        {/* Monto mínimo */}
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-medium text-muted-foreground">
-                                                Pedido mínimo (COP) — 0 = sin mínimo
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                step={1}
-                                                className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                                value={design.data.delivery_min_order}
-                                                onChange={e => design.setData('delivery_min_order', parseInt(e.target.value) || 0)}
-                                                placeholder="0"
-                                            />
-                                        </div>
-
-                                        {/* Zonas */}
-                                        <div className="space-y-3">
-                                            {/* Anuncio contextual */}
-                                            <div className="flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
-                                                <span className="text-primary shrink-0 text-xs mt-0.5">ℹ</span>
-                                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                                    {design.data.delivery_zones.length > 1
-                                                        ? 'Modo multi-zona: cada zona se asigna automáticamente por distancia entre el restaurante y el cliente. Requiere coordenadas del restaurante configuradas abajo.'
-                                                        : 'La Zona de Cobertura define el valor del domicilio que se suma al total del pedido. Se asigna automáticamente a todos los pedidos a domicilio. Para diferenciar tarifas por distancia, usa "+ Agregar zona adicional".'}
-                                                </p>
-                                            </div>
-
-                                            {/* Sin zonas */}
-                                            {design.data.delivery_zones.length === 0 && (
-                                                <p className="text-xs text-muted-foreground/50 italic px-1">
-                                                    Sin tarifa configurada. El domicilio estará activo sin cobro adicional.
-                                                </p>
-                                            )}
-
-                                            {/* Zona única simplificada */}
-                                            {design.data.delivery_zones.length === 1 && (
-                                                <div className="flex items-center gap-3 rounded-xl bg-muted/30 px-4 py-3">
-                                                    <span className="text-sm font-medium flex-1">
-                                                        {design.data.delivery_zones[0].label || 'Zona de Cobertura'}
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-xs text-muted-foreground">$</span>
-                                                        <input
-                                                            type="number" min={0} step={500}
-                                                            className="w-28 rounded-lg border border-input bg-input px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                            placeholder="0"
-                                                            value={design.data.delivery_zones[0].price}
-                                                            onChange={e => {
-                                                                const zones = [...design.data.delivery_zones];
-                                                                zones[0] = { ...zones[0], price: parseInt(e.target.value) || 0 };
-                                                                design.setData('delivery_zones', zones);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => design.setData('delivery_zones', [])}
-                                                        className="flex items-center justify-center p-1 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            {/* Multi-zona: cabecera + filas */}
-                                            {design.data.delivery_zones.length > 1 && (
-                                                <>
-                                                    <div className="grid grid-cols-[1fr_52px_52px_80px_28px] gap-2 px-3">
-                                                        <span className="text-[10px] text-muted-foreground/50">NOMBRE DE ZONA</span>
-                                                        <span className="text-[10px] text-muted-foreground/50 text-center">KM MÍN.</span>
-                                                        <span className="text-[10px] text-muted-foreground/50 text-center">KM MÁX.</span>
-                                                        <span className="text-[10px] text-muted-foreground/50 text-center">TARIFA</span>
-                                                        <span />
-                                                    </div>
-                                                    {design.data.delivery_zones.map((zone, idx) => {
-                                                        const labelErr = design.errors[`delivery_zones.${idx}.label` as keyof typeof design.errors];
-                                                        const hasErr   = !!labelErr;
-                                                        return (
-                                                            <div key={idx} className="space-y-0.5">
-                                                                <div className="grid grid-cols-[1fr_52px_52px_80px_28px] items-center gap-2 rounded-xl bg-muted/30 px-3 py-2.5">
-                                                                    <input
-                                                                        className={`w-full rounded-lg border bg-input px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 ${hasErr ? 'border-red-500' : 'border-input'}`}
-                                                                        placeholder="Nombre de zona *"
-                                                                        value={zone.label}
-                                                                        onChange={e => {
-                                                                            const zones = [...design.data.delivery_zones];
-                                                                            zones[idx] = { ...zones[idx], label: e.target.value };
-                                                                            design.setData('delivery_zones', zones);
-                                                                        }}
-                                                                    />
-                                                                    <input
-                                                                        type="number" min={0} step={0.1}
-                                                                        className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                                        placeholder="0" value={zone.min_km}
-                                                                        onChange={e => {
-                                                                            const zones = [...design.data.delivery_zones];
-                                                                            zones[idx] = { ...zones[idx], min_km: parseFloat(e.target.value) || 0 };
-                                                                            design.setData('delivery_zones', zones);
-                                                                        }}
-                                                                    />
-                                                                    <input
-                                                                        type="number" min={0} step={0.1}
-                                                                        className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                                        placeholder="10" value={zone.max_km}
-                                                                        onChange={e => {
-                                                                            const zones = [...design.data.delivery_zones];
-                                                                            zones[idx] = { ...zones[idx], max_km: parseFloat(e.target.value) || 0 };
-                                                                            design.setData('delivery_zones', zones);
-                                                                        }}
-                                                                    />
-                                                                    <input
-                                                                        type="number" min={0} step={500}
-                                                                        className="w-full rounded-lg border border-input bg-input px-2 py-1.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                                        placeholder="0" value={zone.price}
-                                                                        onChange={e => {
-                                                                            const zones = [...design.data.delivery_zones];
-                                                                            zones[idx] = { ...zones[idx], price: parseInt(e.target.value) || 0 };
-                                                                            design.setData('delivery_zones', zones);
-                                                                        }}
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => design.setData('delivery_zones',
-                                                                            design.data.delivery_zones.filter((_, i) => i !== idx)
-                                                                        )}
-                                                                        className="flex items-center justify-center p-1 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
-                                                                    >
-                                                                        <X className="h-3.5 w-3.5" />
-                                                                    </button>
-                                                                </div>
-                                                                {hasErr && (
-                                                                    <p className="text-[10px] text-red-400 pl-3">{labelErr as string}</p>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </>
-                                            )}
-
-                                            {/* Botón agregar */}
-                                            <div className="flex items-center justify-between">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => design.setData('delivery_zones', [
-                                                        ...design.data.delivery_zones,
-                                                        design.data.delivery_zones.length === 0
-                                                            ? { label: 'Zona de Cobertura', min_km: 0, max_km: 9999, price: 0 }
-                                                            : { label: '', min_km: 0, max_km: 0, price: 0 },
-                                                    ])}
-                                                    className="text-xs text-primary hover:underline font-medium"
-                                                >
-                                                    {design.data.delivery_zones.length === 0
-                                                        ? '+ Agregar tarifa de domicilio'
-                                                        : '+ Agregar zona adicional'}
-                                                </button>
-                                                {design.data.delivery_zones.length > 0 && (
-                                                    <span className="text-xs text-muted-foreground/50">
-                                                        {design.data.delivery_zones.length} zona{design.data.delivery_zones.length !== 1 ? 's' : ''} configurada{design.data.delivery_zones.length !== 1 ? 's' : ''}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            {/* Vista previa */}
-                                            {design.data.delivery_zones.length > 0 && (
-                                                <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5">
-                                                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
-                                                        Vista previa de tarifas
-                                                    </p>
-                                                    {design.data.delivery_zones.map((zone, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between text-xs">
-                                                            <span className="text-muted-foreground flex items-center gap-1.5">
-                                                                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                                                                {zone.label || <span className="italic opacity-40">Sin nombre</span>}
-                                                                {design.data.delivery_zones.length > 1 && (
-                                                                    <span className="opacity-40">{zone.min_km}–{zone.max_km} km</span>
-                                                                )}
-                                                            </span>
-                                                            <span className="font-bold text-accent">
-                                                                {zone.price === 0 ? 'Gratis' : `$ ${zone.price.toLocaleString('es-CO')}`}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                    <div className="pt-3 border-t border-border space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground">
+                                            Precio Máximo del domicilio (COP) — 0 = gratis
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            step={500}
+                                            className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                            placeholder="0"
+                                            value={design.data.delivery_zones[0]?.price ?? 0}
+                                            onChange={e => {
+                                                const price = parseInt(e.target.value) || 0;
+                                                design.setData('delivery_zones', [
+                                                    { label: 'Domicilio', min_km: 0, max_km: 9999, price },
+                                                ]);
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>
 
                             {/* ── Ubicación del restaurante ── */}
                             <RestaurantLocationSection
-                                design={design}
-                                mapsKey={initialSettings.google_maps_key}
+                                address={design.data.restaurant_address}
+                                onChange={val => design.setData('restaurant_address', val)}
                             />
 
                             {/* Guardar */}
@@ -1262,79 +1105,7 @@ export default function Carta({ categories, public_url, tenant_name, settings: i
 
                     {/* ── TAB: Vista previa ── */}
                     {activeTab === 'preview' && (
-                        <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
-                            <div ref={printRef} className="max-h-[78vh] overflow-y-auto" style={previewStyle}>
-
-                                {/* Banner */}
-                                {bannerUrl && (
-                                    <div className="w-full aspect-3/1 overflow-hidden">
-                                        <img src={bannerUrl} alt="Banner" className="w-full h-full object-cover" />
-                                    </div>
-                                )}
-
-                                {/* Header */}
-                                <div className="text-center px-8 pt-8 pb-6 border-b" style={{ borderColor: `${design.data.primary_color}22` }}>
-                                    <img src={'/logo-trans.png'} alt={tenant_name} className={`${LOGO_SIZES[design.data.logo_size] ?? 'h-12'} w-auto mx-auto mb-3`} />
-                                    <h1 className={`font-display font-bold tracking-tight ${NAME_SIZES[design.data.name_size] ?? 'text-2xl'}`}
-                                        style={{ color: design.data.text_color }}>
-                                        {tenant_name}
-                                    </h1>
-                                    {design.data.slogan && (
-                                        <p className={`mt-2 ${SLOGAN_SIZES[design.data.slogan_size] ?? 'text-sm'} opacity-70`}
-                                            style={{ color: design.data.text_color }}>
-                                            {design.data.slogan}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Categorías */}
-                                <div className="px-8 py-8 space-y-10">
-                                    {categories.length === 0
-                                        ? <p className="text-center py-12 opacity-50">La carta está vacía.</p>
-                                        : categories.map(cat => (
-                                            <div key={cat.id}>
-                                                <div className="flex items-center gap-3 mb-5">
-                                                    <div className="h-[1.5px] flex-1 opacity-30" style={{ backgroundColor: design.data.primary_color }} />
-                                                    <h2 className="font-display text-lg font-bold uppercase tracking-widest px-2"
-                                                        style={{ color: design.data.primary_color }}>
-                                                        {cat.name}
-                                                    </h2>
-                                                    <div className="h-[1.5px] flex-1 opacity-30" style={{ backgroundColor: design.data.primary_color }} />
-                                                </div>
-                                                {cat.description && (
-                                                    <p className="text-xs text-center -mt-3 mb-5 opacity-60" style={{ color: design.data.text_color }}>{cat.description}</p>
-                                                )}
-                                                <div className="space-y-4">
-                                                    {cat.dishes.map(dish => (
-                                                        <div key={dish.id} className={`flex items-start gap-4 ${!dish.available ? 'opacity-40' : ''}`}>
-                                                            {dish.image_url
-                                                                ? <img src={dish.image_url} alt={dish.name} className="h-16 w-16 rounded-xl object-cover shrink-0 border" style={{ borderColor: `${design.data.text_color}22` }} />
-                                                                : <div className="h-16 w-16 rounded-xl shrink-0 border border-dashed flex items-center justify-center" style={{ borderColor: `${design.data.text_color}33`, backgroundColor: `${design.data.text_color}08` }}>
-                                                                    <ImageOff className="h-5 w-5 opacity-30" style={{ color: design.data.text_color }} />
-                                                                </div>
-                                                            }
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex items-baseline justify-between gap-2">
-                                                                    <span className="font-semibold text-sm" style={{ color: design.data.text_color }}>{dish.name}</span>
-                                                                    <span className="font-bold text-sm shrink-0" style={{ color: design.data.primary_color }}>{fmt(dish.price)}</span>
-                                                                </div>
-                                                                {dish.description && (
-                                                                    <p className="text-xs mt-1 leading-relaxed opacity-65" style={{ color: design.data.text_color }}>{dish.description}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))
-                                    }
-                                </div>
-
-                                <div className="text-center pb-6 opacity-40 text-xs" style={{ color: design.data.text_color }}>
-                                    Carta digital · Menugo
-                                </div>
-                            </div>
-                        </div>
+                        <PreviewFrame publicUrl={public_url} />
                     )}
                 </div>
 

@@ -16,6 +16,7 @@ class CartaSetting extends Model
         'slogan',
         'slogan_size',
         'banner_image',
+        'logo_image',
         'social_links',
         'payment_methods',
         'payment_details',
@@ -61,6 +62,13 @@ class CartaSetting extends Model
     {
         return $this->banner_image
             ? Storage::disk('public')->url($this->banner_image)
+            : null;
+    }
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo_image
+            ? Storage::disk('public')->url($this->logo_image)
             : null;
     }
 

@@ -5,6 +5,7 @@ import {
     Power, Trash2, ExternalLink, Mail, Calendar,
     ShieldCheck, ShieldAlert, Utensils, Zap, MapPin,
     Check, Pencil, X, Save, CheckCircle2, Clock, AlertTriangle,
+    Eye, EyeOff,
 } from 'lucide-react';
 
 interface Tenant {
@@ -330,6 +331,8 @@ export default function Tenants({ tenants, flash }: Props) {
     const [showAddrSugg,    setShowAddrSugg]    = useState(false);
     const [addrValidated,   setAddrValidated]   = useState(false);
     const addrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [showPassword,    setShowPassword]    = useState(false);
+    const [showConfirm,     setShowConfirm]     = useState(false);
 
     const onAddressChange = (val: string) => {
         setData('restaurant_address', val);
@@ -479,9 +482,9 @@ export default function Tenants({ tenants, flash }: Props) {
                             </Field>
 
                             <Field label="Subdominio" error={errors.subdomain} hint="Solo minúsculas, sin espacios ni caracteres especiales.">
-                                <div className="flex items-center rounded-xl border border-border bg-muted/20 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/40 transition-all overflow-hidden">
+                                <div className="flex items-center rounded-xl border-[1.5px] border-border bg-input hover:border-foreground/50 focus-within:border-primary focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)] transition-all overflow-hidden">
                                     <input type="text" value={data.subdomain} onChange={e => setData('subdomain', e.target.value.toLowerCase())}
-                                        placeholder="mi-negocio" className="flex-1 px-4 py-2.5 bg-transparent text-sm outline-none font-semibold" />
+                                        placeholder="mi-negocio" className="flex-1 px-4 py-2.5 bg-transparent text-sm outline-none font-semibold placeholder:text-muted-foreground/55" />
                                     <span className="px-4 py-2.5 bg-muted text-muted-foreground text-xs font-bold border-l border-border select-none">.Menugo.local</span>
                                 </div>
                             </Field>
@@ -536,12 +539,26 @@ export default function Tenants({ tenants, flash }: Props) {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <Field label="Contraseña" error={errors.password}>
-                                    <input type="password" value={data.password} onChange={e => setData('password', e.target.value)}
-                                        placeholder="Mín. 8 caracteres" className="input-modern" autoComplete="new-password" />
+                                    <div className="relative">
+                                        <input type={showPassword ? 'text' : 'password'} value={data.password}
+                                            onChange={e => setData('password', e.target.value)}
+                                            placeholder="Mín. 8 caracteres" className="input-modern pr-10" autoComplete="new-password" />
+                                        <button type="button" onClick={() => setShowPassword(v => !v)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                 </Field>
                                 <Field label="Confirmar">
-                                    <input type="password" value={data.password_confirmation} onChange={e => setData('password_confirmation', e.target.value)}
-                                        placeholder="Repite" className="input-modern" autoComplete="new-password" />
+                                    <div className="relative">
+                                        <input type={showConfirm ? 'text' : 'password'} value={data.password_confirmation}
+                                            onChange={e => setData('password_confirmation', e.target.value)}
+                                            placeholder="Repite" className="input-modern pr-10" autoComplete="new-password" />
+                                        <button type="button" onClick={() => setShowConfirm(v => !v)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                                            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                 </Field>
                             </div>
                         </div>
@@ -703,13 +720,29 @@ export default function Tenants({ tenants, flash }: Props) {
             <style>{`
                 .input-modern {
                     width: 100%; border-radius: 0.75rem;
-                    border: 1px solid hsl(var(--border));
-                    background-color: transparent;
+                    border: 1.5px solid var(--border);
+                    background-color: var(--input);
+                    color: var(--foreground);
                     padding: 0.625rem 1rem; font-size: 0.875rem;
-                    transition: all 0.2s; outline: none;
+                    transition: border-color 0.2s, box-shadow 0.2s;
+                    outline: none;
+                }
+                .input-modern::placeholder {
+                    color: var(--muted-foreground);
+                    opacity: 0.6;
+                }
+                .input-modern:hover:not(:focus) {
+                    border-color: color-mix(in oklch, var(--border) 50%, var(--foreground) 50%);
                 }
                 .input-modern:focus {
-                    border-color: hsl(var(--primary) / 0.5);
+                    border-color: var(--primary);
+                    box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 20%, transparent);
+                }
+                .input-modern.pl-10 {
+                    padding-left: 2.5rem;
+                }
+                .input-modern.pr-10 {
+                    padding-right: 2.5rem;
                 }
             `}</style>
         </AppShell>

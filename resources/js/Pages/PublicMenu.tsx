@@ -140,9 +140,10 @@ interface CartaSettings {
     delivery_enabled:   boolean;
     delivery_min_order: number;
     delivery_zones:     DeliveryZone[];
+    logo_url:           string | null;
     restaurant_lat:     number | null;
     restaurant_lng:     number | null;
-    google_maps_key:    string | null;
+    restaurant_address: string | null;
     work_schedule:      Record<string, { activo: boolean; apertura: string; cierre: string }> | null;
 }
 
@@ -153,10 +154,11 @@ interface Table {
 }
 
 interface Props {
-    categories:  Category[];
-    tenant_name: string;
-    settings:    CartaSettings;
-    tables:      Table[];
+    categories:        Category[];
+    tenant_name:       string;
+    settings:          CartaSettings;
+    tables:            Table[];
+    initial_table_id?: number;
 }
 
 interface CartItem {
@@ -179,7 +181,7 @@ const NAME_SIZES: Record<string, string> = {
     sm: 'text-lg', md: 'text-xl', lg: 'text-2xl', xl: 'text-3xl', '2xl': 'text-4xl',
 };
 const SLOGAN_SIZES: Record<string, string> = {
-    xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg',
+    xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl',
 };
 const PAYMENT_LABELS: Record<string, string> = {
     efectivo:      'Efectivo',
@@ -208,7 +210,7 @@ type Screen = 'menu' | 'cart' | 'checkout';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function PublicMenu({ categories, tenant_name, settings, tables }: Props) {
+export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id }: Props) {
     const s = {
         primary: settings?.primary_color ?? '#e85d04',
         bg:      settings?.bg_color      ?? '#ffffff',
@@ -283,27 +285,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
     const deliveryMinOrder = settings?.delivery_min_order ?? 0;
     const restaurantLat    = settings?.restaurant_lat     ?? null;
     const restaurantLng    = settings?.restaurant_lng     ?? null;
-    const googleMapsKey    = settings?.google_maps_key    ?? null;
-    const hasMapsConfig    = !!(googleMapsKey && restaurantLat && restaurantLng);
-
-    const addressInputRef        = useRef<HTMLInputElement>(null);
-    const [addressValidated,     setAddressValidated]     = useState(false);
-    const [deliveryCoords,       setDeliveryCoords]       = useState<{ lat: number; lng: number } | null>(null);
-    const [deliveryKm,           setDeliveryKm]           = useState<number | null>(null);
-    const [outOfCoverage,        setOutOfCoverage]        = useState(false);
-    const [mapsReady,            setMapsReady]            = useState(false);
-    const [warnModal,            setWarnModal]            = useState<{ title: string; message: string } | null>(null);
-    const [addressSuggestions,   setAddressSuggestions]   = useState<Array<{display_name: string; lat: string; lon: string}>>([]);
-    const [showSuggestions,      setShowSuggestions]      = useState(false);
-    const [loadingSuggestions,   setLoadingSuggestions]   = useState(false);
-    const geocodeTimeoutRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const suggestionsRef         = useRef<HTMLDivElement>(null);
+    const addressInputRef = useRef<HTMLInputElement>(null);
+    const [warnModal, setWarnModal] = useState<{ title: string; message: string } | null>(null);
 
     const [form, setForm] = useState({
         customer_name:     '',
         customer_phone:    '',
         type:              'mesa' as 'mesa' | 'domicilio',
-        table_id:          '',
+        table_id:          initial_table_id ? String(initial_table_id) : '',
         delivery_address:  '',
         delivery_zone_idx: null as number | null,
         payment_method:    payMethods[0],
@@ -315,151 +304,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         if (errors[key]) setErrors(e => { const n = { ...e }; delete n[key]; return n; });
     }
 
-    // ── Google Maps: cargar script y adjuntar autocomplete ────────────────────
-    useEffect(() => {
-        if (!googleMapsKey) return;
-        loadMapsScript(googleMapsKey)
-            .then(() => setMapsReady(true))
-            .catch(() => { /* Maps no disponible, modo sin validación */ });
-    }, [googleMapsKey]);
 
-    useEffect(() => {
-        if (!mapsReady || !addressInputRef.current || form.type !== 'domicilio') return;
-
-        const ac = new (window as any).google.maps.places.Autocomplete(addressInputRef.current, {
-            types:  ['address'],
-            fields: ['formatted_address', 'geometry'],
-        });
-
-        const listener = ac.addListener('place_changed', () => {
-            const place = ac.getPlace();
-            if (!place.geometry?.location) return;
-
-            const lat  = place.geometry.location.lat() as number;
-            const lng  = place.geometry.location.lng() as number;
-            const addr = place.formatted_address as string ?? '';
-
-            setField('delivery_address', addr);
-            setDeliveryCoords({ lat, lng });
-            setAddressValidated(true);
-            setOutOfCoverage(false);
-
-            // Zona única: tarifa plana, asignar siempre independiente de distancia
-            if (deliveryZones.length === 1) {
-                setForm(f => ({ ...f, delivery_zone_idx: 0, delivery_address: addr }));
-                setOutOfCoverage(false);
-                if (restaurantLat && restaurantLng) {
-                    setDeliveryKm(haversineKm(restaurantLat, restaurantLng, lat, lng));
-                }
-            } else if (restaurantLat && restaurantLng && deliveryZones.length > 1) {
-                const km      = haversineKm(restaurantLat, restaurantLng, lat, lng);
-                setDeliveryKm(km);
-                const zoneIdx = deliveryZones.findIndex(z => km >= z.min_km && km <= z.max_km);
-                if (zoneIdx >= 0) {
-                    setForm(f => ({ ...f, delivery_zone_idx: zoneIdx, delivery_address: addr }));
-                    setOutOfCoverage(false);
-                } else {
-                    setForm(f => ({ ...f, delivery_zone_idx: null, delivery_address: addr }));
-                    setOutOfCoverage(true);
-                }
-            } else {
-                setForm(f => ({ ...f, delivery_address: addr }));
-            }
-        });
-
-        return () => (window as any).google.maps.event.removeListener(listener);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mapsReady, form.type]);
-
-    // Limpiar estado de validación al cambiar la dirección manualmente
     function handleAddressInput(e: React.ChangeEvent<HTMLInputElement>) {
         const val = e.target.value;
         setField('delivery_address', val);
-        setAddressValidated(false);
-        setDeliveryCoords(null);
-        setDeliveryKm(null);
-        setOutOfCoverage(false);
         setForm(f => ({ ...f, delivery_zone_idx: deliveryZones.length === 1 ? 0 : null, delivery_address: val }));
-
-        // Geocoder fallback cuando no hay Google Maps key
-        if (!googleMapsKey) {
-            if (geocodeTimeoutRef.current) clearTimeout(geocodeTimeoutRef.current);
-            if (val.trim().length >= 4) {
-                geocodeTimeoutRef.current = setTimeout(() => fetchGeocode(val.trim()), 500);
-            } else {
-                setAddressSuggestions([]);
-                setShowSuggestions(false);
-            }
-        }
-    }
-
-    async function fetchGeocode(query: string) {
-        setLoadingSuggestions(true);
-        try {
-            // Nominatim con countrycodes=co — resultados solo de Colombia, sin API key
-            const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&countrycodes=co&addressdetails=1&accept-language=es`;
-            const res  = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'MenuGo/1.0' } });
-            const data = await res.json() as Array<{
-                display_name: string;
-                lat:          string;
-                lon:          string;
-                address:      Record<string, string>;
-            }>;
-
-            const results = data.map(r => {
-                const a     = r.address ?? {};
-                const parts = [
-                    a.road ?? a.pedestrian ?? a.footway,
-                    a.house_number ? `#${a.house_number}` : null,
-                    a.neighbourhood ?? a.suburb ?? a.quarter,
-                    a.city ?? a.town ?? a.municipality,
-                    a.state,
-                ].filter(Boolean);
-                return {
-                    display_name: parts.length >= 2 ? parts.join(', ') : r.display_name,
-                    lat:          r.lat,
-                    lon:          r.lon,
-                };
-            });
-
-            setAddressSuggestions(results);
-            setShowSuggestions(results.length > 0);
-        } catch {
-            setAddressSuggestions([]);
-            setShowSuggestions(false);
-        } finally {
-            setLoadingSuggestions(false);
-        }
-    }
-
-    function selectNominatimSuggestion(suggestion: { display_name: string; lat: string; lon: string }) {
-        const lat = parseFloat(suggestion.lat);
-        const lng = parseFloat(suggestion.lon);
-        setAddressValidated(true);
-        setDeliveryCoords({ lat, lng });
-        setShowSuggestions(false);
-        setAddressSuggestions([]);
-        setOutOfCoverage(false);
-
-        if (deliveryZones.length === 1) {
-            setForm(f => ({ ...f, delivery_zone_idx: 0, delivery_address: suggestion.display_name }));
-            setOutOfCoverage(false);
-            if (restaurantLat && restaurantLng) {
-                setDeliveryKm(haversineKm(restaurantLat, restaurantLng, lat, lng));
-            }
-        } else if (restaurantLat && restaurantLng && deliveryZones.length > 1) {
-            const km      = haversineKm(restaurantLat, restaurantLng, lat, lng);
-            setDeliveryKm(km);
-            const zoneIdx = deliveryZones.findIndex(z => km >= z.min_km && km <= z.max_km);
-            if (zoneIdx >= 0) {
-                setForm(f => ({ ...f, delivery_zone_idx: zoneIdx, delivery_address: suggestion.display_name }));
-            } else {
-                setForm(f => ({ ...f, delivery_zone_idx: null, delivery_address: suggestion.display_name }));
-                setOutOfCoverage(true);
-            }
-        } else {
-            setForm(f => ({ ...f, delivery_address: suggestion.display_name }));
-        }
     }
 
     // ── Cart helpers ───────────────────────────────────────────────────────────
@@ -495,8 +344,6 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         ? (deliveryZones[form.delivery_zone_idx] ?? null)
         : null;
     const deliveryFee = selectedZone?.price ?? 0;
-    const zoneIsAutoDetected = addressValidated && deliveryCoords !== null
-        && (deliveryZones.length === 1 || (restaurantLat !== null && restaurantLng !== null));
     const grandTotal  = totalPrice + deliveryFee;
 
     // ── Validaciones de domicilio ───────────────────────────────────────────────
@@ -505,26 +352,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
         && deliveryMinOrder > 0
         && totalPrice < deliveryMinOrder;
 
-    const missingZone = form.type === 'domicilio'
-        && deliveryEnabled
-        && deliveryZones.length > 0
-        && form.delivery_zone_idx === null
-        && !outOfCoverage;
-
-    // Dirección debe validarse via autocomplete (Google Maps o Nominatim) — sin importar si hay key
-    const addressNotValidated = form.type === 'domicilio'
-        && !addressValidated
-        && form.delivery_address.trim().length > 0;
-
     // ── Submit ─────────────────────────────────────────────────────────────────
     const selectedTable     = form.type === 'mesa' && form.table_id
         ? tables.find(t => String(t.id) === form.table_id) ?? null
         : null;
     const tableIsOccupied   = selectedTable?.has_active_orders ?? false;
     const canSubmit         = (!tableIsOccupied || occupiedConfirmed)
-        && !belowMinOrder
-        && !missingZone
-        && !outOfCoverage;
+        && !belowMinOrder;
 
     function submitOrder() {
         if (submitting) return;
@@ -534,26 +368,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             const addr = form.delivery_address.trim();
 
             if (!addr) {
-                setWarnModal({
-                    title:   'Dirección requerida',
-                    message: 'Ingresa la dirección de entrega antes de confirmar el pedido.',
-                });
-                return;
-            }
-
-            if (outOfCoverage) {
-                setWarnModal({
-                    title:   'Fuera de zona de cobertura',
-                    message: `Tu dirección está fuera del área de entrega${deliveryKm !== null ? ` (${deliveryKm.toFixed(1)} km del restaurante)` : ''}. Lamentablemente no podemos llegar a esa ubicación.`,
-                });
-                return;
-            }
-
-            if (missingZone) {
-                setWarnModal({
-                    title:   'Confirma tu dirección de entrega',
-                    message: 'Ingresa tu dirección y selecciónala de las sugerencias para que el sistema pueda asignarte la zona y tarifa de domicilio automáticamente.',
-                });
+                setErrors(e => ({ ...e, delivery_address: 'Ingresa la dirección de entrega.' }));
                 return;
             }
 
@@ -579,8 +394,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             table_id:          form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
             delivery_address:  form.type === 'domicilio' ? form.delivery_address || null : null,
             delivery_zone_idx: form.type === 'domicilio' ? form.delivery_zone_idx : null,
-            delivery_lat:      form.type === 'domicilio' && deliveryCoords ? deliveryCoords.lat : null,
-            delivery_lng:      form.type === 'domicilio' && deliveryCoords ? deliveryCoords.lng : null,
+            delivery_lat:      null,
+            delivery_lng:      null,
             payment_method:    form.payment_method,
             notes:             form.notes || null,
             confirmed:         occupiedConfirmed,
@@ -694,34 +509,57 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
 
             {/* ── Cabecera sticky ── */}
             <header
-                className="sticky top-0 z-10 backdrop-blur-md border-b"
-                style={{ backgroundColor: `${s.bg}f0`, borderColor: `${s.text}18` }}
+                className="sticky top-0 z-10 backdrop-blur-md border-b shadow-md"
+                style={{ backgroundColor: `${s.bg}f5`, borderColor: `${s.text}15` }}
             >
-                <div className="max-w-5xl mx-auto px-3 sm:px-8 py-2.5 flex items-center gap-3">
-                    {/* Logo: limitado a h-9 en móvil para no ocupar demasiado espacio */}
+                <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center gap-5">
+                    {/* Logo */}
                     <img
-                        src="/logo-trans.png"
+                        src={settings?.logo_url ?? '/logo-trans.png'}
                         alt={tenant_name}
-                        className={`max-h-9 sm:max-h-12 md:${logoClass} w-auto shrink-0 object-contain`}
+                        className="h-28 w-auto shrink-0 object-contain drop-shadow-md"
                     />
-                    <div className="min-w-0 flex-1">
-                        {/* Nombre: text-base en móvil, tamaño configurado en sm+ */}
+
+                    {/* Textos */}
+                    <div className="min-w-0 flex-1 space-y-1">
                         <h1
-                            className={`font-display font-bold leading-tight line-clamp-1 text-base sm:text-lg md:${nameClass}`}
+                            className="font-display font-extrabold leading-none tracking-tight text-4xl sm:text-5xl line-clamp-1"
                             style={{ color: s.text }}
                         >
                             {tenant_name}
                         </h1>
-                        {settings?.slogan ? (
-                            /* Slogan: siempre visible, text-xs en móvil */
+
+                        {settings?.slogan && (
                             <p
-                                className={`text-xs sm:${sloganClass} line-clamp-1 opacity-70 mt-0.5`}
+                                className="text-2xl sm:text-3xl font-medium leading-snug line-clamp-1 opacity-75"
                                 style={{ color: s.text }}
                             >
                                 {settings.slogan}
                             </p>
-                        ) : (
-                            <p className="text-xs opacity-50" style={{ color: s.text }}>Nuestra carta</p>
+                        )}
+
+                        {(settings?.restaurant_address || settings?.social_links?.whatsapp) && (
+                            <div className="flex items-center flex-wrap gap-x-5 gap-y-1 pt-0.5">
+                                {settings.restaurant_address && (
+                                    <span
+                                        className="flex items-center gap-1.5 text-sm font-medium opacity-65"
+                                        style={{ color: s.text }}
+                                    >
+                                        📍 {settings.restaurant_address}
+                                    </span>
+                                )}
+                                {settings.social_links?.whatsapp && (
+                                    <a
+                                        href={`https://wa.me/${settings.social_links.whatsapp.replace(/\D/g, '')}${settings.social_links.whatsapp_message ? `?text=${encodeURIComponent(settings.social_links.whatsapp_message)}` : ''}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center gap-1.5 text-sm font-bold opacity-85 hover:opacity-100 transition-opacity"
+                                        style={{ color: s.primary }}
+                                    >
+                                        💬 {settings.social_links.whatsapp}
+                                    </a>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -730,7 +568,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
             {/* ── Índice de categorías ── */}
             {categories.length > 1 && (
                 <div
-                    className="sticky top-[52px] z-10 backdrop-blur border-b lg:hidden"
+                    className="sticky top-[128px] z-10 backdrop-blur border-b lg:hidden"
                     style={{ backgroundColor: `${s.bg}f5`, borderColor: `${s.text}15` }}
                 >
                     <div className="max-w-5xl mx-auto px-4 sm:px-8">
@@ -1279,101 +1117,34 @@ export default function PublicMenu({ categories, tenant_name, settings, tables }
                                     Dirección de entrega
                                 </label>
 
-                                <div className="relative">
-                                    <input
-                                        ref={addressInputRef}
-                                        type="text"
-                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none pr-9"
-                                        style={{
-                                            borderColor:     errors.delivery_address || outOfCoverage
-                                                ? '#ef4444'
-                                                : addressValidated
-                                                ? '#22c55e'
-                                                : `${s.text}25`,
-                                            backgroundColor: `${s.text}06`,
-                                            color:           s.text,
-                                        }}
-                                        placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
-                                        value={form.delivery_address}
-                                        onChange={handleAddressInput}
-                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                                        onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
-                                        autoComplete="off"
-                                    />
-                                    {/* Indicador de estado */}
-                                    {form.delivery_address.trim() && (
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base">
-                                            {outOfCoverage          ? '🚫'
-                                             : addressValidated     ? '✓'
-                                             : loadingSuggestions   ? '⏳'
-                                             : ''}
-                                        </span>
-                                    )}
+                                <input
+                                    ref={addressInputRef}
+                                    type="text"
+                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                    style={{
+                                        borderColor:     errors.delivery_address ? '#ef4444' : `${s.text}25`,
+                                        backgroundColor: `${s.text}06`,
+                                        color:           s.text,
+                                    }}
+                                    placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
+                                    value={form.delivery_address}
+                                    onChange={handleAddressInput}
+                                    autoComplete="off"
+                                />
 
-                                    {/* Sugerencias Nominatim */}
-                                    {!googleMapsKey && showSuggestions && addressSuggestions.length > 0 && (
-                                        <div
-                                            ref={suggestionsRef}
-                                            className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border shadow-xl overflow-hidden"
-                                            style={{ backgroundColor: s.bg, borderColor: `${s.text}20` }}
-                                        >
-                                            {addressSuggestions.map((suggestion, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    className="w-full px-3 py-2.5 text-left text-xs transition-colors flex items-start gap-2"
-                                                    style={{
-                                                        color:        s.text,
-                                                        borderBottom: idx < addressSuggestions.length - 1 ? `1px solid ${s.text}10` : 'none',
-                                                    }}
-                                                    onMouseDown={e => { e.preventDefault(); selectNominatimSuggestion(suggestion); }}
-                                                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = `${s.text}08`}
-                                                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
-                                                >
-                                                    <MapPin className="h-3 w-3 shrink-0 mt-0.5 opacity-50" />
-                                                    <span className="leading-relaxed">{suggestion.display_name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Error o estado */}
                                 {errors.delivery_address && (
                                     <p className="text-xs text-red-500">{errors.delivery_address}</p>
-                                )}
-                                {outOfCoverage && !errors.delivery_address && (
-                                    <div className="flex items-start gap-1.5 rounded-xl border border-red-400/40 bg-red-400/10 px-3 py-2">
-                                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
-                                        <p className="text-xs text-red-500">
-                                            Esta dirección está fuera de nuestra zona de cobertura
-                                            {deliveryKm !== null ? ` (${deliveryKm.toFixed(1)} km)` : ''}.
-                                        </p>
-                                    </div>
-                                )}
-                                {addressNotValidated && !outOfCoverage && form.delivery_address.trim() && (
-                                    <p className="text-xs" style={{ color: s.text, opacity: 0.55 }}>
-                                        {googleMapsKey && mapsReady
-                                            ? 'Sugerencia: selecciona una dirección del menú de Google Maps para localización exacta.'
-                                            : 'Sugerencia: selecciona una opción de la lista para confirmar ubicación exacta.'}
-                                    </p>
-                                )}
-                                {addressValidated && deliveryKm !== null && !outOfCoverage && (
-                                    <div className="flex items-center gap-1.5 text-xs" style={{ color: '#22c55e' }}>
-                                        <Check className="h-3 w-3" />
-                                        Dirección válida · {deliveryKm.toFixed(1)} km del restaurante
-                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Zona de entrega - asignada automáticamente por el sistema */}
-                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && !outOfCoverage && (
+                        {/* Costo de domicilio - asignado automáticamente por el sistema */}
+                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
                             <div className="space-y-2">
                                 {selectedZone && (
                                     <>
                                         <label className="text-sm font-medium" style={{ color: s.text }}>
-                                            Zona de entrega
+                                            Costo máximo del domicilio
                                         </label>
                                         <div
                                             className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"

@@ -24,11 +24,16 @@ export interface PageProps {
     auth: {
         user: User;
     };
+    tenant_name?: string;
+    tenant_address?: string;
+    tenant_phone?: string;
+    tenant_logo_url?: string | null;
     flash?: {
         success?: string;
         error?: string;
         warning?: string;
     };
+    [key: string]: unknown;
 }
 
 // ── Menu ──────────────────────────────────────────────────────────────────────
@@ -159,6 +164,7 @@ interface DashboardPedidoReciente {
     id: number;
     resumen: string;
     total: number;
+    amount_paid: number;
     status: string;
     tipo: string;
     mesa: number | null;

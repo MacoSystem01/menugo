@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\CartaSetting;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -42,6 +43,7 @@ class OrderController extends Controller
             'delivery_phone'   => $o->delivery_phone,
             'status'           => $o->status,
             'total'            => (float) $o->total,
+            'delivery_fee'     => (float) ($o->delivery_fee ?? 0),
             'amount_paid'      => (float) $o->amount_paid,
             'payment_method'   => $o->payment_method,
             'notas'            => $o->notes,
@@ -55,12 +57,14 @@ class OrderController extends Controller
             'created_at'       => $o->created_at->format('d/m/Y H:i'),
         ]);
 
-        $tables = \App\Models\RestaurantTable::orderBy('number')->get(['id', 'number']);
+        $tables         = \App\Models\RestaurantTable::orderBy('number')->get(['id', 'number']);
+        $deliveryZones  = CartaSetting::firstOrCreate([])->delivery_zones ?? [];
 
         return Inertia::render('Orders', [
-            'orders'  => $orders,
-            'tables'  => $tables,
-            'filters' => $request->only(['status', 'tipo', 'fecha', 'mesa_id']),
+            'orders'         => $orders,
+            'tables'         => $tables,
+            'filters'        => $request->only(['status', 'tipo', 'fecha', 'mesa_id']),
+            'delivery_zones' => $deliveryZones,
         ]);
     }
 
@@ -79,6 +83,7 @@ class OrderController extends Controller
             'delivery_phone'   => $o->delivery_phone,
             'status'           => $o->status,
             'total'            => (float) $o->total,
+            'delivery_fee'     => (float) ($o->delivery_fee ?? 0),
             'amount_paid'      => (float) $o->amount_paid,
             'payment_method'   => $o->payment_method,
             'notes'            => $o->notes,
@@ -141,9 +146,29 @@ class OrderController extends Controller
             'historial'       => $historial,
             'paymentMethods'  => $cfg->payment_methods  ?? ['efectivo'],
             'paymentDetails'  => $cfg->payment_details  ?? [],
+            'delivery_zones'  => $cfg->delivery_zones   ?? [],
             'needs_eod'       => $needsEod,
             'closing_time'    => $todaySchedule['cierre'] ?? null,
         ]);
+    }
+
+    // ── Asignar tarifa de domicilio ───────────────────────────────────────────
+
+    public function asignarTarifaDomicilio(Request $request, Order $order)
+    {
+        $data = $request->validate([
+            'delivery_fee' => 'required|integer|min:0',
+        ]);
+
+        $order->delivery_fee = $data['delivery_fee'];
+        $order->recalculateTotal();
+
+        AuditLog::registrar('update', 'Order', $order->id,
+            'Tarifa de domicilio asignada: $' . number_format($data['delivery_fee'], 0, ',', '.'),
+            ['delivery_fee' => $data['delivery_fee'], 'total_nuevo' => (float) $order->total]
+        );
+
+        return back()->with('success', 'Tarifa de domicilio asignada.');
     }
 
     // ── Cierre de Caja: arqueo de efectivo ───────────────────────────────────

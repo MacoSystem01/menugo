@@ -12,7 +12,7 @@ interface SystemAlert {
     icon:    string;
     title:   string;
     message: string;
-    action:  { label: string; url: string } | null;
+    action:  { label: string; url: string; method?: 'GET' | 'POST' } | null;
 }
 
 interface HealthResponse {
@@ -66,6 +66,7 @@ export default function SystemAlertBanner() {
     const [dismissed, setDismissed]   = useState<Set<string>>(new Set());
     const [checkedAt, setCheckedAt]   = useState<string>('');
     const [minimized, setMinimized]   = useState(false);
+    const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
     const fetchHealth = useCallback(async () => {
         try {
@@ -157,11 +158,29 @@ export default function SystemAlertBanner() {
 
                                 {alert.action && (
                                     <button
-                                        onClick={() => router.visit(alert.action!.url)}
-                                        className={`mt-2 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${style.action}`}
+                                        disabled={loadingAction === alert.title}
+                                        onClick={async () => {
+                                            if (alert.action!.method === 'POST') {
+                                                setLoadingAction(alert.title);
+                                                try {
+                                                    const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+                                                    await fetch(alert.action!.url, {
+                                                        method: 'POST',
+                                                        headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                                                        credentials: 'same-origin',
+                                                    });
+                                                    await fetchHealth();
+                                                } finally {
+                                                    setLoadingAction(null);
+                                                }
+                                            } else {
+                                                router.visit(alert.action!.url);
+                                            }
+                                        }}
+                                        className={`mt-2 inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md font-medium transition-colors disabled:opacity-50 ${style.action}`}
                                     >
-                                        {alert.action.label}
-                                        <ChevronRight className="h-3 w-3" />
+                                        {loadingAction === alert.title ? 'Procesando…' : alert.action.label}
+                                        {loadingAction !== alert.title && <ChevronRight className="h-3 w-3" />}
                                     </button>
                                 )}
                             </div>

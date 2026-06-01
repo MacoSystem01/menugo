@@ -255,21 +255,22 @@ class AdminDashboardController extends Controller
             $free  = disk_free_space(storage_path());
             $total = disk_total_space(storage_path());
             if ($total > 0) {
-                $usedPct = round((($total - $free) / $total) * 100, 1);
-                if ($usedPct >= 90) {
+                $usedPct  = round((($total - $free) / $total) * 100, 1);
+                $freeGb   = round($free / 1024 / 1024 / 1024, 1);
+                if ($usedPct >= 95) {
                     $alerts[] = [
                         'type'    => 'danger',
                         'icon'    => 'hard-drive',
-                        'title'   => "Disco casi lleno ({$usedPct}% usado)",
-                        'message' => 'El almacenamiento del servidor está al ' . $usedPct . '%. Limpia logs y archivos temporales urgentemente.',
+                        'title'   => "Disco crítico: {$usedPct}% usado ({$freeGb} GB libres)",
+                        'message' => 'El servidor está casi sin espacio. Elimina archivos temporales, logs y backups antiguos urgentemente.',
                         'action'  => null,
                     ];
-                } elseif ($usedPct >= 75) {
+                } elseif ($usedPct >= 85) {
                     $alerts[] = [
                         'type'    => 'warning',
                         'icon'    => 'hard-drive',
-                        'title'   => "Disco al {$usedPct}% de capacidad",
-                        'message' => 'El almacenamiento se está llenando. Considera limpiar logs: php artisan log:clear',
+                        'title'   => "Disco al {$usedPct}% — quedan {$freeGb} GB libres",
+                        'message' => 'El almacenamiento del servidor está alto. Considera liberar espacio pronto.',
                         'action'  => null,
                     ];
                 }
@@ -310,7 +311,6 @@ class AdminDashboardController extends Controller
         } catch (\Throwable) {}
 
         // ── 7. Log de errores recientes ───────────────────────────────────────
-        // Detecta errores graves en storage/logs/laravel.log de las últimas 24h
         try {
             $logFile = storage_path('logs/laravel.log');
             if (file_exists($logFile)) {
@@ -321,9 +321,9 @@ class AdminDashboardController extends Controller
                     $alerts[] = [
                         'type'    => 'warning',
                         'icon'    => 'hard-drive',
-                        'title'   => "Log de errores grande ({$sizeMb} MB)",
-                        'message' => 'El archivo storage/logs/laravel.log supera 50 MB. Considera rotarlo o limpiarlo: php artisan log:clear',
-                        'action'  => null,
+                        'title'   => "Archivo de log grande: {$sizeMb} MB",
+                        'message' => 'El log de errores está ocupando mucho espacio. Puedes limpiarlo ahora sin afectar el sistema.',
+                        'action'  => ['label' => 'Limpiar ahora', 'url' => '/admin/clear-log', 'method' => 'POST'],
                     ];
                 }
             }
@@ -345,6 +345,15 @@ class AdminDashboardController extends Controller
             'checked_at'   => now()->format('H:i:s'),
             'total_alerts' => count($alerts),
         ]);
+    }
+
+    public function clearLog()
+    {
+        $logFile = storage_path('logs/laravel.log');
+        if (file_exists($logFile)) {
+            file_put_contents($logFile, '');
+        }
+        return response()->json(['ok' => true]);
     }
 
     // ── API pública: métodos de pago activos (usados en /register) ────────────

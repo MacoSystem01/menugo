@@ -46,13 +46,14 @@ class DashboardController extends Controller
         $pedidosRecientes = Order::with(['items.dish', 'table'])
             ->latest()->take(10)->get()
             ->map(fn($o) => [
-                'id'     => $o->id,
-                'resumen'=> $o->items->map(fn($i) => "{$i->quantity}x {$i->dish?->name}")->implode(', ') ?: '—',
-                'total'  => $o->total,
-                'status' => $o->status,
-                'tipo'   => $o->type,
-                'mesa'   => $o->table?->number,
-                'tiempo' => $o->created_at->diffForHumans(short: true),
+                'id'          => $o->id,
+                'resumen'     => $o->items->map(fn($i) => "{$i->quantity}x {$i->dish?->name}")->implode(', ') ?: '—',
+                'total'       => (float) $o->total,
+                'amount_paid' => (float) $o->amount_paid,
+                'status'      => $o->status,
+                'tipo'        => $o->type,
+                'mesa'        => $o->table?->number,
+                'tiempo'      => $o->created_at->diffForHumans(short: true),
             ]);
 
         $topPlatos = DB::table('order_items')

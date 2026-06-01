@@ -59,38 +59,30 @@ class SecurityHeaders
         $appUrl = rtrim((string) config('app.url', ''), '/');
 
         // ── Multi-tenant: wildcard de subdominios ─────────────────────────────
-        // Storage::disk('public')->url() genera URLs con APP_URL como base
-        // (ej. https://menugo.local/storage/dishes/foto.jpg).
-        // Cuando esa imagen se carga desde un subdominio tenant
-        // (https://latajada.menugo.local), el navegador la trata como origen
-        // diferente y 'self' no la cubre. La solución es incluir tanto el dominio
-        // central ($appUrl) como todos sus subdominios (wildcard) en img-src.
         $parsed      = parse_url($appUrl);
         $scheme      = $parsed['scheme'] ?? 'https';
         $host        = $parsed['host']   ?? '';
-        // https://*.menugo.local — cubre dish images, banners, logos de cualquier tenant
         $wildcardUrl = "{$scheme}://*.{$host}";
 
-        // ── Vite dev server (APP_URL:5173 ≠ APP_URL) ─────────────────────────
-        // Vite corre en APP_URL:5173; el puerto lo convierte en un origen distinto.
-        // En producción los assets están compilados y servidos desde el mismo origen.
-        $viteUrl = $isDev ? ($appUrl . ':5173') : '';
+        // ── Vite dev server ───────────────────────────────────────────────────
+        // Detectamos el dev server por public/hot (archivo que Vite crea al
+        // arrancar y elimina al buildear), no por APP_ENV. Esto cubre el caso
+        // XAMPP donde APP_ENV=production pero Vite corre en modo dev.
+        $isViteDev = file_exists(public_path('hot'));
+        $viteUrl   = $isViteDev ? ($appUrl . ':5173') : '';
 
         // 'unsafe-eval' requerido por Vite HMR / React Fast Refresh en desarrollo.
-        $scriptSrc = $isDev
+        $scriptSrc = $isViteDev
             ? "'self' 'unsafe-inline' 'unsafe-eval' {$appUrl} {$viteUrl}"
             : "'self' 'unsafe-inline' {$appUrl}";
 
-        // connect-src: incluye Vite HMR (HTTP + WS) en desarrollo.
-        $connectSrc = $isDev
+        // connect-src: incluye Vite HMR (HTTP + WS) cuando el dev server está activo.
+        $connectSrc = $isViteDev
             ? "'self' https://maps.googleapis.com wss: {$viteUrl}"
             : "'self' https://maps.googleapis.com wss:";
 
-        // img-src: incluye dominio central + wildcard subdominios + Vite en dev.
-        // - $appUrl       → imágenes del storage central vistas desde subdominios
-        // - $wildcardUrl  → imágenes de cualquier tenant vistas desde el central
-        // - data: / blob: → QR codes (qrcode.react) e imágenes base64
-        $imgSrcExtra = "{$appUrl} {$wildcardUrl}" . ($isDev ? " {$viteUrl}" : '');
+        // img-src: dominio central + wildcard subdominios + Vite si está activo.
+        $imgSrcExtra = "{$appUrl} {$wildcardUrl}" . ($isViteDev ? " {$viteUrl}" : '');
 
         $csp = implode('; ', [
             "default-src 'self'",
@@ -100,11 +92,11 @@ class SecurityHeaders
             // el worker → el HMR no funciona → el JS de la página no se inicializa
             // completamente → Inertia/Axios no puede leer el CSRF token → HTTP 419.
             "worker-src blob:",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" . ($isDev ? " {$viteUrl}" : ''),
-            "font-src 'self' https://fonts.gstatic.com data:" . ($isDev ? " {$viteUrl}" : ''),
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" . ($isViteDev ? " {$viteUrl}" : ''),
+            "font-src 'self' https://fonts.gstatic.com data:" . ($isViteDev ? " {$viteUrl}" : ''),
             "img-src 'self' data: blob: {$imgSrcExtra} https://maps.gstatic.com https://maps.googleapis.com",
             "connect-src {$connectSrc}",
-            "frame-src 'none'",
+            "frame-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

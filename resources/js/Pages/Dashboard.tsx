@@ -40,6 +40,13 @@ const STATUS_CLASS: Record<string, string> = {
     at_cash:    'bg-yellow-500/15 text-yellow-400',
 };
 
+function payBadge(total: number, paid: number, status: string) {
+    if (status === 'cancelled') return null;
+    if (paid >= total && total > 0) return { label: 'Pagado',    cls: 'bg-green-500/15 text-green-400' };
+    if (paid > 0)                   return { label: 'Abono',     cls: 'bg-yellow-500/15 text-yellow-400' };
+    return                                 { label: 'Sin pago',  cls: 'bg-red-500/15 text-red-400' };
+}
+
 function KpiCard({
     label, value, icon: Icon, sub,
 }: {
@@ -98,7 +105,7 @@ function FullDashboard({ stats, pedidos_recientes, top_platos }: FullDashboardPr
                     ) : (
                         <div className="divide-y divide-border">
                             {pedidos_recientes.map(o => (
-                                <div key={o.id} className="py-3 flex items-center justify-between gap-4">
+                                <div key={o.id} className="py-3 flex items-center justify-between gap-3">
                                     <div className="flex-1 min-w-0">
                                         <div className="text-sm font-medium">
                                             #{o.id} · <span className="text-muted-foreground font-normal">{o.resumen}</span>
@@ -107,10 +114,15 @@ function FullDashboard({ stats, pedidos_recientes, top_platos }: FullDashboardPr
                                             {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'} · {o.tiempo}
                                         </div>
                                     </div>
-                                    <div className="font-semibold text-sm">{fmt(o.total)}</div>
-                                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_CLASS[o.status] ?? 'bg-muted text-muted-foreground'}`}>
-                                        {STATUS_LABEL[o.status] ?? o.status}
-                                    </span>
+                                    <div className="font-semibold text-sm shrink-0">{fmt(o.total)}</div>
+                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${STATUS_CLASS[o.status] ?? 'bg-muted text-muted-foreground'}`}>
+                                            {STATUS_LABEL[o.status] ?? o.status}
+                                        </span>
+                                        {(() => { const b = payBadge(o.total, o.amount_paid, o.status); return b && (
+                                            <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${b.cls}`}>{b.label}</span>
+                                        ); })()}
+                                    </div>
                                 </div>
                             ))}
                         </div>

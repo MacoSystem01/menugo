@@ -1,5 +1,6 @@
 import AppShell from '@/Layouts/AppShell';
-import { Head, router } from '@inertiajs/react';
+import { PageProps } from '@/types';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import {
     ShoppingBag, CheckCircle2, XCircle,
@@ -16,6 +17,13 @@ interface OrderItem {
     is_addition: boolean;
 }
 
+interface DeliveryZone {
+    label:  string;
+    min_km: number;
+    max_km: number;
+    price:  number;
+}
+
 interface ActiveOrder {
     id: number;
     customer_name: string;
@@ -27,6 +35,7 @@ interface ActiveOrder {
     delivery_phone: string | null;
     status: string;
     total: number;
+    delivery_fee: number;
     amount_paid: number;
     payment_method: string | null;
     notes: string | null;
@@ -49,6 +58,7 @@ interface Props {
     historial:      ActiveOrder[];
     paymentMethods: string[];
     paymentDetails: Record<string, PaymentDetail>;
+    delivery_zones: DeliveryZone[];
     needs_eod:      boolean;
     closing_time:   string | null;
     flash?: { success?: string; error?: string };
@@ -123,7 +133,9 @@ const PAY_STATUS_CLASS: Record<PayStatus, string> = {
     paid:    'bg-accent/15     text-accent            border-accent/30',
 };
 
-export default function Caja({ orders, historial, paymentMethods, paymentDetails, needs_eod, closing_time, flash }: Props) {
+export default function Caja({ orders, historial, paymentMethods, paymentDetails, delivery_zones, needs_eod, closing_time, flash }: Props) {
+    const { props } = usePage<PageProps>();
+    const userRole  = (props as any).auth?.user?.role ?? '';
     const [eodConfirm,  setEodConfirm]  = useState(false);
     const [eodLoading,  setEodLoading]  = useState(false);
 
@@ -362,8 +374,11 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                             {order.customer_name} · {order.customer_phone} · {order.created_at}
                                         </div>
 
-                                        {order.delivery_address && (
-                                            <div className="text-xs text-muted-foreground mt-0.5">{order.delivery_address}</div>
+                                        {['gerente', 'administrador'].includes(userRole) && order.delivery_address && (
+                                            <div className="text-xs text-yellow-400 mt-0.5 flex items-center gap-1">
+                                                <span>📍</span>
+                                                <span>{order.delivery_address}</span>
+                                            </div>
                                         )}
                                     </div>
 
@@ -404,7 +419,45 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                                     <span className="text-muted-foreground">{fmt(item.unit_price * item.quantity)}</span>
                                                 </div>
                                             ))}
-                                            <div className="flex justify-between text-sm font-semibold pt-2">
+
+                                            {/* Tarifa de domicilio */}
+                                            {order.tipo === 'domicilio' && delivery_zones.length > 0 &&
+                                             ['gerente', 'administrador', 'caja'].includes(userRole) && (
+                                                <div className="pt-3 border-t border-border space-y-2">
+                                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                                        Tarifa de domicilio
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {delivery_zones.map((zone, zi) => {
+                                                            const isActive = order.delivery_fee === zone.price;
+                                                            return (
+                                                                <button
+                                                                    key={zi}
+                                                                    type="button"
+                                                                    onClick={() => router.post(`/caja/${order.id}/tarifa-domicilio`, { delivery_fee: zone.price })}
+                                                                    className={`flex flex-col items-start px-3 py-2 rounded-xl border text-xs transition-colors ${
+                                                                        isActive
+                                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                                            : 'border-border hover:border-primary/50 hover:bg-muted text-muted-foreground'
+                                                                    }`}
+                                                                >
+                                                                    <span className="font-semibold">{zone.min_km}–{zone.max_km} km</span>
+                                                                    <span className={isActive ? 'text-primary font-bold' : 'text-foreground font-bold'}>
+                                                                        {zone.price === 0 ? 'Gratis' : fmt(zone.price)}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    {order.delivery_fee > 0 && (
+                                                        <p className="text-[11px] text-muted-foreground">
+                                                            Domicilio: {fmt(order.delivery_fee)} · Total con domicilio: {fmt(order.total)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="flex justify-between text-sm font-semibold pt-2 border-t border-border">
                                                 <span>Total</span>
                                                 <span>{fmt(order.total)}</span>
                                             </div>

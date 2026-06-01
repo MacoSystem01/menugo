@@ -1,5 +1,6 @@
 import AppShell from '@/Layouts/AppShell';
-import { Head, router } from '@inertiajs/react';
+import { PageProps } from '@/types';
+import { Head, router, usePage } from '@inertiajs/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { ShoppingBag, ChevronDown, ChevronUp, Printer, X, Bell, Bike } from 'lucide-react';
 
@@ -9,6 +10,13 @@ interface OrderItem {
     unit_price: number;
     notes: string | null;
     is_addition: boolean;
+}
+
+interface DeliveryZone {
+    label:  string;
+    min_km: number;
+    max_km: number;
+    price:  number;
 }
 
 interface OrderRow {
@@ -21,6 +29,7 @@ interface OrderRow {
     delivery_phone: string | null;
     status: string;
     total: number;
+    delivery_fee: number;
     amount_paid: number;
     payment_method: string | null;
     notas: string | null;
@@ -55,9 +64,10 @@ interface TableRow {
 }
 
 interface Props {
-    orders: Paginated<OrderRow>;
-    tables: TableRow[];
-    filters: Filters;
+    orders:         Paginated<OrderRow>;
+    tables:         TableRow[];
+    filters:        Filters;
+    delivery_zones: DeliveryZone[];
     flash?: { success?: string; error?: string };
 }
 
@@ -96,8 +106,15 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 // ── Ticket de impresión ────────────────────────────────────────────────────────
 function PrintTicket({ order }: { order: OrderRow }) {
+    const { props }       = usePage<PageProps>();
     const subtotalesItems = order.items.filter(i => !i.is_addition);
     const adiciones       = order.items.filter(i => i.is_addition);
+    const parts           = order.created_at.split(' ');
+    const fecha           = parts[0] ?? '';
+    const hora            = parts[1] ?? '';
+    const tenantAddress   = (props.tenant_address   as string | undefined) || '';
+    const tenantPhone     = (props.tenant_phone     as string | undefined) || '';
+    const logoSrc         = (props.tenant_logo_url  as string | undefined) || '/logo.png';
 
     return (
         <div id="menugo-print-area" style={{
@@ -109,66 +126,89 @@ function PrintTicket({ order }: { order: OrderRow }) {
             margin: '0 auto',
             padding: '0',
         }}>
-            {/* ── Encabezado ── */}
-            <div style={{ textAlign: 'center', paddingBottom: '16px', borderBottom: '2px solid #1a1a1a' }}>
+
+            {/* ══ ENCABEZADO: Lugar · Fecha · Hora · N° Orden ══════════════════ */}
+            <div style={{ textAlign: 'center', paddingBottom: '14px', borderBottom: '2px solid #1a1a1a' }}>
                 <img
-                    src="/logo.png"
-                    alt="Menugo"
-                    style={{ height: '56px', width: 'auto', objectFit: 'contain', marginBottom: '6px' }}
+                    src={logoSrc}
+                    alt="Logo"
+                    style={{ height: '52px', width: 'auto', objectFit: 'contain', marginBottom: '5px' }}
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
-                <div style={{ fontSize: '11px', letterSpacing: '3px', color: '#555', textTransform: 'uppercase', marginTop: '2px' }}>
+                {props.tenant_name && (
+                    <div style={{ fontSize: '15px', fontWeight: '800', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                        {props.tenant_name}
+                    </div>
+                )}
+                <div style={{ fontSize: '10px', letterSpacing: '3px', color: '#666', textTransform: 'uppercase', marginTop: '2px' }}>
                     Sistema de Pedidos
                 </div>
+                {tenantAddress && (
+                    <div style={{ fontSize: '11px', color: '#555', marginTop: '4px' }}>{tenantAddress}</div>
+                )}
+                {tenantPhone && (
+                    <div style={{ fontSize: '11px', color: '#555', marginTop: '1px' }}>Tel. {tenantPhone}</div>
+                )}
+
+                {/* Fecha · Hora · Orden en una sola fila */}
+                <div style={{
+                    marginTop: '12px',
+                    paddingTop: '10px',
+                    borderTop: '1px dashed #bbb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                }}>
+                    <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Fecha</div>
+                        <div style={{ fontSize: '12px', fontWeight: '600' }}>{fecha}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Hora</div>
+                        <div style={{ fontSize: '12px', fontWeight: '600' }}>{hora}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Orden</div>
+                        <div style={{ fontSize: '22px', fontWeight: '800', lineHeight: 1.1, color: '#1a1a1a' }}>
+                            #{String(order.id).padStart(4, '0')}
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* ── N° de Orden + Fecha ── */}
-            <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                padding: '12px 0', borderBottom: '1px dashed #bbb',
-            }}>
-                <div>
-                    <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Orden</div>
-                    <div style={{ fontSize: '24px', fontWeight: '800', lineHeight: 1.1, color: '#1a1a1a' }}>#{String(order.id).padStart(4, '0')}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Fecha</div>
-                    <div style={{ fontSize: '13px', fontWeight: '600' }}>{order.created_at}</div>
-                </div>
-            </div>
-
-            {/* ── Cliente ── */}
-            <div style={{ padding: '12px 0', borderBottom: '1px dashed #bbb' }}>
-                <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px', fontWeight: '700' }}>
+            {/* ══ CLIENTE ══════════════════════════════════════════════════════ */}
+            <div style={{ padding: '10px 0', borderBottom: '1px dashed #bbb' }}>
+                <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '5px', fontWeight: '700' }}>
                     Cliente
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: '700', marginBottom: '2px' }}>{order.customer_name}</div>
-                <div style={{ fontSize: '12px', color: '#555' }}>{order.customer_phone}</div>
+                <div style={{ fontSize: '14px', fontWeight: '700' }}>{order.customer_name}</div>
+                {order.customer_phone && (
+                    <div style={{ fontSize: '12px', color: '#555', marginTop: '1px' }}>Tel. {order.customer_phone}</div>
+                )}
             </div>
 
-            {/* ── Tipo: Mesa o Domicilio ── */}
-            <div style={{ padding: '10px 0', borderBottom: '1px dashed #bbb' }}>
+            {/* ══ MESA / DOMICILIO ══════════════════════════════════════════════ */}
+            <div style={{ padding: '8px 0', borderBottom: '1px dashed #bbb' }}>
                 {order.tipo === 'mesa' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                            background: '#1a1a1a', color: '#fff',
-                            padding: '4px 12px', borderRadius: '20px',
-                            fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px',
-                        }}>
-                            Mesa {order.mesa ?? '—'}
-                        </div>
+                    <div style={{
+                        display: 'inline-block',
+                        background: '#1a1a1a', color: '#fff',
+                        padding: '4px 14px', borderRadius: '20px',
+                        fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px',
+                    }}>
+                        Mesa {order.mesa ?? '—'}
                     </div>
                 ) : (
                     <div>
                         <div style={{
                             display: 'inline-block', background: '#1a1a1a', color: '#fff',
                             padding: '4px 12px', borderRadius: '20px',
-                            fontSize: '12px', fontWeight: '700', marginBottom: '6px',
+                            fontSize: '12px', fontWeight: '700', marginBottom: '5px',
                         }}>
                             Domicilio
                         </div>
                         {order.delivery_address && (
-                            <div style={{ fontSize: '12px', color: '#444', marginTop: '4px', lineHeight: '1.4' }}>
+                            <div style={{ fontSize: '12px', color: '#444', lineHeight: '1.4' }}>
                                 {order.delivery_address}
                             </div>
                         )}
@@ -181,18 +221,17 @@ function PrintTicket({ order }: { order: OrderRow }) {
                 )}
             </div>
 
-            {/* ── Productos ── */}
-            <div style={{ padding: '12px 0' }}>
-                <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700', marginBottom: '10px' }}>
-                    Productos
+            {/* ══ PEDIDO ════════════════════════════════════════════════════════ */}
+            <div style={{ padding: '10px 0' }}>
+                <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700', marginBottom: '8px' }}>
+                    Pedido
                 </div>
 
-                {/* Encabezado de columnas */}
                 <div style={{
                     display: 'grid', gridTemplateColumns: '1fr auto auto',
                     gap: '0 8px', fontSize: '10px', color: '#888',
                     textTransform: 'uppercase', letterSpacing: '0.5px',
-                    paddingBottom: '6px', borderBottom: '1px solid #ddd',
+                    paddingBottom: '5px', borderBottom: '1px solid #ddd',
                     marginBottom: '6px',
                 }}>
                     <span>Producto</span>
@@ -200,9 +239,8 @@ function PrintTicket({ order }: { order: OrderRow }) {
                     <span style={{ textAlign: 'right' }}>Subtotal</span>
                 </div>
 
-                {/* Items principales */}
                 {subtotalesItems.map((item, i) => (
-                    <div key={i} style={{ marginBottom: '8px' }}>
+                    <div key={i} style={{ marginBottom: '7px' }}>
                         <div style={{
                             display: 'grid', gridTemplateColumns: '1fr auto auto',
                             gap: '0 8px', alignItems: 'baseline',
@@ -225,18 +263,17 @@ function PrintTicket({ order }: { order: OrderRow }) {
                     </div>
                 ))}
 
-                {/* Adiciones */}
                 {adiciones.length > 0 && (
                     <>
                         <div style={{
                             fontSize: '10px', color: '#888', textTransform: 'uppercase',
                             letterSpacing: '1px', fontWeight: '700',
-                            margin: '10px 0 6px', paddingTop: '8px', borderTop: '1px dashed #ddd',
+                            margin: '8px 0 5px', paddingTop: '7px', borderTop: '1px dashed #ddd',
                         }}>
                             Adiciones
                         </div>
                         {adiciones.map((item, i) => (
-                            <div key={i} style={{ marginBottom: '6px' }}>
+                            <div key={i} style={{ marginBottom: '5px' }}>
                                 <div style={{
                                     display: 'grid', gridTemplateColumns: '1fr auto auto',
                                     gap: '0 8px', alignItems: 'baseline',
@@ -258,59 +295,85 @@ function PrintTicket({ order }: { order: OrderRow }) {
                 )}
             </div>
 
-            {/* ── Total ── */}
-            <div style={{
-                borderTop: '2px solid #1a1a1a', borderBottom: '2px solid #1a1a1a',
-                padding: '12px 0', margin: '0',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-                <span style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Total</span>
-                <span style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.5px' }}>{fmt(order.total)}</span>
-            </div>
+            {/* ══ CUENTA: Total · Estado · Pago ═════════════════════════════════ */}
+            <div style={{ borderTop: '2px solid #1a1a1a', paddingTop: '10px' }}>
 
-            {/* ── Estado y Pago ── */}
-            <div style={{ padding: '12px 0', borderBottom: '1px dashed #bbb' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado</span>
-                    <span style={{
-                        fontSize: '12px', fontWeight: '700',
-                        padding: '2px 10px', borderRadius: '20px',
-                        border: '1.5px solid #1a1a1a',
+                {/* Domicilio (si aplica) */}
+                {order.tipo === 'domicilio' && order.delivery_fee > 0 && (
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        paddingBottom: '6px', marginBottom: '6px',
+                        borderBottom: '1px dashed #bbb',
                     }}>
-                        {STATUS_LABEL[order.status] ?? order.status}
-                    </span>
+                        <span style={{ fontSize: '12px', color: '#555' }}>Subtotal productos</span>
+                        <span style={{ fontSize: '12px' }}>{fmt(order.total - order.delivery_fee)}</span>
+                    </div>
+                )}
+                {order.tipo === 'domicilio' && order.delivery_fee > 0 && (
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        paddingBottom: '8px', marginBottom: '8px',
+                        borderBottom: '1px dashed #bbb',
+                    }}>
+                        <span style={{ fontSize: '12px', color: '#555' }}>Domicilio</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600' }}>{fmt(order.delivery_fee)}</span>
+                    </div>
+                )}
+
+                {/* Total */}
+                <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    paddingBottom: '10px', borderBottom: '2px solid #1a1a1a', marginBottom: '10px',
+                }}>
+                    <span style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Total</span>
+                    <span style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.5px' }}>{fmt(order.total)}</span>
                 </div>
-                {order.payment_method && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pago</span>
-                        <span style={{ fontSize: '12px', fontWeight: '600' }}>
-                            {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}
+
+                {/* Estado · Pago · Abonado */}
+                <div style={{ paddingBottom: '10px', borderBottom: '1px dashed #bbb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                        <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado</span>
+                        <span style={{
+                            fontSize: '12px', fontWeight: '700',
+                            padding: '2px 10px', borderRadius: '20px',
+                            border: '1.5px solid #1a1a1a',
+                        }}>
+                            {STATUS_LABEL[order.status] ?? order.status}
                         </span>
                     </div>
-                )}
-                {order.amount_paid > 0 && order.amount_paid < order.total && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pagado</span>
-                        <span style={{ fontSize: '12px', fontWeight: '600' }}>{fmt(order.amount_paid)}</span>
+                    {order.payment_method && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                            <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pago</span>
+                            <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                                {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}
+                            </span>
+                        </div>
+                    )}
+                    {order.amount_paid > 0 && order.amount_paid < order.total && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Abonado</span>
+                            <span style={{ fontSize: '12px', fontWeight: '600' }}>{fmt(order.amount_paid)}</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Observaciones */}
+                {order.notas && (
+                    <div style={{ padding: '8px 0', borderBottom: '1px dashed #bbb' }}>
+                        <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700', marginBottom: '3px' }}>
+                            Observaciones
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#444', fontStyle: 'italic', lineHeight: '1.5' }}>{order.notas}</div>
                     </div>
                 )}
             </div>
 
-            {/* ── Notas ── */}
-            {order.notas && (
-                <div style={{ padding: '10px 0', borderBottom: '1px dashed #bbb' }}>
-                    <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700', marginBottom: '4px' }}>
-                        Observaciones
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#444', fontStyle: 'italic', lineHeight: '1.5' }}>{order.notas}</div>
-                </div>
-            )}
-
-            {/* ── Pie ── */}
-            <div style={{ textAlign: 'center', padding: '16px 0 4px' }}>
+            {/* ══ PIE DE PÁGINA ════════════════════════════════════════════════ */}
+            <div style={{ textAlign: 'center', padding: '14px 0 4px' }}>
                 <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '2px' }}>¡Gracias por su preferencia!</div>
                 <div style={{ fontSize: '11px', color: '#888' }}>Menugo.app · Powered by Menugo</div>
             </div>
+
         </div>
     );
 }
@@ -404,7 +467,11 @@ function PrintModal({ order, onClose }: { order: OrderRow; onClose: () => void }
 }
 
 // ── Página principal ───────────────────────────────────────────────────────────
-export default function Orders({ orders, tables, filters, flash }: Props) {
+export default function Orders({ orders, tables, filters, delivery_zones, flash }: Props) {
+    const { props }   = usePage<PageProps>();
+    const userRole    = (props as any).auth?.user?.role ?? '';
+    const canSeeAddr  = ['gerente', 'administrador'].includes(userRole);
+
     const [expanded,   setExpanded]   = useState<number | null>(null);
     const [printing,   setPrinting]   = useState<OrderRow | null>(null);
     const [localFilters, setLocal]    = useState<Filters>(filters);
@@ -573,6 +640,12 @@ export default function Orders({ orders, tables, filters, flash }: Props) {
                                         <td className="px-6 py-4">
                                             <div className="font-medium">{o.customer_name}</div>
                                             <div className="text-xs text-muted-foreground">{o.customer_phone}</div>
+                                            {canSeeAddr && o.tipo === 'domicilio' && o.delivery_address && (
+                                                <div className="text-xs text-yellow-400 mt-0.5 flex items-center gap-1">
+                                                    <span>📍</span>
+                                                    <span className="truncate max-w-50">{o.delivery_address}</span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell text-muted-foreground">
                                             {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'}
@@ -629,9 +702,47 @@ export default function Orders({ orders, tables, filters, flash }: Props) {
                                                             <span className="text-muted-foreground">{fmt(item.unit_price * item.quantity)}</span>
                                                         </div>
                                                     ))}
+                                                    {o.delivery_fee > 0 && (
+                                                        <div className="flex justify-between text-sm text-yellow-400 font-medium pt-1 border-t border-border/50">
+                                                            <span>Domicilio</span>
+                                                            <span>{fmt(o.delivery_fee)}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {o.notas && <p className="text-xs text-muted-foreground">Nota: {o.notas}</p>}
-                                                <div className="flex items-center gap-4 mt-3">
+
+                                                {/* Selector de tarifa de domicilio */}
+                                                {o.tipo === 'domicilio' && delivery_zones.length > 0 && (
+                                                    <div className="mb-3 space-y-1.5">
+                                                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                                            Tarifa de domicilio
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {delivery_zones.map((zone, zi) => {
+                                                                const isActive = o.delivery_fee === zone.price;
+                                                                return (
+                                                                    <button
+                                                                        key={zi}
+                                                                        type="button"
+                                                                        onClick={() => router.post(`/caja/${o.id}/tarifa-domicilio`, { delivery_fee: zone.price })}
+                                                                        className={`flex flex-col items-start px-3 py-1.5 rounded-xl border text-xs transition-colors ${
+                                                                            isActive
+                                                                                ? 'border-primary bg-primary/10 text-primary'
+                                                                                : 'border-border hover:border-primary/50 hover:bg-muted text-muted-foreground'
+                                                                        }`}
+                                                                    >
+                                                                        <span className="font-semibold">{zone.min_km}–{zone.max_km} km</span>
+                                                                        <span className={isActive ? 'text-primary font-bold' : 'text-foreground font-bold'}>
+                                                                            {zone.price === 0 ? 'Gratis' : fmt(zone.price)}
+                                                                        </span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {o.notas && <p className="text-xs text-muted-foreground mb-2">Nota: {o.notas}</p>}
+                                                <div className="flex items-center gap-4">
                                                     <button
                                                         onClick={() => setPrinting(o)}
                                                         className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"

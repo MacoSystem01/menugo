@@ -30,7 +30,7 @@ class InventarioController extends Controller
             $query->where('status', $request->status);
         }
 
-        $items = $query->paginate(50)->through(fn($i) => [
+        $items = $query->get()->map(fn($i) => [
             'id'          => $i->id,
             'name'        => $i->name,
             'quantity'    => (float) $i->quantity,

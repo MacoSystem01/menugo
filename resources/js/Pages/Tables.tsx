@@ -1,7 +1,8 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, LayoutDashboard, ChevronDown, ChevronUp, CheckCircle2, Unlock, Bell, Clock, XCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, LayoutDashboard, ChevronDown, ChevronUp, CheckCircle2, Unlock, Bell, Clock, XCircle, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import type { OrderStatus, TableOrder, PageProps } from '@/types';
 
 interface TableRow {
@@ -267,6 +268,8 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
     const [newCancelled,   setNewCancelled]   = useState<CancelledOrder[]>([]);
     const prevReadyIds     = useRef<Set<number>>(new Set());
     const prevCancelledIds = useRef<Set<number>>(new Set());
+    const [qrTable,        setQrTable]        = useState<TableRow | null>(null);
+    const qrContainerRef   = useRef<HTMLDivElement>(null);
 
     // Solicitar permiso de notificaciones al montar
     useEffect(() => {
@@ -362,6 +365,25 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
         router.delete(`/tables/${t.id}`);
     }
 
+    function imprimirQR(table: TableRow) {
+        const url = `${window.location.origin}/carta?mesa=${table.qr_code}`;
+        const svg = qrContainerRef.current?.querySelector('svg')?.outerHTML ?? '';
+        const w   = window.open('', '_blank', 'width=340,height=480');
+        if (!w) return;
+        w.document.write(
+            '<!DOCTYPE html><html><head><title>QR Mesa #' + table.number + '</title>' +
+            '<style>body{text-align:center;font-family:sans-serif;padding:1.5rem;margin:0}' +
+            'h2{margin:0 0 .75rem;font-size:1.1rem}' +
+            'p{font-size:10px;color:#888;word-break:break-all;margin-top:.75rem}' +
+            'svg{width:200px;height:200px}</style></head><body>' +
+            '<h2>Mesa #' + table.number + '</h2>' + svg +
+            '<p>' + url + '</p>' +
+            '<scr' + 'ipt>window.onload=function(){window.print();}<\/scr' + 'ipt>' +
+            '</body></html>'
+        );
+        w.document.close();
+    }
+
     return (
         <AppShell title="Mesas" subtitle="Administra las mesas del local">
             <Head title="Mesas" />
@@ -436,13 +458,20 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
                                     </span>
                                 </div>
 
-                                {/* ── Acciones: Editar / Eliminar / Liberar ── */}
+                                {/* ── Acciones: Editar / QR / Eliminar / Liberar ── */}
                                 <div className="flex gap-2 mb-4 flex-wrap">
                                     <button
                                         onClick={() => openEdit(t)}
                                         className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-xs hover:bg-muted transition-colors"
                                     >
                                         <Pencil className="h-3.5 w-3.5" /> Editar
+                                    </button>
+                                    <button
+                                        onClick={() => setQrTable(t)}
+                                        className="flex items-center justify-center rounded-lg border border-border p-1.5 text-xs hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                                        title="Ver código QR de mesa"
+                                    >
+                                        <QrCode className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(t)}
@@ -489,6 +518,46 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
 
             {/* ── Historial de pedidos entregados del día ── */}
             <HistorySection tables={tables} />
+
+            {/* Modal QR de mesa */}
+            {qrTable && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl text-center">
+                        <h2 className="font-display text-lg font-bold mb-1">QR Mesa #{qrTable.number}</h2>
+                        <p className="text-xs text-muted-foreground mb-5">
+                            El cliente escanea este código para abrir la carta con la mesa pre-seleccionada.
+                        </p>
+                        <div ref={qrContainerRef} className="flex justify-center mb-5">
+                            <div className="rounded-2xl border border-border bg-white p-4">
+                                <QRCodeSVG
+                                    value={`${window.location.origin}/carta?mesa=${qrTable.qr_code}`}
+                                    size={180}
+                                    level="M"
+                                />
+                            </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground break-all mb-5 px-2">
+                            {`${window.location.origin}/carta?mesa=${qrTable.qr_code}`}
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setQrTable(null)}
+                                className="flex-1 rounded-xl border border-border py-2 text-sm font-medium hover:bg-muted transition-colors"
+                            >
+                                Cerrar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => imprimirQR(qrTable)}
+                                className="flex-1 rounded-xl bg-primary py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                                Imprimir QR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal */}
             {showModal && (
