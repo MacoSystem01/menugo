@@ -25,10 +25,19 @@ interface SliderLogo {
 ───────────────────────────────────────────── */
 const plans = [
     {
-        key: 'mensual',
-        name: 'MENSUAL',
-        emoji: '💰',
-        price: '$30.000',
+        key: 'starter',
+        name: 'STARTER',
+        emoji: '🎁',
+        price: '$0',
+        period: 'para siempre',
+        savings: 'Gratis',
+        popular: false,
+    },
+    {
+        key: 'basico',
+        name: 'BÁSICO',
+        emoji: '💳',
+        price: '$34.900',
         period: '/mes',
         savings: null,
         popular: false,
@@ -37,27 +46,27 @@ const plans = [
         key: 'trimestral',
         name: 'TRIMESTRAL',
         emoji: '📦',
-        price: '$80.000',
+        price: '$83.900',
         period: '/3 meses',
-        savings: 'Ahorras 11%',
+        savings: 'Ahorras 20%',
         popular: false,
     },
     {
         key: 'semestral',
-        name: 'SEMESTRAL',
+        name: 'PRO',
         emoji: '⭐',
-        price: '$220.000',
+        price: '$146.900',
         period: '/6 meses',
-        savings: 'Ahorras 39%',
+        savings: 'Ahorras 30%',
         popular: true,
     },
     {
         key: 'anual',
-        name: 'ANUAL',
+        name: 'ESCALA',
         emoji: '🏆',
-        price: '$350.000',
+        price: '$230.900',
         period: '/año',
-        savings: 'Ahorras 51%',
+        savings: 'Ahorras 45%',
         popular: false,
     },
 ];
@@ -85,7 +94,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
             <div
-                className="relative w-full max-w-3xl rounded-3xl border border-border overflow-hidden"
+                className="relative w-full max-w-4xl rounded-3xl border border-border overflow-hidden"
                 style={{ background: 'oklch(0.14 0.018 50)' }}
             >
                 {/* Botón cerrar */}
@@ -126,7 +135,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                     </p>
 
                     {/* Grid de planes */}
-                    <div className="w-full mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="w-full mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                         {plans.map((plan) => (
                             <div key={plan.key} className="relative flex flex-col">
 

@@ -11,22 +11,22 @@ function loadMapsScript(key: string): Promise<void> {
             document.getElementById('gm-public')!.addEventListener('load', () => resolve());
             return;
         }
-        const s   = document.createElement('script');
-        s.id      = 'gm-public';
-        s.src     = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=es`;
-        s.async   = true;
-        s.onload  = () => resolve();
+        const s = document.createElement('script');
+        s.id = 'gm-public';
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=es`;
+        s.async = true;
+        s.onload = () => resolve();
         s.onerror = () => reject(new Error('No se pudo cargar Google Maps'));
         document.head.appendChild(s);
     });
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R    = 6371;
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a    = Math.sin(dLat / 2) ** 2
-               + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -85,84 +85,85 @@ function YtIcon() {
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface Dish {
-    id:          number;
-    name:        string;
+    id: number;
+    name: string;
     description: string | null;
-    price:       number;
-    image_url:   string | null;
+    price: number;
+    image_url: string | null;
 }
 
 interface Category {
-    id:          number;
-    name:        string;
+    id: number;
+    name: string;
     description: string | null;
-    dishes:      Dish[];
+    dishes: Dish[];
 }
 
 interface SocialLinks {
-    instagram?:        string;
-    facebook?:         string;
-    whatsapp?:         string;
+    instagram?: string;
+    facebook?: string;
+    whatsapp?: string;
     whatsapp_message?: string;
-    tiktok?:           string;
-    twitter?:          string;
-    youtube?:          string;
+    tiktok?: string;
+    twitter?: string;
+    youtube?: string;
 }
 
 interface DeliveryZone {
-    label:  string;
+    label: string;
     min_km: number;
     max_km: number;
-    price:  number;
+    price: number;
 }
 
 interface PaymentDetail {
-    titular?:    string;
-    numero?:     string;
-    link?:       string;
-    banco?:      string;
+    titular?: string;
+    numero?: string;
+    link?: string;
+    banco?: string;
     tipo_cuenta?: string;
-    nota?:       string;
+    nota?: string;
 }
 
 interface CartaSettings {
-    primary_color:      string;
-    bg_color:           string;
-    text_color:         string;
-    logo_size:          string;
-    name_size:          string;
-    slogan:             string | null;
-    slogan_size:        string;
-    banner_url:         string | null;
-    payment_methods:    string[];
-    payment_details:    Record<string, PaymentDetail>;
-    social_links:       SocialLinks;
-    delivery_enabled:   boolean;
+    primary_color: string;
+    bg_color: string;
+    text_color: string;
+    logo_size: string;
+    name_size: string;
+    slogan: string | null;
+    slogan_size: string;
+    banner_url: string | null;
+    payment_methods: string[];
+    payment_details: Record<string, PaymentDetail>;
+    social_links: SocialLinks;
+    delivery_enabled: boolean;
     delivery_min_order: number;
-    delivery_zones:     DeliveryZone[];
-    logo_url:           string | null;
-    restaurant_lat:     number | null;
-    restaurant_lng:     number | null;
+    delivery_zones: DeliveryZone[];
+    logo_url: string | null;
+    restaurant_lat: number | null;
+    restaurant_lng: number | null;
     restaurant_address: string | null;
-    work_schedule:      Record<string, { activo: boolean; apertura: string; cierre: string }> | null;
+    work_schedule: Record<string, { activo: boolean; apertura: string; cierre: string }> | null;
 }
 
 interface Table {
-    id:               number;
-    number:           string;
+    id: number;
+    number: string;
     has_active_orders: boolean;
 }
 
 interface Props {
-    categories:        Category[];
-    tenant_name:       string;
-    settings:          CartaSettings;
-    tables:            Table[];
+    categories: Category[];
+    tenant_name: string;
+    settings: CartaSettings;
+    tables: Table[];
     initial_table_id?: number;
+    orders_enabled: boolean;
 }
 
 interface CartItem {
-    dish:     Dish;
+    dish: Dish;
     quantity: number;
 }
 
@@ -184,11 +185,11 @@ const SLOGAN_SIZES: Record<string, string> = {
     xs: 'text-xs', sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl',
 };
 const PAYMENT_LABELS: Record<string, string> = {
-    efectivo:      'Efectivo',
-    pse:           'PSE',
-    nequi:         'Nequi',
-    daviplata:     'Daviplata',
-    tarjeta:       'Tarjeta',
+    efectivo: 'Efectivo',
+    pse: 'PSE',
+    nequi: 'Nequi',
+    daviplata: 'Daviplata',
+    tarjeta: 'Tarjeta',
     transferencia: 'Transferencia',
 };
 
@@ -210,17 +211,17 @@ type Screen = 'menu' | 'cart' | 'checkout';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id }: Props) {
+export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id, orders_enabled }: Props) {
     const s = {
         primary: settings?.primary_color ?? '#e85d04',
-        bg:      settings?.bg_color      ?? '#ffffff',
-        text:    settings?.text_color    ?? '#1a1a1a',
+        bg: settings?.bg_color ?? '#ffffff',
+        text: settings?.text_color ?? '#1a1a1a',
     };
 
-    const logoClass   = LOGO_SIZES[settings?.logo_size]    ?? 'h-10';
-    const nameClass   = NAME_SIZES[settings?.name_size]    ?? 'text-xl';
+    const logoClass = LOGO_SIZES[settings?.logo_size] ?? 'h-10';
+    const nameClass = NAME_SIZES[settings?.name_size] ?? 'text-xl';
     const sloganClass = SLOGAN_SIZES[settings?.slogan_size] ?? 'text-sm';
-    const payMethods  = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
+    const payMethods = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
 
     // ── Estado operativo del restaurante ──────────────────────────────────────
     const [closedOverlay, setClosedOverlay] = useState(false);
@@ -228,28 +229,28 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         const schedule = settings?.work_schedule;
         if (!schedule) return;
         const DAY_KEYS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'] as const;
-        const now      = new Date();
-        const dayKey   = DAY_KEYS[now.getDay()];
+        const now = new Date();
+        const dayKey = DAY_KEYS[now.getDay()];
         const todaySch = schedule[dayKey];
         if (!todaySch) return;
         if (!todaySch.activo) { setClosedOverlay(true); return; }
         const toMins = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
-        const nowMins    = now.getHours() * 60 + now.getMinutes();
-        const apertura   = toMins(todaySch.apertura);
-        const cierre     = toMins(todaySch.cierre);
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        const apertura = toMins(todaySch.apertura);
+        const cierre = toMins(todaySch.cierre);
         if (nowMins < apertura || nowMins >= cierre) setClosedOverlay(true);
     }, [settings?.work_schedule]);
 
     // ── Cart state ─────────────────────────────────────────────────────────────
-    const [cart,              setCart]              = useState<CartItem[]>([]);
-    const [screen,            setScreen]            = useState<Screen>('menu');
-    const [submitting,        setSubmitting]        = useState(false);
-    const [errors,            setErrors]            = useState<Record<string, string>>({});
-    const [success,           setSuccess]           = useState<{ name: string; total: number; paymentMethod: string } | null>(null);
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [screen, setScreen] = useState<Screen>('menu');
+    const [submitting, setSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string } | null>(null);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
     // ── Session timer (10 min) ─────────────────────────────────────────────────
-    const timerRef              = useRef<ReturnType<typeof setInterval> | null>(null);
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [timedOut, setTimedOut] = useState(false);
 
@@ -280,23 +281,23 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     }, [timeLeft]);
 
     // ── Checkout form ──────────────────────────────────────────────────────────
-    const deliveryZones    = settings?.delivery_zones     ?? [];
-    const deliveryEnabled  = settings?.delivery_enabled   ?? false;
+    const deliveryZones = settings?.delivery_zones ?? [];
+    const deliveryEnabled = settings?.delivery_enabled ?? false;
     const deliveryMinOrder = settings?.delivery_min_order ?? 0;
-    const restaurantLat    = settings?.restaurant_lat     ?? null;
-    const restaurantLng    = settings?.restaurant_lng     ?? null;
+    const restaurantLat = settings?.restaurant_lat ?? null;
+    const restaurantLng = settings?.restaurant_lng ?? null;
     const addressInputRef = useRef<HTMLInputElement>(null);
     const [warnModal, setWarnModal] = useState<{ title: string; message: string } | null>(null);
 
     const [form, setForm] = useState({
-        customer_name:     '',
-        customer_phone:    '',
-        type:              'mesa' as 'mesa' | 'domicilio',
-        table_id:          initial_table_id ? String(initial_table_id) : '',
-        delivery_address:  '',
+        customer_name: '',
+        customer_phone: '',
+        type: 'mesa' as 'mesa' | 'domicilio',
+        table_id: initial_table_id ? String(initial_table_id) : '',
+        delivery_address: '',
         delivery_zone_idx: null as number | null,
-        payment_method:    payMethods[0],
-        notes:             '',
+        payment_method: payMethods[0],
+        notes: '',
     });
 
     function setField<K extends keyof typeof form>(key: K, value: typeof form[K]) {
@@ -344,7 +345,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         ? (deliveryZones[form.delivery_zone_idx] ?? null)
         : null;
     const deliveryFee = selectedZone?.price ?? 0;
-    const grandTotal  = totalPrice + deliveryFee;
+    const grandTotal = totalPrice + deliveryFee;
 
     // ── Validaciones de domicilio ───────────────────────────────────────────────
     const belowMinOrder = form.type === 'domicilio'
@@ -353,11 +354,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         && totalPrice < deliveryMinOrder;
 
     // ── Submit ─────────────────────────────────────────────────────────────────
-    const selectedTable     = form.type === 'mesa' && form.table_id
+    const selectedTable = form.type === 'mesa' && form.table_id
         ? tables.find(t => String(t.id) === form.table_id) ?? null
         : null;
-    const tableIsOccupied   = selectedTable?.has_active_orders ?? false;
-    const canSubmit         = (!tableIsOccupied || occupiedConfirmed)
+    const tableIsOccupied = selectedTable?.has_active_orders ?? false;
+    const canSubmit = (!tableIsOccupied || occupiedConfirmed)
         && !belowMinOrder;
 
     function submitOrder() {
@@ -374,7 +375,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
             if (belowMinOrder) {
                 setWarnModal({
-                    title:   'Pedido mínimo no alcanzado',
+                    title: 'Pedido mínimo no alcanzado',
                     message: `El pedido mínimo para domicilio es ${fmt(deliveryMinOrder)}. Tu pedido actual es ${fmt(totalPrice)}. Agrega ${fmt(deliveryMinOrder - totalPrice)} más para continuar.`,
                 });
                 return;
@@ -384,22 +385,22 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         if (!canSubmit) return;
         setSubmitting(true);
         setErrors({});
-        const snapshotTotal  = grandTotal;
-        const snapshotName   = form.customer_name;
+        const snapshotTotal = grandTotal;
+        const snapshotName = form.customer_name;
         const snapshotMethod = form.payment_method;
         router.post('/carta/pedido', {
-            customer_name:     form.customer_name,
-            customer_phone:    form.customer_phone,
-            type:              form.type,
-            table_id:          form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
-            delivery_address:  form.type === 'domicilio' ? form.delivery_address || null : null,
+            customer_name: form.customer_name,
+            customer_phone: form.customer_phone,
+            type: form.type,
+            table_id: form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
+            delivery_address: form.type === 'domicilio' ? form.delivery_address || null : null,
             delivery_zone_idx: form.type === 'domicilio' ? form.delivery_zone_idx : null,
-            delivery_lat:      null,
-            delivery_lng:      null,
-            payment_method:    form.payment_method,
-            notes:             form.notes || null,
-            confirmed:         occupiedConfirmed,
-            items:             cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
+            delivery_lat: null,
+            delivery_lng: null,
+            payment_method: form.payment_method,
+            notes: form.notes || null,
+            confirmed: occupiedConfirmed,
+            items: cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
         }, {
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
             onSuccess: () => {
@@ -425,13 +426,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         { key: 'dom', label: 'Domingo' },
     ];
     const DAY_KEYS_NOW = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'] as const;
-    const todayKey     = DAY_KEYS_NOW[new Date().getDay()];
-    const schedule     = settings?.work_schedule ?? null;
+    const todayKey = DAY_KEYS_NOW[new Date().getDay()];
+    const schedule = settings?.work_schedule ?? null;
 
     function fmtHour(hhmm: string) {
         const [h, m] = hhmm.split(':').map(Number);
-        const ampm   = h >= 12 ? 'p.m.' : 'a.m.';
-        const h12    = h % 12 || 12;
+        const ampm = h >= 12 ? 'p.m.' : 'a.m.';
+        const h12 = h % 12 || 12;
         return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
     }
 
@@ -470,7 +471,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                     Horario de atención
                                 </p>
                                 {DAYS_LABELS.map(({ key, label }) => {
-                                    const day     = schedule[key];
+                                    const day = schedule[key];
                                     const isToday = key === todayKey;
                                     return (
                                         <div key={key}
@@ -623,100 +624,118 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                 )}
 
                 <main className="flex-1 min-w-0 space-y-10 pb-28">
-                {categories.length === 0 ? (
-                    <div className="text-center py-20" style={{ color: `${s.text}70` }}>
-                        <p className="text-lg font-medium">La carta está siendo preparada.</p>
-                        <p className="text-sm mt-1">Vuelve pronto.</p>
-                    </div>
-                ) : (
-                    categories.map(cat => (
-                        <section key={cat.id} id={`cat-${cat.id}`} className="scroll-mt-36 lg:scroll-mt-28">
-                            <div className="mb-5">
-                                <div className="flex items-center gap-3 mb-1">
-                                    <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
-                                    <h2 className="font-display text-lg font-bold uppercase tracking-widest px-1" style={{ color: s.primary }}>
-                                        {cat.name}
-                                    </h2>
-                                    <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
-                                </div>
-                                {cat.description && (
-                                    <p className="text-sm text-center mt-1 opacity-60" style={{ color: s.text }}>
-                                        {cat.description}
-                                    </p>
-                                )}
-                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {cat.dishes.map(dish => {
-                                    const qty = cartQty(dish.id);
-                                    return (
-                                        <div
-                                            key={dish.id}
-                                            className="flex items-start gap-4 rounded-2xl p-4 border"
-                                            style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}
-                                        >
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-semibold text-base leading-snug" style={{ color: s.text }}>
-                                                    {dish.name}
-                                                </div>
-                                                {dish.description && (
-                                                    <p className="text-sm mt-1 leading-relaxed opacity-65" style={{ color: s.text }}>
-                                                        {dish.description}
-                                                    </p>
-                                                )}
-                                                <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-                                                    <div className="font-display text-lg font-bold" style={{ color: s.primary }}>
-                                                        {fmt(dish.price)}
+                    {/* Aviso solo menú digital — visible para plan starter */}
+                    {!orders_enabled && (
+                        <div
+                            className="rounded-2xl border p-5 text-center space-y-2"
+                            style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}06` }}
+                        >
+                            <div className="text-3xl">📋</div>
+                            <p className="font-semibold text-sm" style={{ color: s.text }}>
+                                Solo menú digital
+                            </p>
+                            <p className="text-xs leading-relaxed" style={{ color: s.text, opacity: 0.65 }}>
+                                Este restaurante usa MenúGO para mostrar su carta digital.
+                                Para hacer tu pedido, comunícate directamente con el staff.
+                            </p>
+                        </div>
+                    )}
+
+                    {categories.length === 0 ? (
+                        <div className="text-center py-20" style={{ color: `${s.text}70` }}>
+                            <p className="text-lg font-medium">La carta está siendo preparada.</p>
+                            <p className="text-sm mt-1">Vuelve pronto.</p>
+                        </div>
+                    ) : (
+                        categories.map(cat => (
+                            <section key={cat.id} id={`cat-${cat.id}`} className="scroll-mt-36 lg:scroll-mt-28">
+                                <div className="mb-5">
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
+                                        <h2 className="font-display text-lg font-bold uppercase tracking-widest px-1" style={{ color: s.primary }}>
+                                            {cat.name}
+                                        </h2>
+                                        <div className="h-[1.5px] flex-1 opacity-25" style={{ backgroundColor: s.primary }} />
+                                    </div>
+                                    {cat.description && (
+                                        <p className="text-sm text-center mt-1 opacity-60" style={{ color: s.text }}>
+                                            {cat.description}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {cat.dishes.map(dish => {
+                                        const qty = cartQty(dish.id);
+                                        return (
+                                            <div
+                                                key={dish.id}
+                                                className="flex items-start gap-4 rounded-2xl p-4 border"
+                                                style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}
+                                            >
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-semibold text-base leading-snug" style={{ color: s.text }}>
+                                                        {dish.name}
                                                     </div>
-                                                    {qty === 0 ? (
-                                                        <button
-                                                            onClick={() => addItem(dish)}
-                                                            className="flex items-center gap-1.5 h-8 px-4 rounded-full text-sm font-semibold"
-                                                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
-                                                        >
-                                                            <Plus className="h-3.5 w-3.5" /> Agregar
-                                                        </button>
-                                                    ) : (
-                                                        <div
-                                                            className="flex items-center gap-1 rounded-full border"
-                                                            style={{ borderColor: `${s.primary}50` }}
-                                                        >
-                                                            <button
-                                                                onClick={() => removeItem(dish)}
-                                                                className="h-8 w-8 flex items-center justify-center rounded-full"
-                                                                style={{ color: s.primary }}
-                                                            >
-                                                                <Minus className="h-3.5 w-3.5" />
-                                                            </button>
-                                                            <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
-                                                                {qty}
-                                                            </span>
+                                                    {dish.description && (
+                                                        <p className="text-sm mt-1 leading-relaxed opacity-65" style={{ color: s.text }}>
+                                                            {dish.description}
+                                                        </p>
+                                                    )}
+                                                    <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                                                        <div className="font-display text-lg font-bold" style={{ color: s.primary }}>
+                                                            {fmt(dish.price)}
+                                                        </div>
+                                                        {orders_enabled && (qty === 0 ? (
                                                             <button
                                                                 onClick={() => addItem(dish)}
-                                                                className="h-8 w-8 flex items-center justify-center rounded-full"
-                                                                style={{ color: s.primary }}
+                                                                className="flex items-center gap-1.5 h-8 px-4 rounded-full text-sm font-semibold"
+                                                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
                                                             >
-                                                                <Plus className="h-3.5 w-3.5" />
+                                                                <Plus className="h-3.5 w-3.5" /> Agregar
                                                             </button>
-                                                        </div>
-                                                    )}
+                                                        ) : (
+                                                            <div
+                                                                className="flex items-center gap-1 rounded-full border"
+                                                                style={{ borderColor: `${s.primary}50` }}
+                                                            >
+                                                                <button
+                                                                    onClick={() => removeItem(dish)}
+                                                                    className="h-8 w-8 flex items-center justify-center rounded-full"
+                                                                    style={{ color: s.primary }}
+                                                                >
+                                                                    <Minus className="h-3.5 w-3.5" />
+                                                                </button>
+                                                                <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
+                                                                    {qty}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => addItem(dish)}
+                                                                    className="h-8 w-8 flex items-center justify-center rounded-full"
+                                                                    style={{ color: s.primary }}
+                                                                >
+                                                                    <Plus className="h-3.5 w-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
+                                                {dish.image_url && (
+                                                    <img
+                                                        src={dish.image_url}
+                                                        alt={dish.name}
+                                                        className="shrink-0 h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover"
+                                                        style={{ border: `1px solid ${s.text}20` }}
+                                                    />
+                                                )}
                                             </div>
-                                            {dish.image_url && (
-                                                <img
-                                                    src={dish.image_url}
-                                                    alt={dish.name}
-                                                    className="shrink-0 h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover"
-                                                    style={{ border: `1px solid ${s.text}20` }}
-                                                />
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    ))
-                )}
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        ))
+                    )}
                 </main>
             </div>
 
@@ -727,50 +746,50 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     const sl = settings?.social_links ?? {};
 
                     type SocialEntry = {
-                        key:    string;
-                        href:   string;
-                        icon:   React.ReactNode;
-                        label:  string;
-                        bg:     string;
-                        glow:   string;
+                        key: string;
+                        href: string;
+                        icon: React.ReactNode;
+                        label: string;
+                        bg: string;
+                        glow: string;
                     };
 
                     const links: SocialEntry[] = ([
                         sl.instagram && {
                             key: 'instagram', href: sl.instagram,
                             icon: <IgIcon />, label: 'Instagram',
-                            bg:   'linear-gradient(135deg,#833ab4 0%,#fd1d1d 50%,#fcb045 100%)',
+                            bg: 'linear-gradient(135deg,#833ab4 0%,#fd1d1d 50%,#fcb045 100%)',
                             glow: 'rgba(253,29,29,0.45)',
                         },
                         sl.facebook && {
                             key: 'facebook', href: sl.facebook,
                             icon: <FbIcon />, label: 'Facebook',
-                            bg:   '#1877F2',
+                            bg: '#1877F2',
                             glow: 'rgba(24,119,242,0.45)',
                         },
                         sl.whatsapp && {
                             key: 'whatsapp',
                             href: `https://wa.me/${sl.whatsapp.replace(/\D/g, '')}${sl.whatsapp_message ? `?text=${encodeURIComponent(sl.whatsapp_message)}` : ''}`,
                             icon: <WaIcon />, label: 'WhatsApp',
-                            bg:   'linear-gradient(135deg,#128C7E 0%,#25D366 100%)',
+                            bg: 'linear-gradient(135deg,#128C7E 0%,#25D366 100%)',
                             glow: 'rgba(37,211,102,0.45)',
                         },
                         sl.tiktok && {
                             key: 'tiktok', href: sl.tiktok,
                             icon: <TkIcon />, label: 'TikTok',
-                            bg:   'linear-gradient(135deg,#010101 0%,#2d2d2d 100%)',
+                            bg: 'linear-gradient(135deg,#010101 0%,#2d2d2d 100%)',
                             glow: 'rgba(238,29,82,0.40)',
                         },
                         sl.twitter && {
                             key: 'twitter', href: sl.twitter,
                             icon: <XIcon />, label: 'X',
-                            bg:   'linear-gradient(135deg,#1a1a1a 0%,#333 100%)',
+                            bg: 'linear-gradient(135deg,#1a1a1a 0%,#333 100%)',
                             glow: 'rgba(0,0,0,0.35)',
                         },
                         sl.youtube && {
                             key: 'youtube', href: sl.youtube,
                             icon: <YtIcon />, label: 'YouTube',
-                            bg:   'linear-gradient(135deg,#c4302b 0%,#ff0000 100%)',
+                            bg: 'linear-gradient(135deg,#c4302b 0%,#ff0000 100%)',
                             glow: 'rgba(255,0,0,0.45)',
                         },
                     ] as (SocialEntry | false)[]).filter((x): x is SocialEntry => Boolean(x));
@@ -780,7 +799,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     return (
                         <div className="pt-8 pb-5">
                             <p className="text-center text-[11px] font-semibold uppercase tracking-widest mb-5 opacity-40"
-                               style={{ color: s.text }}>
+                                style={{ color: s.text }}>
                                 Seguinos
                             </p>
                             <div className="flex justify-center gap-4 flex-wrap">
@@ -796,26 +815,26 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                         onMouseEnter={e => {
                                             const chip = e.currentTarget.querySelector<HTMLSpanElement>('.social-chip');
                                             if (chip) {
-                                                chip.style.transform  = 'translateY(-3px) scale(1.12)';
-                                                chip.style.boxShadow  = `0 8px 22px ${glow}`;
+                                                chip.style.transform = 'translateY(-3px) scale(1.12)';
+                                                chip.style.boxShadow = `0 8px 22px ${glow}`;
                                             }
                                         }}
                                         onMouseLeave={e => {
                                             const chip = e.currentTarget.querySelector<HTMLSpanElement>('.social-chip');
                                             if (chip) {
-                                                chip.style.transform  = '';
-                                                chip.style.boxShadow  = `0 4px 12px ${glow}`;
+                                                chip.style.transform = '';
+                                                chip.style.boxShadow = `0 4px 12px ${glow}`;
                                             }
                                         }}
                                     >
                                         <span
                                             className="social-chip h-13 w-13 flex items-center justify-center rounded-2xl"
                                             style={{
-                                                background:  bg,
-                                                boxShadow:   `0 4px 12px ${glow}`,
-                                                color:       '#ffffff',
-                                                transition:  'transform 0.2s ease, box-shadow 0.2s ease',
-                                                width:  '52px',
+                                                background: bg,
+                                                boxShadow: `0 4px 12px ${glow}`,
+                                                color: '#ffffff',
+                                                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                                width: '52px',
                                                 height: '52px',
                                             }}
                                         >
@@ -838,7 +857,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             </footer>
 
             {/* ── Barra flotante del carrito ── */}
-            {cart.length > 0 && screen === 'menu' && (
+            {orders_enabled && cart.length > 0 && screen === 'menu' && (
                 <div className="fixed bottom-0 left-0 right-0 z-20 p-4">
                     <div className="max-w-5xl mx-auto">
                         <button
@@ -868,84 +887,84 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     <div className="hidden lg:block absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setScreen('menu')} />
                     {/* Panel */}
                     <div className="relative flex flex-col w-full lg:w-[440px] shadow-2xl" style={{ backgroundColor: s.bg }}>
-                    <div
-                        className="flex items-center justify-between px-4 py-4 border-b shrink-0"
-                        style={{ borderColor: `${s.text}15` }}
-                    >
-                        <button onClick={() => setScreen('menu')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
-                            <ChevronLeft className="h-6 w-6" />
-                        </button>
-                        <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Tu pedido</h2>
-                        <div className="w-9" />
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-                        {cart.map(item => (
-                            <div
-                                key={item.dish.id}
-                                className="flex items-center gap-3 rounded-2xl p-3 border"
-                                style={{ borderColor: `${s.text}12`, backgroundColor: `${s.text}04` }}
-                            >
-                                {item.dish.image_url && (
-                                    <img
-                                        src={item.dish.image_url}
-                                        alt={item.dish.name}
-                                        className="h-14 w-14 rounded-xl object-cover shrink-0"
-                                    />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-sm leading-snug truncate" style={{ color: s.text }}>
-                                        {item.dish.name}
-                                    </p>
-                                    <p className="text-sm font-bold mt-0.5" style={{ color: s.primary }}>
-                                        {fmt(item.dish.price * item.quantity)}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-1 rounded-full border shrink-0" style={{ borderColor: `${s.primary}40` }}>
-                                    <button
-                                        onClick={() => removeItem(item.dish)}
-                                        className="h-7 w-7 flex items-center justify-center rounded-full"
-                                        style={{ color: s.primary }}
-                                    >
-                                        <Minus className="h-3 w-3" />
-                                    </button>
-                                    <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
-                                        {item.quantity}
-                                    </span>
-                                    <button
-                                        onClick={() => addItem(item.dish)}
-                                        className="h-7 w-7 flex items-center justify-center rounded-full"
-                                        style={{ color: s.primary }}
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                    </button>
-                                </div>
-                                <button
-                                    onClick={() => deleteItem(item.dish.id)}
-                                    className="p-1.5 rounded-xl shrink-0"
-                                    style={{ color: s.text, opacity: 0.4 }}
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="px-4 py-4 border-t space-y-3 shrink-0" style={{ borderColor: `${s.text}15` }}>
-                        <div className="flex items-center justify-between">
-                            <span className="font-medium opacity-70" style={{ color: s.text }}>Total</span>
-                            <span className="font-display text-xl font-bold" style={{ color: s.primary }}>
-                                {fmt(totalPrice)}
-                            </span>
-                        </div>
-                        <button
-                            onClick={() => setScreen('checkout')}
-                            className="w-full py-3.5 rounded-2xl text-sm font-semibold"
-                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                        <div
+                            className="flex items-center justify-between px-4 py-4 border-b shrink-0"
+                            style={{ borderColor: `${s.text}15` }}
                         >
-                            Hacer pedido
-                        </button>
-                    </div>
+                            <button onClick={() => setScreen('menu')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
+                                <ChevronLeft className="h-6 w-6" />
+                            </button>
+                            <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Tu pedido</h2>
+                            <div className="w-9" />
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                            {cart.map(item => (
+                                <div
+                                    key={item.dish.id}
+                                    className="flex items-center gap-3 rounded-2xl p-3 border"
+                                    style={{ borderColor: `${s.text}12`, backgroundColor: `${s.text}04` }}
+                                >
+                                    {item.dish.image_url && (
+                                        <img
+                                            src={item.dish.image_url}
+                                            alt={item.dish.name}
+                                            className="h-14 w-14 rounded-xl object-cover shrink-0"
+                                        />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-sm leading-snug truncate" style={{ color: s.text }}>
+                                            {item.dish.name}
+                                        </p>
+                                        <p className="text-sm font-bold mt-0.5" style={{ color: s.primary }}>
+                                            {fmt(item.dish.price * item.quantity)}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1 rounded-full border shrink-0" style={{ borderColor: `${s.primary}40` }}>
+                                        <button
+                                            onClick={() => removeItem(item.dish)}
+                                            className="h-7 w-7 flex items-center justify-center rounded-full"
+                                            style={{ color: s.primary }}
+                                        >
+                                            <Minus className="h-3 w-3" />
+                                        </button>
+                                        <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
+                                            {item.quantity}
+                                        </span>
+                                        <button
+                                            onClick={() => addItem(item.dish)}
+                                            className="h-7 w-7 flex items-center justify-center rounded-full"
+                                            style={{ color: s.primary }}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={() => deleteItem(item.dish.id)}
+                                        className="p-1.5 rounded-xl shrink-0"
+                                        style={{ color: s.text, opacity: 0.4 }}
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="px-4 py-4 border-t space-y-3 shrink-0" style={{ borderColor: `${s.text}15` }}>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium opacity-70" style={{ color: s.text }}>Total</span>
+                                <span className="font-display text-xl font-bold" style={{ color: s.primary }}>
+                                    {fmt(totalPrice)}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setScreen('checkout')}
+                                className="w-full py-3.5 rounded-2xl text-sm font-semibold"
+                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                            >
+                                Hacer pedido
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -957,364 +976,379 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     <div className="hidden lg:block absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} onClick={() => setScreen('cart')} />
                     {/* Panel */}
                     <div className="relative flex flex-col w-full lg:w-[440px] shadow-2xl" style={{ backgroundColor: s.bg }}>
-                    <div
-                        className="flex items-center justify-between px-4 py-4 border-b shrink-0"
-                        style={{ borderColor: `${s.text}15` }}
-                    >
-                        <button onClick={() => setScreen('cart')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
-                            <ChevronLeft className="h-6 w-6" />
-                        </button>
-                        <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Datos del pedido</h2>
-                        <div className="w-9" />
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
-
-                        {/* Nombre */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium" style={{ color: s.text }}>
-                                Nombre completo <span style={{ color: s.primary }}>*</span>
-                            </label>
-                            <input
-                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                style={{
-                                    borderColor:     errors.customer_name ? '#ef4444' : `${s.text}25`,
-                                    backgroundColor: `${s.text}06`,
-                                    color:           s.text,
-                                }}
-                                placeholder="Tu nombre completo"
-                                value={form.customer_name}
-                                onChange={e => setField('customer_name', e.target.value)}
-                            />
-                            {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
+                        <div
+                            className="flex items-center justify-between px-4 py-4 border-b shrink-0"
+                            style={{ borderColor: `${s.text}15` }}
+                        >
+                            <button onClick={() => setScreen('cart')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
+                                <ChevronLeft className="h-6 w-6" />
+                            </button>
+                            <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Datos del pedido</h2>
+                            <div className="w-9" />
                         </div>
 
-                        {/* Teléfono */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium" style={{ color: s.text }}>
-                                Teléfono de contacto <span style={{ color: s.primary }}>*</span>
-                            </label>
-                            <input
-                                type="tel"
-                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                style={{
-                                    borderColor:     errors.customer_phone ? '#ef4444' : `${s.text}25`,
-                                    backgroundColor: `${s.text}06`,
-                                    color:           s.text,
-                                }}
-                                placeholder="3001234567"
-                                value={form.customer_phone}
-                                onChange={e => setField('customer_phone', e.target.value)}
-                            />
-                            {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
-                        </div>
+                        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
 
-                        {/* Tipo de servicio */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de servicio</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {([
-                                    { val: 'mesa'      as const, Icon: UtensilsCrossed, label: 'Mesa' },
-                                    { val: 'domicilio' as const, Icon: Bike,            label: 'Domicilio' },
-                                ]).map(({ val, Icon, label }) => (
-                                    <button
-                                        key={val}
-                                        type="button"
-                                        onClick={() => {
-                                            setForm(f => ({
-                                                ...f,
-                                                type: val,
-                                                // Auto-seleccionar zona única al cambiar a domicilio
-                                                delivery_zone_idx: val === 'domicilio' && deliveryZones.length === 1 ? 0 : null,
-                                            }));
-                                            if (errors.type) setErrors(e => { const n = { ...e }; delete n.type; return n; });
-                                        }}
-                                        className="flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors"
-                                        style={{
-                                            borderColor:     form.type === val ? s.primary : `${s.text}20`,
-                                            backgroundColor: form.type === val ? `${s.primary}15` : 'transparent',
-                                            color:           form.type === val ? s.primary : s.text,
-                                        }}
-                                    >
-                                        <Icon className="h-4 w-4" /> {label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Mesa */}
-                        {form.type === 'mesa' && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>Mesa</label>
-                                {tables.length > 0 ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {tables.map(t => {
-                                            const isSelected = form.table_id === String(t.id);
-                                            const occupied   = t.has_active_orders;
-                                            return (
-                                                <button
-                                                    key={t.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setField('table_id', String(t.id));
-                                                        setOccupiedConfirmed(false);
-                                                    }}
-                                                    className="relative h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
-                                                    style={{
-                                                        borderColor:     isSelected ? s.primary : occupied ? '#f97316' : `${s.text}20`,
-                                                        backgroundColor: isSelected ? `${s.primary}20` : occupied ? 'rgba(249,115,22,0.08)' : 'transparent',
-                                                        color:           isSelected ? s.primary : occupied ? '#f97316' : s.text,
-                                                    }}
-                                                >
-                                                    {t.number}
-                                                    {occupied && (
-                                                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500" />
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <p className="text-xs opacity-50" style={{ color: s.text }}>
-                                        No hay mesas registradas.
-                                    </p>
-                                )}
-
-                                {/* Aviso de mesa ocupada */}
-                                {tableIsOccupied && (
-                                    <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-3 space-y-2">
-                                        <p className="text-xs font-semibold text-orange-500">
-                                            ⚠️ Esta mesa ya tiene un pedido activo.
-                                        </p>
-                                        <p className="text-xs" style={{ color: s.text, opacity: 0.7 }}>
-                                            Para agregar productos al pedido en curso, comunícate con el personal. Si deseas hacer un pedido nuevo e independiente, confírmalo.
-                                        </p>
-                                        {!occupiedConfirmed ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setOccupiedConfirmed(true)}
-                                                className="w-full rounded-lg border border-orange-500/60 py-1.5 text-xs font-semibold text-orange-500 hover:bg-orange-500/10 transition-colors"
-                                            >
-                                                Confirmar pedido nuevo e independiente
-                                            </button>
-                                        ) : (
-                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-400">
-                                                <Check className="h-3.5 w-3.5" /> Confirmado — se creará un pedido nuevo
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {errors.table_id && <p className="text-xs text-red-500">{errors.table_id}</p>}
-                            </div>
-                        )}
-
-                        {/* Dirección domicilio */}
-                        {form.type === 'domicilio' && (
+                            {/* Nombre */}
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium flex items-center gap-1.5" style={{ color: s.text }}>
-                                    <MapPin className="h-3.5 w-3.5" />
-                                    Dirección de entrega
+                                <label className="text-sm font-medium" style={{ color: s.text }}>
+                                    Nombre completo <span style={{ color: s.primary }}>*</span>
                                 </label>
-
                                 <input
-                                    ref={addressInputRef}
-                                    type="text"
                                     className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
                                     style={{
-                                        borderColor:     errors.delivery_address ? '#ef4444' : `${s.text}25`,
+                                        borderColor: errors.customer_name ? '#ef4444' : `${s.text}25`,
                                         backgroundColor: `${s.text}06`,
-                                        color:           s.text,
+                                        color: s.text,
                                     }}
-                                    placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
-                                    value={form.delivery_address}
-                                    onChange={handleAddressInput}
-                                    autoComplete="off"
+                                    placeholder="Tu nombre completo"
+                                    value={form.customer_name}
+                                    onChange={e => setField('customer_name', e.target.value)}
                                 />
-
-                                {errors.delivery_address && (
-                                    <p className="text-xs text-red-500">{errors.delivery_address}</p>
-                                )}
+                                {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
                             </div>
-                        )}
 
-                        {/* Costo de domicilio - asignado automáticamente por el sistema */}
-                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
-                            <div className="space-y-2">
-                                {selectedZone && (
-                                    <>
-                                        <label className="text-sm font-medium" style={{ color: s.text }}>
-                                            Costo máximo del domicilio
-                                        </label>
-                                        <div
-                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
+                            {/* Teléfono */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>
+                                    Teléfono de contacto <span style={{ color: s.primary }}>*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                    style={{
+                                        borderColor: errors.customer_phone ? '#ef4444' : `${s.text}25`,
+                                        backgroundColor: `${s.text}06`,
+                                        color: s.text,
+                                    }}
+                                    placeholder="3001234567"
+                                    value={form.customer_phone}
+                                    onChange={e => setField('customer_phone', e.target.value)}
+                                />
+                                {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
+                            </div>
+
+                            {/* Tipo de servicio */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de servicio</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {([
+                                        { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
+                                        { val: 'domicilio' as const, Icon: Bike, label: 'Domicilio' },
+                                    ]).map(({ val, Icon, label }) => (
+                                        <button
+                                            key={val}
+                                            type="button"
+                                            onClick={() => {
+                                                setForm(f => ({
+                                                    ...f,
+                                                    type: val,
+                                                    // Auto-seleccionar zona única al cambiar a domicilio
+                                                    delivery_zone_idx: val === 'domicilio' && deliveryZones.length === 1 ? 0 : null,
+                                                }));
+                                                if (errors.type) setErrors(e => { const n = { ...e }; delete n.type; return n; });
+                                            }}
+                                            className="flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors"
                                             style={{
-                                                borderColor:     s.primary,
-                                                backgroundColor: `${s.primary}12`,
-                                                color:           s.text,
+                                                borderColor: form.type === val ? s.primary : `${s.text}20`,
+                                                backgroundColor: form.type === val ? `${s.primary}15` : 'transparent',
+                                                color: form.type === val ? s.primary : s.text,
                                             }}
                                         >
-                                            <span className="flex items-center gap-2">
-                                                <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
-                                                <span>
-                                                    <span className="font-medium">{selectedZone.label}</span>
-                                                    {deliveryZones.length > 1 && (
-                                                        <span className="opacity-55 ml-2 text-xs">
-                                                            {selectedZone.min_km}–{selectedZone.max_km} km
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </span>
-                                            <span className="font-bold shrink-0" style={{ color: s.primary }}>
-                                                {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Pedido mínimo */}
-                                {deliveryMinOrder > 0 && (
-                                    <div
-                                        className="rounded-xl px-3 py-2 text-xs font-medium"
-                                        style={{
-                                            backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
-                                            color:           belowMinOrder ? '#ef4444' : s.text,
-                                            opacity:         belowMinOrder ? 1 : 0.65,
-                                            border:          belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
-                                        }}
-                                    >
-                                        {belowMinOrder
-                                            ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
-                                            : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
-                                        }
-                                    </div>
-                                )}
-
-                                {/* Error backend de pedido mínimo */}
-                                {errors.delivery_min_order && (
-                                    <p className="text-xs text-red-500">{errors.delivery_min_order}</p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Pedido mínimo (cuando no hay zonas pero sí hay mínimo) */}
-                        {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length === 0 && deliveryMinOrder > 0 && (
-                            <div
-                                className="rounded-xl px-3 py-2 text-xs font-medium"
-                                style={{
-                                    backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
-                                    color:           belowMinOrder ? '#ef4444' : s.text,
-                                    opacity:         belowMinOrder ? 1 : 0.65,
-                                    border:          belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
-                                }}
-                            >
-                                {belowMinOrder
-                                    ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
-                                    : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
-                                }
-                            </div>
-                        )}
-
-                        {/* Método de pago */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium" style={{ color: s.text }}>Método de pago</label>
-                            <div className="flex flex-wrap gap-2">
-                                {payMethods.map(method => (
-                                    <button
-                                        key={method}
-                                        type="button"
-                                        onClick={() => setField('payment_method', method)}
-                                        className="h-9 px-4 rounded-full border text-sm font-medium transition-colors"
-                                        style={{
-                                            borderColor:     form.payment_method === method ? s.primary : `${s.text}20`,
-                                            backgroundColor: form.payment_method === method ? `${s.primary}15` : 'transparent',
-                                            color:           form.payment_method === method ? s.primary : s.text,
-                                        }}
-                                    >
-                                        {PAYMENT_LABELS[method] ?? method}
-                                    </button>
-                                ))}
-                            </div>
-                            {errors.payment_method && <p className="text-xs text-red-500">{errors.payment_method}</p>}
-                        </div>
-
-                        {/* Notas */}
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-medium opacity-70" style={{ color: s.text }}>
-                                Notas <span className="font-normal opacity-60">(opcional)</span>
-                            </label>
-                            <textarea
-                                rows={2}
-                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none resize-none"
-                                style={{
-                                    borderColor:     `${s.text}20`,
-                                    backgroundColor: `${s.text}06`,
-                                    color:           s.text,
-                                }}
-                                placeholder="Alergias, instrucciones especiales..."
-                                value={form.notes}
-                                onChange={e => setField('notes', e.target.value)}
-                            />
-                        </div>
-
-                        {/* Resumen */}
-                        <div
-                            className="rounded-2xl border p-4 space-y-2"
-                            style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}
-                        >
-                            <p className="text-xs font-semibold uppercase tracking-wide opacity-55" style={{ color: s.text }}>
-                                Resumen
-                            </p>
-                            {cart.map(item => (
-                                <div key={item.dish.id} className="flex items-center justify-between text-sm gap-2">
-                                    <span className="truncate" style={{ color: s.text }}>
-                                        {item.quantity}× {item.dish.name}
-                                    </span>
-                                    <span className="font-semibold shrink-0" style={{ color: s.text }}>
-                                        {fmt(item.dish.price * item.quantity)}
-                                    </span>
+                                            <Icon className="h-4 w-4" /> {label}
+                                        </button>
+                                    ))}
                                 </div>
-                            ))}
-                            {selectedZone && (
-                                <div className="flex items-center justify-between text-sm gap-2">
-                                    <span className="opacity-70" style={{ color: s.text }}>
-                                        + Domicilio ({selectedZone.label})
-                                    </span>
-                                    <span className="font-semibold shrink-0" style={{ color: s.text }}>
-                                        {deliveryFee === 0 ? 'Gratis' : fmt(deliveryFee)}
-                                    </span>
+                            </div>
+
+                            {/* Mesa */}
+                            {form.type === 'mesa' && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium" style={{ color: s.text }}>Mesa</label>
+                                    {tables.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {tables.map(t => {
+                                                const isSelected = form.table_id === String(t.id);
+                                                const occupied = t.has_active_orders;
+                                                return (
+                                                    <button
+                                                        key={t.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setField('table_id', String(t.id));
+                                                            setOccupiedConfirmed(false);
+                                                        }}
+                                                        className="relative h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
+                                                        style={{
+                                                            borderColor: isSelected ? s.primary : occupied ? '#f97316' : `${s.text}20`,
+                                                            backgroundColor: isSelected ? `${s.primary}20` : occupied ? 'rgba(249,115,22,0.08)' : 'transparent',
+                                                            color: isSelected ? s.primary : occupied ? '#f97316' : s.text,
+                                                        }}
+                                                    >
+                                                        {t.number}
+                                                        {occupied && (
+                                                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500" />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs opacity-50" style={{ color: s.text }}>
+                                            No hay mesas registradas.
+                                        </p>
+                                    )}
+
+                                    {/* Aviso de mesa ocupada */}
+                                    {tableIsOccupied && (
+                                        <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-3 space-y-2">
+                                            <p className="text-xs font-semibold text-orange-500">
+                                                ⚠️ Esta mesa ya tiene un pedido activo.
+                                            </p>
+                                            <p className="text-xs" style={{ color: s.text, opacity: 0.7 }}>
+                                                Para agregar productos al pedido en curso, comunícate con el personal. Si deseas hacer un pedido nuevo e independiente, confírmalo.
+                                            </p>
+                                            {!occupiedConfirmed ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOccupiedConfirmed(true)}
+                                                    className="w-full rounded-lg border border-orange-500/60 py-1.5 text-xs font-semibold text-orange-500 hover:bg-orange-500/10 transition-colors"
+                                                >
+                                                    Confirmar pedido nuevo e independiente
+                                                </button>
+                                            ) : (
+                                                <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-400">
+                                                    <Check className="h-3.5 w-3.5" /> Confirmado — se creará un pedido nuevo
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {errors.table_id && <p className="text-xs text-red-500">{errors.table_id}</p>}
                                 </div>
                             )}
-                            <div
-                                className="border-t pt-2 flex items-center justify-between"
-                                style={{ borderColor: `${s.text}15` }}
-                            >
-                                <span className="font-semibold" style={{ color: s.text }}>Total</span>
-                                <span className="font-display font-bold text-base" style={{ color: s.primary }}>
-                                    {fmt(grandTotal)}
-                                </span>
+
+                            {/* Dirección domicilio */}
+                            {form.type === 'domicilio' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium flex items-center gap-1.5" style={{ color: s.text }}>
+                                        <MapPin className="h-3.5 w-3.5" />
+                                        Dirección de entrega
+                                    </label>
+
+                                    <input
+                                        ref={addressInputRef}
+                                        type="text"
+                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                        style={{
+                                            borderColor: errors.delivery_address ? '#ef4444' : `${s.text}25`,
+                                            backgroundColor: `${s.text}06`,
+                                            color: s.text,
+                                        }}
+                                        placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
+                                        value={form.delivery_address}
+                                        onChange={handleAddressInput}
+                                        autoComplete="off"
+                                    />
+
+                                    {errors.delivery_address && (
+                                        <p className="text-xs text-red-500">{errors.delivery_address}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Costo de domicilio - asignado automáticamente por el sistema */}
+                            {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
+                                <div className="space-y-2">
+                                    {selectedZone && (
+                                        <>
+                                            <label className="text-sm font-medium" style={{ color: s.text }}>
+                                                Costo máximo del domicilio
+                                            </label>
+                                            <div
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
+                                                style={{
+                                                    borderColor: s.primary,
+                                                    backgroundColor: `${s.primary}12`,
+                                                    color: s.text,
+                                                }}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
+                                                    <span>
+                                                        <span className="font-medium">{selectedZone.label}</span>
+                                                        {deliveryZones.length > 1 && (
+                                                            <span className="opacity-55 ml-2 text-xs">
+                                                                {selectedZone.min_km}–{selectedZone.max_km} km
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </span>
+                                                <span className="font-bold shrink-0" style={{ color: s.primary }}>
+                                                    {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Pedido mínimo */}
+                                    {deliveryMinOrder > 0 && (
+                                        <div
+                                            className="rounded-xl px-3 py-2 text-xs font-medium"
+                                            style={{
+                                                backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
+                                                color: belowMinOrder ? '#ef4444' : s.text,
+                                                opacity: belowMinOrder ? 1 : 0.65,
+                                                border: belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                                            }}
+                                        >
+                                            {belowMinOrder
+                                                ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
+                                                : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
+                                            }
+                                        </div>
+                                    )}
+
+                                    {/* Error backend de pedido mínimo */}
+                                    {errors.delivery_min_order && (
+                                        <p className="text-xs text-red-500">{errors.delivery_min_order}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Pedido mínimo (cuando no hay zonas pero sí hay mínimo) */}
+                            {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length === 0 && deliveryMinOrder > 0 && (
+                                <div
+                                    className="rounded-xl px-3 py-2 text-xs font-medium"
+                                    style={{
+                                        backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
+                                        color: belowMinOrder ? '#ef4444' : s.text,
+                                        opacity: belowMinOrder ? 1 : 0.65,
+                                        border: belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                                    }}
+                                >
+                                    {belowMinOrder
+                                        ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
+                                        : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
+                                    }
+                                </div>
+                            )}
+
+                            {/* Método de pago */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>Método de pago</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {payMethods.map(method => (
+                                        <button
+                                            key={method}
+                                            type="button"
+                                            onClick={() => setField('payment_method', method)}
+                                            className="h-9 px-4 rounded-full border text-sm font-medium transition-colors"
+                                            style={{
+                                                borderColor: form.payment_method === method ? s.primary : `${s.text}20`,
+                                                backgroundColor: form.payment_method === method ? `${s.primary}15` : 'transparent',
+                                                color: form.payment_method === method ? s.primary : s.text,
+                                            }}
+                                        >
+                                            {PAYMENT_LABELS[method] ?? method}
+                                        </button>
+                                    ))}
+                                </div>
+                                {errors.payment_method && <p className="text-xs text-red-500">{errors.payment_method}</p>}
                             </div>
+
+                            {/* Notas */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium opacity-70" style={{ color: s.text }}>
+                                    Notas <span className="font-normal opacity-60">(opcional)</span>
+                                </label>
+                                <textarea
+                                    rows={2}
+                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none resize-none"
+                                    style={{
+                                        borderColor: `${s.text}20`,
+                                        backgroundColor: `${s.text}06`,
+                                        color: s.text,
+                                    }}
+                                    placeholder="Alergias, instrucciones especiales..."
+                                    value={form.notes}
+                                    onChange={e => setField('notes', e.target.value)}
+                                />
+                            </div>
+
+                            {/* Resumen */}
+                            <div
+                                className="rounded-2xl border p-4 space-y-2"
+                                style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}
+                            >
+                                <p className="text-xs font-semibold uppercase tracking-wide opacity-55" style={{ color: s.text }}>
+                                    Resumen
+                                </p>
+                                {cart.map(item => (
+                                    <div key={item.dish.id} className="flex items-center justify-between text-sm gap-2">
+                                        <span className="truncate" style={{ color: s.text }}>
+                                            {item.quantity}× {item.dish.name}
+                                        </span>
+                                        <span className="font-semibold shrink-0" style={{ color: s.text }}>
+                                            {fmt(item.dish.price * item.quantity)}
+                                        </span>
+                                    </div>
+                                ))}
+                                {selectedZone && (
+                                    <div className="flex items-center justify-between text-sm gap-2">
+                                        <span className="opacity-70" style={{ color: s.text }}>
+                                            + Domicilio ({selectedZone.label})
+                                        </span>
+                                        <span className="font-semibold shrink-0" style={{ color: s.text }}>
+                                            {deliveryFee === 0 ? 'Gratis' : fmt(deliveryFee)}
+                                        </span>
+                                    </div>
+                                )}
+                                <div
+                                    className="border-t pt-2 flex items-center justify-between"
+                                    style={{ borderColor: `${s.text}15` }}
+                                >
+                                    <span className="font-semibold" style={{ color: s.text }}>Total</span>
+                                    <span className="font-display font-bold text-base" style={{ color: s.primary }}>
+                                        {fmt(grandTotal)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {errors.items && (
+                                <p className="text-xs text-red-500 text-center">{errors.items}</p>
+                            )}
                         </div>
 
-                        {errors.items && (
-                            <p className="text-xs text-red-500 text-center">{errors.items}</p>
-                        )}
-                    </div>
-
-                    <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: `${s.text}15` }}>
-                        <button
-                            onClick={submitOrder}
-                            disabled={submitting}
-                            className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
-                        >
-                            {submitting
-                                ? 'Enviando pedido...'
-                                : tableIsOccupied && !occupiedConfirmed
-                                ? 'Confirma el pedido nuevo arriba ↑'
-                                : `Confirmar pedido · ${fmt(grandTotal)}`}
-                        </button>
-                    </div>
+                        <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: `${s.text}15` }}>
+                            {!orders_enabled && (
+                                <div
+                                    className="rounded-2xl border p-5 text-center space-y-2 mb-3"
+                                    style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}06` }}
+                                >
+                                    <div className="text-3xl">📋</div>
+                                    <p className="font-semibold text-sm" style={{ color: s.text }}>
+                                        Solo menú digital
+                                    </p>
+                                    <p className="text-xs leading-relaxed" style={{ color: s.text, opacity: 0.65 }}>
+                                        Este restaurante usa MenúGO para mostrar su carta digital.
+                                        Para hacer tu pedido, comunícate directamente con el staff.
+                                    </p>
+                                </div>
+                            )}
+                            <button
+                                onClick={submitOrder}
+                                disabled={!orders_enabled || submitting}
+                                className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                            >
+                                {submitting
+                                    ? 'Enviando pedido...'
+                                    : tableIsOccupied && !occupiedConfirmed
+                                        ? 'Confirma el pedido nuevo arriba ↑'
+                                        : `Confirmar pedido · ${fmt(grandTotal)}`}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1441,9 +1475,9 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         {/* Bloque de pago Nequi */}
                         {success.paymentMethod === 'nequi' && (() => {
-                            const detail   = settings.payment_details?.nequi;
-                            const phone    = detail?.numero?.replace(/\D/g, '');
-                            const amount   = Math.round(success.total);
+                            const detail = settings.payment_details?.nequi;
+                            const phone = detail?.numero?.replace(/\D/g, '');
+                            const amount = Math.round(success.total);
                             const nequiUrl = detail?.link
                                 ? detail.link
                                 : phone
@@ -1497,8 +1531,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         {/* Bloque de pago Daviplata */}
                         {success.paymentMethod === 'daviplata' && (() => {
-                            const detail      = settings.payment_details?.daviplata;
-                            const phone       = detail?.numero?.replace(/\D/g, '');
+                            const detail = settings.payment_details?.daviplata;
+                            const phone = detail?.numero?.replace(/\D/g, '');
                             const daviplataUrl = detail?.link ?? null;
                             return (
                                 <div
@@ -1551,8 +1585,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             className="w-full py-3 rounded-2xl text-sm font-semibold"
                             style={{
                                 backgroundColor: ['nequi', 'daviplata'].includes(success.paymentMethod) ? 'transparent' : s.primary,
-                                color:           ['nequi', 'daviplata'].includes(success.paymentMethod) ? s.primary : '#ffffff',
-                                border:          ['nequi', 'daviplata'].includes(success.paymentMethod) ? `1.5px solid ${s.primary}` : 'none',
+                                color: ['nequi', 'daviplata'].includes(success.paymentMethod) ? s.primary : '#ffffff',
+                                border: ['nequi', 'daviplata'].includes(success.paymentMethod) ? `1.5px solid ${s.primary}` : 'none',
                             }}
                         >
                             Ver la carta

@@ -1,17 +1,33 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Check, Sparkles, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Check, X, Sparkles, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoginSearch } from '@/components/LoginSearch';
 
 const plans = [
     {
-        key: 'mensual',
-        name: 'Mensual',
-        price: '$30.000',
+        key: 'starter',
+        name: 'Starter',
+        price: '$0',
+        period: 'COP · para siempre',
+        desc: 'Digitaliza tu menú sin costo. Sin tarjeta.',
+        badge: 'Gratis',
+        features: ['Menú QR digital', 'Hasta 30 platos', '1 código QR', 'Soporte por email'],
+        locked: ['Pedidos desde mesa', 'Analytics', 'Delivery propio'],
+        cta: 'Empezar gratis',
+        variant: 'outline' as const,
+        popular: false,
+        savings: null,
+    },
+    {
+        key: 'basico',
+        name: 'Básico',
+        price: '$34.900',
         period: 'COP / mes',
-        desc: 'Pago mes a mes, sin ataduras.',
-        features: ['Locales ilimitados', 'Productos ilimitados', 'Menu QR', 'Pedidos y mesas', 'KDS de cocina', 'Inventario y reportes', 'Soporte estándar'],
-        cta: 'Elegir Mensual',
+        desc: 'Pago mes a mes. Sin ataduras.',
+        badge: null,
+        features: ['Menú ilimitado', 'QR ilimitados', 'Pedidos desde mesa', 'Notif. WhatsApp', 'KDS cocina', 'Soporte por chat'],
+        locked: ['Analytics avanzado', 'Delivery propio'],
+        cta: 'Elegir Básico',
         variant: 'outline' as const,
         popular: false,
         savings: null,
@@ -19,38 +35,44 @@ const plans = [
     {
         key: 'trimestral',
         name: 'Trimestral',
-        price: '$80.000',
+        price: '$83.900',
         period: 'COP / 3 meses',
-        desc: 'Ideal para estabilizar la operación.',
-        features: ['Todo lo del mensual', 'Ahorro del 11%', 'Soporte prioritario'],
+        desc: 'Estabiliza tu operación con más ahorro.',
+        badge: 'Ahorras 20%',
+        features: ['Todo lo de Básico', 'Analytics de ventas', 'Reportes avanzados', 'Horas pico', 'Soporte por chat'],
+        locked: ['Delivery propio'],
         cta: 'Elegir Trimestral',
         variant: 'outline' as const,
         popular: false,
-        savings: 'Ahorras 11%',
+        savings: 'Ahorras 20%',
     },
     {
         key: 'semestral',
-        name: 'Semestral',
-        price: '$220.000',
+        name: 'Pro',
+        price: '$146.900',
         period: 'COP / 6 meses',
-        desc: 'Nuestra opción más equilibrada y popular.',
-        features: ['Todo lo del mensual', 'Ahorro del 39%', 'Soporte prioritario', 'Asesoría inicial'],
-        cta: 'Elegir Semestral',
+        desc: 'La opción más equilibrada y popular.',
+        badge: 'Ahorras 30%',
+        features: ['Todo lo de Trimestral', 'Soporte prioritario', 'Asesoría inicial', 'Acceso anticipado a nuevas funciones'],
+        locked: ['Delivery propio'],
+        cta: 'Elegir Pro',
         variant: 'hero' as const,
         popular: true,
-        savings: 'Ahorras 39%',
+        savings: 'Ahorras 30%',
     },
     {
         key: 'anual',
-        name: 'Anual',
-        price: '$350.000',
+        name: 'Escala',
+        price: '$230.900',
         period: 'COP / año',
-        desc: 'Maximiza tu rentabilidad todo el año.',
-        features: ['Todo lo del mensual', 'Ahorro del 51%', 'Soporte VIP 24/7', 'Asesoría 1:1', 'Nuevas funciones anticipadas'],
-        cta: 'Elegir Anual',
+        desc: 'Máxima rentabilidad. Delivery sin comisión.',
+        badge: 'Ahorras 45%',
+        features: ['Todo lo de Pro', 'Delivery propio', 'Sin comisión', 'Página del restaurante', 'Integración WhatsApp delivery', 'Soporte dedicado'],
+        locked: [],
+        cta: 'Elegir Escala',
         variant: 'outline' as const,
         popular: false,
-        savings: 'Ahorras 51%',
+        savings: 'Ahorras 45%',
     },
 ];
 
@@ -104,47 +126,56 @@ export default function Pricing() {
                     </h1>
                     <p className="mt-4 text-muted-foreground max-w-xl mx-auto">Acceso completo a todas las funciones. Sin comisiones ocultas.</p>
 
-                    <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4 text-left">
+                    <div className="mt-16 grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 text-left">
                         {plans.map(p => (
-                            <div key={p.name}
-                                className={`relative flex flex-col rounded-3xl border p-8 ${p.popular ? 'border-primary bg-card shadow-glow scale-[1.02]' : 'border-border bg-card hover:border-primary/50 transition-colors'}`}>
+                            <div key={p.key}
+                                className={`relative flex flex-col rounded-3xl border p-5 ${p.popular ? 'border-primary bg-card shadow-glow scale-[1.02]' : 'border-border bg-card hover:border-primary/50 transition-colors'}`}>
                                 {p.popular && (
-                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-warm px-3 py-1 text-xs font-semibold text-primary-foreground">
+                                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-warm px-3 py-1 text-xs font-semibold text-primary-foreground whitespace-nowrap">
                                         Más popular
                                     </div>
                                 )}
-                                <h3 className="font-display text-2xl font-bold">{p.name}</h3>
-                                <div className="mt-4 flex items-baseline gap-1">
-                                    <span className="font-display text-4xl font-bold tracking-tight">{p.price}</span>
+                                <h3 className="font-display text-xl font-bold">{p.name}</h3>
+                                <div className="mt-3 flex items-baseline gap-1">
+                                    <span className="font-display text-3xl font-bold tracking-tight">{p.price}</span>
                                 </div>
-                                <span className="text-sm font-medium text-muted-foreground mt-1">{p.period}</span>
+                                <span className="text-xs font-medium text-muted-foreground mt-0.5">{p.period}</span>
 
-                                {p.savings && (
+                                {p.badge && (
                                     <div className="mt-2">
                                         <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent border border-accent/20">
-                                            {p.savings}
+                                            {p.badge}
                                         </span>
                                     </div>
                                 )}
 
-                                <p className="mt-4 text-sm text-muted-foreground leading-relaxed flex-grow">{p.desc}</p>
+                                <p className="mt-3 text-xs text-muted-foreground leading-relaxed grow">{p.desc}</p>
 
                                 {/* ── Redirecciona a /register?plan=KEY ── */}
-                                <button
-                                    type="button"
+                                <Button
+                                    variant={p.variant}
+                                    size="sm"
+                                    className="mt-5 w-full group"
                                     onClick={() => selectPlan(p.key)}
-                                    className="mt-6 w-full"
                                 >
-                                    <Button variant={p.variant} size="lg" className="w-full pointer-events-none group">
-                                        {p.cta}
-                                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                                    </Button>
-                                </button>
+                                    {p.cta}
+                                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                                </Button>
+                                {p.key !== 'starter' && (
+                                    <p className="text-[10px] text-center text-muted-foreground mt-1.5">
+                                        🎁 15 días gratis · Sin tarjeta
+                                    </p>
+                                )}
 
-                                <ul className="mt-8 space-y-3">
+                                <ul className="mt-5 space-y-2">
                                     {p.features.map(f => (
-                                        <li key={f} className="flex items-start gap-2 text-sm text-foreground/90">
-                                            <Check className="h-4 w-4 text-accent shrink-0 mt-0.5" /> {f}
+                                        <li key={f} className="flex items-start gap-2 text-xs text-foreground/90">
+                                            <Check className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" /> {f}
+                                        </li>
+                                    ))}
+                                    {p.locked.map(f => (
+                                        <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground/50 line-through">
+                                            <X className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {f}
                                         </li>
                                     ))}
                                 </ul>

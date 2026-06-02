@@ -26,19 +26,28 @@ class AuthController extends Controller
                 return back()->withErrors(['email' => 'Las credenciales no son correctas.'])->onlyInput('email');
             }
 
-            // Bloquear acceso si el tenant está pendiente de activación de pago
-            if (tenant() && !(tenant()->active ?? true)) {
-                Auth::logout();
-                return back()->withErrors([
-                    'email' => 'Tu cuenta está pendiente de activación. Por favor espera la confirmación del pago.',
-                ])->onlyInput('email');
+            // Bloquear acceso si el tenant está pendiente de activación o vencido
+            $paymentStatus = tenant()?->payment_status ?? 'paid';
+
+            if (in_array($paymentStatus, ['overdue', 'cancelled', 'pending_payment', 'pending_review'])) {
+                Auth::logout(); // no dejar sesión activa si el acceso está bloqueado
+
+                $mensaje = match ($paymentStatus) {
+                    'overdue'   => 'Tu suscripción ha vencido. Renueva tu plan para recuperar el acceso.',
+                    'cancelled' => 'Tu cuenta ha sido cancelada. Contacta a soporte para más información.',
+                    default     => 'Tu cuenta está pendiente de activación. Por favor espera la confirmación del pago.',
+                };
+
+                return back()
+                    ->withErrors(['email' => $mensaje])
+                    ->with('tenant_status', $paymentStatus)
+                    ->onlyInput('email');
             }
 
-            $user = Auth::user();
-
             /** @var \App\Models\User $user */
+            $user     = Auth::user();
             $isActive = $user->active ?? true;
-            
+
             if (!$isActive) {
                 Auth::logout();
                 return back()->withErrors(['email' => 'Tu cuenta está desactivada. Contacta al administrador.'])->onlyInput('email');
@@ -110,6 +119,12 @@ class AuthController extends Controller
         // Redirigir siempre a la página de bienvenida del dominio central
         $welcomeUrl = rtrim((string) config('app.url', ''), '/') . '/';
 
+        // Para requests AJAX (fetch) — devolver JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['redirect' => $welcomeUrl]);
+        }
+
+        // Para requests Inertia normales
         if ($request->hasHeader('X-Inertia')) {
             return response('', 409)->header('X-Inertia-Location', $welcomeUrl);
         }

@@ -1,0 +1,29 @@
+# ── MenúGO — Queue Worker (systemd) ──────────────────────────────────────────
+# Archivo: /etc/systemd/system/menugo-worker.service
+#
+# Uso:
+#   cp deploy/menugo-worker.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable menugo-worker
+#   systemctl start menugo-worker
+#   systemctl status menugo-worker
+
+[Unit]
+Description=MenúGO Queue Worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/menugo
+ExecStart=/usr/bin/php artisan queue:work database \
+    --sleep=3 \
+    --tries=3 \
+    --max-time=3600
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

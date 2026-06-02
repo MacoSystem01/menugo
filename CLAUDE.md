@@ -4,4 +4,4 @@ Antes de aplicar cambios, se debe de validar mentalmente al menos 3 casos de uso
 Para terminar función, realiza un ultimo chequeo ejecutando el por completo el "Archivo CLAUDE.md" hasta resolver todo.
 "
 Se debe de realizar lo siguiente, teniendo en cuenta lo comentado anteriormente:
-* En "/tables", cuando se pulsa el botón de "Nueva mesa" para crear una Mesa, esta debe de ir acompañada con un botón que emita el código QR de dicha mesa, así cuando el cliente escanee este código para realizar el pedido, se capture el número de la mesa de manera automatica y se vea reflejado en el campo "Mesa" de "Datos del pedido"
+* 

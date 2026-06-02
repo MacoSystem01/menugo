@@ -61,6 +61,11 @@ class ConfiguracionController extends Controller
 
     public function domicilio()
     {
+        if (!\App\Services\PlanService::can('delivery')) {
+            return redirect('/dashboard')
+                ->with('warning', 'La configuración de domicilio requiere el plan Escala (anual).');
+        }
+
         $settings = $this->settings();
 
         return Inertia::render('Configuraciones/Domicilio', [
@@ -72,6 +77,11 @@ class ConfiguracionController extends Controller
 
     public function guardarDomicilio(Request $request)
     {
+        if (!\App\Services\PlanService::can('delivery')) {
+            return redirect('/dashboard')
+                ->with('warning', 'La configuración de domicilio requiere el plan Escala (anual).');
+        }
+
         $request->validate([
             'delivery_enabled'           => 'boolean',
             'delivery_min_order'         => 'nullable|integer|min:0',
@@ -179,5 +189,65 @@ class ConfiguracionController extends Controller
         AuditLog::registrar('eod', 'Sistema', null, "Cierre de jornada ejecutado: {$activeOrders->count()} pedido(s) archivados, {$tablesFreed} mesa(s) liberadas");
 
         return back()->with('success', "Jornada cerrada. {$activeOrders->count()} pedido(s) archivados y {$tablesFreed} mesa(s) liberadas.");
+    }
+
+    // ── Mi Plan ───────────────────────────────────────────────────────────────
+    public function miPlan()
+    {
+        $plan      = \App\Services\PlanService::currentPlan();
+        $daysLeft  = \App\Services\PlanService::daysUntilExpiry();
+        $expiresAt = tenant()?->expires_at;
+
+        $features = [
+            'starter' => [
+                'name'     => 'Starter',
+                'price'    => '$0',
+                'period'   => 'gratis para siempre',
+                'color'    => 'emerald',
+                'includes' => ['Menú digital QR', 'Hasta 30 platos', '1 código QR', 'Soporte por email'],
+                'excludes' => ['Pedidos desde mesa', 'Notificaciones WhatsApp', 'Analytics', 'Delivery propio'],
+            ],
+            'basico' => [
+                'name'     => 'Básico',
+                'price'    => '$34.900',
+                'period'   => '/mes · COP',
+                'color'    => 'zinc',
+                'includes' => ['Menú ilimitado', 'QR ilimitados', 'Pedidos desde mesa', 'Notif. WhatsApp', 'KDS cocina', 'Soporte por chat'],
+                'excludes' => ['Analytics avanzado', 'Delivery propio'],
+            ],
+            'trimestral' => [
+                'name'     => 'Trimestral',
+                'price'    => '$83.900',
+                'period'   => '/3 meses · COP',
+                'color'    => 'blue',
+                'includes' => ['Todo lo de Básico', 'Analytics de ventas', 'Reportes avanzados', 'Horas pico', 'Soporte prioritario'],
+                'excludes' => ['Delivery propio'],
+            ],
+            'semestral' => [
+                'name'     => 'Pro',
+                'price'    => '$146.900',
+                'period'   => '/6 meses · COP',
+                'color'    => 'purple',
+                'includes' => ['Todo lo de Trimestral', 'Soporte prioritario', 'Asesoría inicial', 'Acceso anticipado'],
+                'excludes' => ['Delivery propio'],
+            ],
+            'anual' => [
+                'name'     => 'Escala',
+                'price'    => '$230.900',
+                'period'   => '/año · COP',
+                'color'    => 'amber',
+                'includes' => ['Todo lo de Pro', 'Delivery propio', 'Sin comisión', 'Página del restaurante', 'Soporte dedicado'],
+                'excludes' => [],
+            ],
+        ];
+
+        return Inertia::render('Configuraciones/MiPlan', [
+            'current_plan'    => $plan,
+            'days_left'       => $daysLeft,
+            'expires_at'      => $expiresAt,
+            'payment_status'  => tenant()?->payment_status ?? 'paid',
+            'features'        => $features,
+            'current_feature' => $features[$plan] ?? $features['starter'],
+        ]);
     }
 }

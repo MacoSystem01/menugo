@@ -29,7 +29,7 @@ const COUNTRY_CODES = [
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type EstabType = 'restaurante' | 'puesto' | '';
-type PlanKey   = 'mensual' | 'trimestral' | 'semestral' | 'anual' | '';
+type PlanKey   = 'starter' | 'basico' | 'trimestral' | 'semestral' | 'anual' | '';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 const ESTAB_TYPES = [
@@ -38,10 +38,11 @@ const ESTAB_TYPES = [
 ];
 
 const PLANS = [
-    { key: 'mensual'    as const, emoji: '💰', name: 'MENSUAL',    price: '$30.000',  period: '/mes',     savings: null,          popular: false },
-    { key: 'trimestral' as const, emoji: '📦', name: 'TRIMESTRAL', price: '$80.000',  period: '/3 meses', savings: 'Ahorras 11%', popular: false },
-    { key: 'semestral'  as const, emoji: '⭐', name: 'SEMESTRAL',  price: '$220.000', period: '/6 meses', savings: 'Ahorras 39%', popular: true  },
-    { key: 'anual'      as const, emoji: '🏆', name: 'ANUAL',      price: '$350.000', period: '/año',     savings: 'Ahorras 51%', popular: false },
+    { key: 'starter'    as const, emoji: '🎁', name: 'STARTER',    price: '$0',        period: 'gratis',   savings: null,          popular: false },
+    { key: 'basico'     as const, emoji: '💳', name: 'BÁSICO',     price: '$34.900',   period: '/mes',     savings: null,          popular: false },
+    { key: 'trimestral' as const, emoji: '📦', name: 'TRIMESTRAL', price: '$83.900',   period: '/3 meses', savings: 'Ahorras 20%', popular: false },
+    { key: 'semestral'  as const, emoji: '⭐', name: 'PRO',        price: '$146.900',  period: '/6 meses', savings: 'Ahorras 30%', popular: true  },
+    { key: 'anual'      as const, emoji: '🏆', name: 'ESCALA',     price: '$230.900',  period: '/año',     savings: 'Ahorras 45%', popular: false },
 ];
 
 const STEPS = ['Negocio', 'Plan', 'Establecimiento', 'Tu cuenta'];
@@ -155,47 +156,18 @@ export default function Register() {
 
     const submit: FormEventHandler = (e) => { e.preventDefault(); };
 
-    const openPaymentModal = () => { if (ok[4]) setShowPaymentModal(true); };
+    const openPaymentModal = () => {
+        if (!ok[4]) return;
+        if (data.plan === 'starter') {
+            post('/register'); // plan gratuito: submit directo sin modal de pago
+        } else {
+            setShowPaymentModal(true);
+        }
+    };
 
     const confirmAndSubmit = () => {
         setShowPaymentModal(false);
         post('/register');
-    };
-
-    // ── Nominatim para dirección del establecimiento ──────────────────────────
-    const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
-    const [showAddrSugg,    setShowAddrSugg]    = useState(false);
-    const [addrLoading,     setAddrLoading]     = useState(false);
-    const [addrValidated,   setAddrValidated]   = useState(false);
-    const addrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const onAddressChange = (val: string) => {
-        setData('restaurant_address', val);
-        setData('restaurant_lat', null);
-        setData('restaurant_lng', null);
-        setAddrValidated(false);
-        if (addrTimeoutRef.current) clearTimeout(addrTimeoutRef.current);
-        if (val.trim().length < 3) { setAddrSuggestions([]); setShowAddrSugg(false); return; }
-        addrTimeoutRef.current = setTimeout(async () => {
-            setAddrLoading(true);
-            try {
-                const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4`, { headers: { 'Accept-Language': 'es' } });
-                const json = await res.json();
-                setAddrSuggestions(json);
-                setShowAddrSugg(json.length > 0);
-            } catch { /* ignorar */ } finally {
-                setAddrLoading(false);
-            }
-        }, 400);
-    };
-
-    const onAddrSelect = (s: { display_name: string; lat: string; lon: string }) => {
-        setData('restaurant_address', s.display_name);
-        setData('restaurant_lat', parseFloat(s.lat));
-        setData('restaurant_lng', parseFloat(s.lon));
-        setAddrValidated(true);
-        setShowAddrSugg(false);
-        setAddrSuggestions([]);
     };
 
     const selectedType = ESTAB_TYPES.find(t => t.key === data.type);
@@ -284,7 +256,7 @@ export default function Register() {
                                     <h1 className="font-display text-2xl font-bold">Elige tu plan</h1>
                                     <p className="text-sm text-muted-foreground mt-1">Todos incluyen acceso completo. Sin costos ocultos.</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {PLANS.map(plan => {
                                         const sel = data.plan === plan.key;
                                         return (
@@ -325,6 +297,14 @@ export default function Register() {
                                         );
                                     })}
                                 </div>
+
+                                {/* Aviso plan gratuito */}
+                                {data.plan === 'starter' && (
+                                    <div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3">
+                                        <p className="text-sm font-semibold text-accent">Plan gratuito — sin tarjeta requerida</p>
+                                        <p className="text-xs text-accent/75 mt-0.5">Tu cuenta se activa de forma inmediata al registrarte.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -390,7 +370,7 @@ export default function Register() {
                                 )}
 
                                 {/* Dirección del establecimiento */}
-                                <div className="space-y-1.5 relative">
+                                <div className="space-y-1.5">
                                     <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
                                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                                         Dirección del establecimiento
@@ -399,37 +379,11 @@ export default function Register() {
                                     <input
                                         type="text"
                                         value={data.restaurant_address}
-                                        onChange={e => onAddressChange(e.target.value)}
+                                        onChange={e => setData('restaurant_address', e.target.value)}
                                         placeholder="Ej: Carrera 5 #10-20, Cali"
                                         className={INPUT}
                                         autoComplete="off"
                                     />
-                                    {showAddrSugg && (
-                                        <div className="absolute z-10 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
-                                            {addrLoading && (
-                                                <p className="px-4 py-2.5 text-xs text-muted-foreground">Buscando…</p>
-                                            )}
-                                            {addrSuggestions.map((s, i) => (
-                                                <button
-                                                    key={i}
-                                                    type="button"
-                                                    onClick={() => onAddrSelect(s)}
-                                                    className="w-full text-left px-4 py-2.5 text-xs text-foreground hover:bg-muted transition-colors border-b border-border last:border-0 leading-snug"
-                                                >
-                                                    {s.display_name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {addrValidated && (
-                                        <div className="flex items-center gap-1.5 text-xs" style={{ color: '#22c55e' }}>
-                                            <Check className="h-3 w-3" />
-                                            Ubicación confirmada · {data.restaurant_lat?.toFixed(5)}, {data.restaurant_lng?.toFixed(5)}
-                                        </div>
-                                    )}
-                                    <p className="text-[11px] text-muted-foreground">
-                                        Necesaria para asignar automáticamente la zona de domicilio a tus clientes.
-                                    </p>
                                 </div>
                             </div>
                         )}

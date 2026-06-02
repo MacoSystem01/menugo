@@ -22,7 +22,7 @@ class TenantController extends Controller
 
         $data = $request->validate([
             'type'                  => 'required|in:restaurante,puesto',
-            'plan'                  => 'required|in:mensual,trimestral,semestral,anual',
+            'plan'                  => 'required|in:starter,basico,trimestral,semestral,anual',
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9]+$/'],
             'owner_name'            => 'required|string|max:150',
@@ -42,11 +42,22 @@ class TenantController extends Controller
             return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
         }
 
-        // Determinar estado de pago según si se adjuntó evidencia
-        $hasEvidence   = $request->hasFile('evidence');
-        $paymentStatus = $hasEvidence ? 'pending_review' : 'pending_payment';
+        // Determinar estado según plan: starter = gratis, pagos = trial 15 días
+        $isPlanFree  = ($data['plan'] ?? '') === 'starter';
+        $hasEvidence = $request->hasFile('evidence');
 
-        // Crear tenant — inactivo hasta que el admin confirme el pago
+        if ($isPlanFree) {
+            $paymentStatus = 'paid';
+            $isActive      = true;
+            $trialEndsAt   = null;
+            $expiresAt     = now()->addYears(10);
+        } else {
+            $paymentStatus = 'trial';
+            $isActive      = true;
+            $trialEndsAt   = now()->addDays(15);
+            $expiresAt     = now()->addDays(15);
+        }
+
         $tenant = Tenant::create([
             'id'             => Str::uuid(),
             'name'           => $data['name'],
@@ -54,8 +65,9 @@ class TenantController extends Controller
             'email'          => $data['email'],
             'plan'           => $data['plan'],
             'type'           => $data['type'],
-            'active'         => false,
+            'active'         => $isActive,
             'payment_status' => $paymentStatus,
+            'expires_at'     => $expiresAt,
         ]);
 
         $tenant->domains()->create(['domain' => $fullDomain]);
@@ -102,7 +114,9 @@ class TenantController extends Controller
             ->with('tenant_url',     "http://{$fullDomain}")
             ->with('tenant_email',   $data['email'])
             ->with('payment_status', $paymentStatus)
-            ->with('has_evidence',   $hasEvidence);
+            ->with('has_evidence',   $hasEvidence)
+            ->with('is_trial',       $paymentStatus === 'trial')
+            ->with('trial_ends_at',  $trialEndsAt?->format('d/m/Y') ?? null);
     }
 
     public function find(Request $request)
@@ -141,9 +155,10 @@ class TenantController extends Controller
             'tenantName'    => session('tenant_name'),
             'tenantUrl'     => session('tenant_url'),
             'tenantEmail'   => session('tenant_email'),
-            // FIX: default 'active' no es un payment_status válido — usar 'pending_payment'
             'paymentStatus' => session('payment_status', 'pending_payment'),
             'hasEvidence'   => session('has_evidence', false),
+            'isTrial'       => session('is_trial', false),
+            'trialEndsAt'   => session('trial_ends_at', null),
         ]);
     }
 
@@ -195,7 +210,7 @@ class TenantController extends Controller
     {
         $data = $request->validate([
             'type'                  => 'required|in:restaurante,puesto',
-            'plan'                  => 'required|in:mensual,trimestral,semestral,anual',
+            'plan'                  => 'required|in:starter,basico,trimestral,semestral,anual',
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/'],
             'owner_name'            => 'required|string|max:150',
@@ -224,8 +239,10 @@ class TenantController extends Controller
             'plan'           => $data['plan'],
             'type'           => $data['type'],
             'active'         => true,
-            'payment_status' => $data['payment_status'] ?? 'paid', // tenant admin siempre inicia como pagado
-            'expires_at'     => now()->addDays(30),
+            'payment_status' => $data['payment_status'] ?? 'paid',
+            'expires_at'     => now()->addDays(
+                \App\Services\PlanService::planDays($data['plan'] ?? 'basico') ?? 30
+            ),
         ]);
 
         $tenant->domains()->create(['domain' => $fullDomain]);
@@ -311,7 +328,7 @@ class TenantController extends Controller
         $data = $request->validate([
             'name'               => 'nullable|string|max:150',
             'email'              => 'nullable|email|max:150',
-            'plan'               => 'nullable|string|in:mensual,trimestral,semestral,anual',
+            'plan'               => 'nullable|string|in:starter,basico,trimestral,semestral,anual',
             'active'             => 'nullable|boolean',
             'expires_at'         => 'nullable|date',
             'restaurant_address' => 'nullable|string|max:255',
@@ -350,11 +367,16 @@ class TenantController extends Controller
 
     public function activateTenant(string $id)
     {
-        $tenant = Tenant::findOrFail($id);
+        $tenant   = Tenant::findOrFail($id);
+        $planDays = \App\Services\PlanService::planDays($tenant->plan ?? 'basico');
+        $expiresAt = $planDays
+            ? now()->addDays($planDays)
+            : now()->addYears(10); // starter o plan sin límite práctico
+
         $tenant->update([
             'active'         => true,
-            'payment_status' => 'paid', // FIX: 'active' no es un valor válido — valores válidos: pending_payment|pending_review|paid|overdue|cancelled
-            'expires_at'     => now()->addDays(30),
+            'payment_status' => 'paid',
+            'expires_at'     => $expiresAt,
         ]);
         return back()->with('success', "✅ '{$tenant->name}' activado correctamente. Pago confirmado.");
     }

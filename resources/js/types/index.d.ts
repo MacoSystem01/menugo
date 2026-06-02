@@ -28,10 +28,16 @@ export interface PageProps {
     tenant_address?: string;
     tenant_phone?: string;
     tenant_logo_url?: string | null;
+    tenant_plan?: string;
+    tenant_expires_at?: string | null;
+    tenant_days_left?: number | null;
+    tenant_is_trial?: boolean;
+    support_whatsapp?: string;
     flash?: {
         success?: string;
         error?: string;
         warning?: string;
+        tenant_status?: string;
     };
     [key: string]: unknown;
 }

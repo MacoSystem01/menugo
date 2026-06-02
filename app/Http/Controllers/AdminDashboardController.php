@@ -107,10 +107,27 @@ class AdminDashboardController extends Controller
 
         $porPlan = $tenants->whereNull('deleted_at')->groupBy(fn($t) => $t->plan ?? 'basico')->map->count();
 
-        $prices = ['mensual' => 30000, 'trimestral' => 80000, 'semestral' => 220000, 'anual' => 350000];
-        // FIX: 'active' no es un payment_status válido — valores válidos: paid|pending_payment|pending_review|overdue|cancelled
-        $totalRevenue = $tenants->where('payment_status', 'paid')->whereNull('deleted_at')
-            ->sum(fn($t) => $prices[$t->plan ?? 'mensual'] ?? 30000);
+        $prices = [
+            'starter'    => 0,
+            'basico'     => 34900,
+            'trimestral' => 83900,
+            'semestral'  => 146900,
+            'anual'      => 230900,
+            'mensual'    => 34900, // legacy
+        ];
+
+        $monthlyEquivalent = [
+            'starter'    => 0,
+            'basico'     => 34900,
+            'trimestral' => 27967,  // 83900 / 3
+            'semestral'  => 24483,  // 146900 / 6
+            'anual'      => 19242,  // 230900 / 12
+            'mensual'    => 34900,  // legacy
+        ];
+
+        $paidTenants  = $tenants->where('payment_status', 'paid')->whereNull('deleted_at');
+        $totalRevenue = $paidTenants->sum(fn($t) => $prices[$t->plan ?? 'basico'] ?? 34900);
+        $totalMonthly = $paidTenants->sum(fn($t) => $monthlyEquivalent[$t->plan ?? 'basico'] ?? 34900);
 
         $pendingTenants = $tenants
             ->whereNull('deleted_at')
@@ -171,6 +188,7 @@ class AdminDashboardController extends Controller
             'stats' => [
                 'por_plan'      => $porPlan,
                 'total_revenue' => $totalRevenue,
+                'total_monthly' => $totalMonthly,
             ],
             'pendingTenants'   => $pendingTenants,
             'paymentMethods'   => $paymentMethods,
@@ -210,7 +228,8 @@ class AdminDashboardController extends Controller
                     'action'  => ['label' => 'Ver Facturación', 'url' => '/admin/billing'],
                 ];
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // ── 2. Cola de jobs acumulada ─────────────────────────────────────────
         try {
@@ -248,7 +267,8 @@ class AdminDashboardController extends Controller
                     'action'  => null,
                 ];
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // ── 4. Espacio en disco ───────────────────────────────────────────────
         try {
@@ -275,7 +295,8 @@ class AdminDashboardController extends Controller
                     ];
                 }
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // ── 5. Muchos tenants sin activar (crecimiento detenido) ─────────────
         try {
@@ -294,7 +315,8 @@ class AdminDashboardController extends Controller
                     'action'  => ['label' => 'Ver Tenants', 'url' => '/admin/tenants'],
                 ];
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // ── 6. Solicitudes publicitarias pendientes ───────────────────────────
         try {
@@ -308,7 +330,8 @@ class AdminDashboardController extends Controller
                     'action'  => ['label' => 'Ver Publicidad', 'url' => '/admin/publicidad'],
                 ];
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // ── 7. Log de errores recientes ───────────────────────────────────────
         try {
@@ -327,7 +350,8 @@ class AdminDashboardController extends Controller
                     ];
                 }
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // ── 8. APP_DEBUG activo en producción ─────────────────────────────────
         if (app()->isProduction() && config('app.debug')) {

@@ -17,7 +17,7 @@ define('BASE_HOST',  'menugo.local');
 
 $TENANT_CREDENTIALS = [
     'latajada' => ['email' => 'macosystem01@gmail.com', 'pass' => 'prueba123'],
-    'prueba'   => ['email' => 'macosystem01@gmail.com', 'pass' => 'prueba123'],
+    'prueba1'  => ['email' => 'macosystem01@gmail.com', 'pass' => 'prueba123'],
 ];
 
 define('DISH_ID_PRUEBA',  1);
@@ -341,11 +341,17 @@ foreach ($sesiones as $slugOrigen => $sesion) {
 // ══════════════════════════════════════════════════════════
 echo "\n── 6. Permisos por rol ──────────────────────────────\n";
 
+// Rutas restringidas por plan — 302 es correcto cuando el plan no incluye la feature
+$planRestrictedRoutes = ['/reporte', '/domicilio'];
+
 foreach ($sesiones as $slug => $sesion) {
     if (!$sesion['logueado']) continue;
     foreach (['/dashboard', '/usuarios', '/reporte', '/auditoria', '/menu/carta'] as $ruta) {
         $r = request('GET', tenantUrl($slug, $ruta), [], $sesion['cookie']);
-        test("Admin [{$slug}] accede a {$ruta}", $r['code'] === 200, "HTTP {$r['code']}");
+        $isPlanRestricted = in_array($ruta, $planRestrictedRoutes);
+        $pass   = $r['code'] === 200 || ($isPlanRestricted && $r['code'] === 302);
+        $detalle = "HTTP {$r['code']}" . ($isPlanRestricted && $r['code'] === 302 ? ' (plan insuficiente — correcto)' : '');
+        test("Admin [{$slug}] accede a {$ruta}", $pass, $detalle);
     }
 }
 

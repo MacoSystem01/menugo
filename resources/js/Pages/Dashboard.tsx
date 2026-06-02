@@ -1,5 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, Link } from '@inertiajs/react';
+import { usePlan } from '@/hooks/use-plan';
+import { useSupportWhatsapp } from '@/hooks/use-support-whatsapp';
 import {
     TrendingUp, ShoppingBag, Users, DollarSign, ArrowUpRight,
     Clock, CheckCircle2, ChefHat, Bike, LayoutGrid, AlertCircle,
@@ -76,6 +78,8 @@ function KpiCard({
 // ── Dashboard Gerente / Administrador ──────────────────────────────────────────
 
 function FullDashboard({ stats, pedidos_recientes, top_platos }: FullDashboardProps) {
+    const { can, planName, requiredPlanFor } = usePlan();
+    const { url: waUrl } = useSupportWhatsapp();
     const maxVendidos = top_platos[0]?.vendidos ?? 1;
 
     const kpis = [
@@ -92,6 +96,55 @@ function FullDashboard({ stats, pedidos_recientes, top_platos }: FullDashboardPr
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {kpis.map(k => <KpiCard key={k.label} {...k} />)}
             </div>
+
+            {/* Card de prueba gratuita */}
+            {(props as any).is_trial && (
+                <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 flex items-start gap-4">
+                    <div className="text-3xl shrink-0">🎁</div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground text-sm mb-1">
+                            Estás en período de prueba gratuita
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            Tienes acceso completo a todas las funciones de tu plan.
+                            Ve a <strong>Configuraciones → Mi Plan</strong> para activar
+                            tu suscripción antes de que venza la prueba.
+                        </p>
+                    </div>
+                    <a
+                        href="/mi-plan"
+                        className="shrink-0 rounded-xl bg-blue-500 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-600 transition"
+                    >
+                        Ver mi plan →
+                    </a>
+                </div>
+            )}
+
+            {/* Aviso plan starter: pedidos desactivados */}
+            {!can('orders') && (
+                <div className="mt-4 rounded-2xl border border-border bg-card p-5 flex items-start gap-4">
+                    <div className="text-3xl shrink-0">📋</div>
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground text-sm mb-1">
+                            Pedidos desde mesa desactivados
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            El plan <strong>{planName()}</strong> solo incluye el menú digital QR.
+                            Tus clientes pueden ver la carta pero no pueden hacer pedidos desde su celular.
+                            Actualiza al plan <strong>{requiredPlanFor('orders')}</strong> para activar
+                            los pedidos desde mesa.
+                        </p>
+                    </div>
+                    <a
+                        href={waUrl('Quiero actualizar mi plan de MenúGO')}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition"
+                    >
+                        Actualizar plan →
+                    </a>
+                </div>
+            )}
 
             <div className="mt-6 grid gap-6 lg:grid-cols-3">
                 {/* Pedidos recientes */}
@@ -426,9 +479,45 @@ function DomicilioDashboard({ stats, asignados }: DomicilioDashboardProps) {
     );
 }
 
+// ── Pantalla de plan vencido ───────────────────────────────────────────────────
+
+function OverdueDashboard() {
+    const { planName } = usePlan();
+    const { url: waUrl } = useSupportWhatsapp();
+    return (
+        <AppShell title="Plan vencido">
+            <Head title="Plan vencido — Menugo" />
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 p-8">
+                <div className="text-6xl">🔒</div>
+                <h1 className="font-display text-2xl font-bold text-foreground">
+                    Tu plan ha vencido
+                </h1>
+                <p className="text-muted-foreground max-w-md">
+                    El acceso a tu panel está temporalmente suspendido. Renueva tu suscripción
+                    para recuperar todas las funcionalidades de MenúGO.
+                </p>
+                <a
+                    href={waUrl('Quiero renovar mi plan de MenúGO')}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-warm px-6 py-3 text-sm font-semibold text-primary-foreground hover:brightness-110 transition"
+                >
+                    Contactar soporte para renovar →
+                </a>
+                <p className="text-xs text-muted-foreground">
+                    ¿Ya renovaste? El acceso se restaura automáticamente una vez el administrador
+                    confirme tu pago.
+                </p>
+            </div>
+        </AppShell>
+    );
+}
+
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function Dashboard(props: DashboardProps) {
+    if ((props as any).is_overdue) return <OverdueDashboard />;
+
     switch (props.dashboardRole) {
         case 'full':      return <FullDashboard {...props} />;
         case 'caja':      return <CajaDashboard {...props} />;

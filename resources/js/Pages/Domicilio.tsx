@@ -3,6 +3,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Bike, CheckCircle2, Phone, PackageCheck, Bell } from 'lucide-react';
 import type { PageProps } from '@/types';
+import { PlanGate } from '@/components/PlanGate';
 
 interface DeliveryOrder {
     id: number;
@@ -107,6 +108,7 @@ export default function Domicilio({ active, repartidores, delivery_zones, flash 
     return (
         <AppShell title="Domicilio" subtitle="Gestión de pedidos a domicilio">
             <Head title="Domicilio" />
+            <PlanGate feature="delivery">
 
             {flash?.success && (
                 <div className="mb-4 rounded-xl bg-accent/15 border border-accent/30 text-accent px-4 py-3 text-sm">{flash.success}</div>
@@ -292,6 +294,7 @@ export default function Domicilio({ active, repartidores, delivery_zones, flash 
                     </div>
                 </>
             )}
+            </PlanGate>
         </AppShell>
     );
 }

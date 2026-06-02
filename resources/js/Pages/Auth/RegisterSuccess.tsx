@@ -6,13 +6,16 @@ interface Props {
     tenantName:    string;
     tenantUrl:     string;
     tenantEmail:   string;
-    paymentStatus: 'pending_payment' | 'pending_review' | 'active';
+    paymentStatus: 'pending_payment' | 'pending_review' | 'active' | 'trial' | 'paid';
     hasEvidence:   boolean;
+    isTrial:       boolean;
+    trialEndsAt:   string | null;
 }
 
-export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail, paymentStatus, hasEvidence }: Props) {
-    const loginUrl = `${tenantUrl}/login`;
-    const isPending = paymentStatus === 'pending_payment' || paymentStatus === 'pending_review';
+export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail, paymentStatus, hasEvidence, isTrial, trialEndsAt }: Props) {
+    const loginUrl       = `${tenantUrl}/login`;
+    const isPending      = paymentStatus === 'pending_payment' || paymentStatus === 'pending_review';
+    const isTrialActive  = isTrial || paymentStatus === 'trial';
 
     return (
         <>
@@ -23,17 +26,35 @@ export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail, pa
 
                     {/* Ícono */}
                     <div className="flex justify-center">
-                        <div className={`grid h-20 w-20 place-items-center rounded-full ${isPending ? 'bg-amber-500/15' : 'bg-accent/15'}`}>
-                            {isPending
-                                ? <Clock className="h-10 w-10 text-amber-500" />
-                                : <CheckCircle2 className="h-10 w-10 text-accent" />
+                        <div className={`grid h-20 w-20 place-items-center rounded-full ${
+                            isTrialActive
+                                ? 'bg-blue-500/15'
+                                : isPending
+                                    ? 'bg-amber-500/15'
+                                    : 'bg-accent/15'
+                        }`}>
+                            {isTrialActive
+                                ? <span className="text-4xl">🎁</span>
+                                : isPending
+                                    ? <Clock className="h-10 w-10 text-amber-500" />
+                                    : <CheckCircle2 className="h-10 w-10 text-accent" />
                             }
                         </div>
                     </div>
 
                     {/* Título */}
                     <div>
-                        {isPending ? (
+                        {isTrialActive ? (
+                            <>
+                                <h1 className="font-display text-3xl font-bold">
+                                    ¡Prueba activada,{' '}
+                                    <span className="text-gradient-warm">{tenantName}</span>!
+                                </h1>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    Tienes 15 días para explorar todas las funciones de MenúGO.
+                                </p>
+                            </>
+                        ) : isPending ? (
                             <>
                                 <h1 className="font-display text-3xl font-bold">
                                     ¡Registro exitoso,{' '}
@@ -56,7 +77,28 @@ export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail, pa
                         )}
                     </div>
 
-                    {/* Estado de activación */}
+                    {/* Card de prueba gratuita */}
+                    {isTrialActive && (
+                        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/8 px-5 py-4 text-left space-y-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">🎁</span>
+                                <p className="text-sm font-semibold text-foreground">
+                                    ¡15 días de prueba gratuita activados!
+                                </p>
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Tienes acceso completo a todas las funciones de tu plan hasta el{' '}
+                                <strong className="text-foreground">{trialEndsAt ?? '—'}</strong>.
+                                Después de ese período, deberás realizar el pago para continuar.
+                            </p>
+                            <div className="flex items-center gap-2 text-xs font-bold text-blue-500">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Tu panel ya está listo — puedes ingresar ahora mismo
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Estado de activación — solo para pendientes de pago */}
                     {isPending && (
                         <div className={`rounded-2xl border px-5 py-4 text-left space-y-3 ${
                             hasEvidence
@@ -97,8 +139,8 @@ export default function RegisterSuccess({ tenantName, tenantUrl, tenantEmail, pa
                         </p>
                     </div>
 
-                    {/* CTA principal — solo si está activo */}
-                    {!isPending && (
+                    {/* CTA principal — trial activo o cuenta activa */}
+                    {(isTrialActive || (!isPending)) && (
                         <a href={loginUrl} className="block">
                             <Button variant="hero" size="lg" className="w-full gap-2 group">
                                 <LogIn className="h-4 w-4" />

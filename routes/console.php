@@ -15,3 +15,9 @@ Schedule::command('app:cierre-diario')
     ->dailyAt('00:00')
     ->withoutOverlapping()
     ->runInBackground();
+
+// Procesar vencimientos de planes diariamente a las 00:05
+Schedule::command('app:procesar-vencimientos')
+    ->dailyAt('00:05')
+    ->withoutOverlapping()
+    ->runInBackground();

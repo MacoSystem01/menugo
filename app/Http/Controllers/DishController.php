@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Dish;
+use App\Services\PlanService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -36,11 +37,25 @@ class DishController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return Inertia::render('Menu/Dishes', compact('dishes', 'categories'));
+        return Inertia::render('Menu/Dishes', [
+            'dishes'     => $dishes,
+            'categories' => $categories,
+            'dish_count' => Dish::count(),
+            'dish_limit' => PlanService::dishLimit(),
+        ]);
     }
 
     public function store(Request $request)
     {
+        $limit = PlanService::dishLimit();
+        if ($limit !== null && Dish::count() >= $limit) {
+            $planName = PlanService::planDisplayName(PlanService::currentPlan());
+            return back()->withErrors([
+                'plan_limit' => "Tu plan {$planName} tiene un límite de {$limit} platos. " .
+                    "Actualiza al plan Básico para agregar platos ilimitados.",
+            ]);
+        }
+
         $data = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'name'        => 'required|string|max:150',
@@ -59,7 +74,7 @@ class DishController extends Controller
         ]);
 
         AuditLog::registrar('create', 'Plato', $dish->id, "Plato '{$dish->name}' creado", [
-            'price' => (float) $dish->price,
+            'price'       => (float) $dish->price,
             'category_id' => $dish->category_id,
         ]);
 

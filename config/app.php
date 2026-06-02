@@ -133,4 +133,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'support_whatsapp' => env('SUPPORT_WHATSAPP', '573172623919'),
+
 ];

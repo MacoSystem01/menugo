@@ -400,7 +400,7 @@ test(
 );
 
 // 5.3 — Planes válidos
-$planesValidos = ['mensual', 'trimestral', 'semestral', 'anual'];
+$planesValidos = ['starter', 'basico', 'trimestral', 'semestral', 'anual'];
 $stmt3 = $pdo->query("SELECT id, name, plan FROM tenants WHERE deleted_at IS NULL");
 $todosLosTenants = $stmt3->fetchAll(PDO::FETCH_ASSOC);
 $planesInvalidos = array_filter($todosLosTenants, fn($t) => !in_array($t['plan'], $planesValidos));
@@ -490,7 +490,7 @@ if ($csrf && !empty($tenants)) {
         CURLOPT_POSTFIELDS => http_build_query([
             '_token'        => $csrf,
             'type'          => 'restaurante',
-            'plan'          => 'mensual',
+            'plan'          => 'basico',
             'name'          => 'Test Duplicado',
             'subdomain'     => $slugExistente,  // slug ya existente
             'owner_name'    => 'Test Owner',

@@ -12,22 +12,29 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $isOverdue = function_exists('tenant') && (tenant()?->payment_status ?? '') === 'overdue';
+        $isTrial   = function_exists('tenant') && (tenant()?->payment_status ?? '') === 'trial';
+
+        if ($isOverdue) {
+            return Inertia::render('Dashboard', ['is_overdue' => true]);
+        }
+
         $user = Auth::user();
         $role = $user->getRoleNames()->first() ?? 'gerente';
 
         return match (true) {
-            in_array($role, ['gerente', 'administrador']) => $this->fullDashboard(),
+            in_array($role, ['gerente', 'administrador']) => $this->fullDashboard($isTrial),
             $role === 'caja'                              => $this->cajaDashboard(),
             $role === 'cocina'                            => $this->cocinaDashboard(),
             $role === 'mesa'                              => $this->mesaDashboard(),
             $role === 'domicilio'                         => $this->domicilioDashboard($user),
-            default                                       => $this->fullDashboard(),
+            default                                       => $this->fullDashboard($isTrial),
         };
     }
 
     // ── Gerente / Administrador ───────────────────────────────────────────────
 
-    private function fullDashboard()
+    private function fullDashboard(bool $isTrial = false)
     {
         $today = now()->toDateString();
 
@@ -76,6 +83,7 @@ class DashboardController extends Controller
             ],
             'pedidos_recientes'  => $pedidosRecientes,
             'top_platos'         => $topPlatos,
+            'is_trial'           => $isTrial,
         ]);
     }
 

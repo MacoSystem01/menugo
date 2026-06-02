@@ -77,9 +77,10 @@ class SecurityHeaders
             : "'self' 'unsafe-inline' {$appUrl}";
 
         // connect-src: incluye Vite HMR (HTTP + WS) cuando el dev server está activo.
+        // Nominatim: autocompletado de dirección en /register y panel admin.
         $connectSrc = $isViteDev
-            ? "'self' https://maps.googleapis.com wss: {$viteUrl}"
-            : "'self' https://maps.googleapis.com wss:";
+            ? "'self' https://maps.googleapis.com https://nominatim.openstreetmap.org wss: {$viteUrl}"
+            : "'self' https://maps.googleapis.com https://nominatim.openstreetmap.org wss:";
 
         // img-src: dominio central + wildcard subdominios + Vite si está activo.
         $imgSrcExtra = "{$appUrl} {$wildcardUrl}" . ($isViteDev ? " {$viteUrl}" : '');

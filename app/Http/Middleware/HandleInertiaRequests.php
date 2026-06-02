@@ -64,19 +64,28 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        $tenantName    = '';
-        $tenantAddress = '';
-        $tenantPhone   = '';
-        $tenantLogoUrl = null;
+        $tenantName      = '';
+        $tenantAddress   = '';
+        $tenantPhone     = '';
+        $tenantLogoUrl   = null;
+        $tenantPlan      = null;
+        $tenantExpiresAt = null;
+        $tenantDaysLeft  = null;
+        $tenantIsTrial   = false;
         try {
             if (function_exists('tenant') && tenant()) {
-                $tenantName    = tenant('name')    ?? '';
-                $tenantAddress = tenant('address') ?? '';
-                $tenantPhone   = tenant('phone')   ?? '';
-                $settings = CartaSetting::first();
-                $tenantLogoUrl = $settings?->logo_url;
+                $tenantName      = tenant('name')    ?? '';
+                $tenantAddress   = tenant('address') ?? '';
+                $tenantPhone     = tenant('phone')   ?? '';
+                $tenantPlan      = tenant()?->plan   ?? 'starter';
+                $tenantExpiresAt = tenant()?->expires_at;
+                $tenantDaysLeft  = \App\Services\PlanService::daysUntilExpiry();
+                $tenantIsTrial   = (tenant()?->payment_status ?? '') === 'trial';
+                $settings        = CartaSetting::first();
+                $tenantLogoUrl   = $settings?->logo_url;
             }
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         return [
             ...parent::share($request),
@@ -85,10 +94,16 @@ class HandleInertiaRequests extends Middleware
             'tenant_address'  => $tenantAddress,
             'tenant_phone'    => $tenantPhone,
             'tenant_logo_url' => $tenantLogoUrl,
+            'tenant_plan'       => $tenantPlan,
+            'tenant_expires_at' => $tenantExpiresAt,
+            'tenant_days_left'  => $tenantDaysLeft,
+            'tenant_is_trial'   => $tenantIsTrial,
+            'support_whatsapp'  => config('app.support_whatsapp', env('SUPPORT_WHATSAPP', '573172623919')),
             'flash'       => [
-                'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
-                'warning' => $request->session()->get('warning'),
+                'success'       => $request->session()->get('success'),
+                'error'         => $request->session()->get('error'),
+                'warning'       => $request->session()->get('warning'),
+                'tenant_status' => $request->session()->get('tenant_status'),
             ],
         ];
     }

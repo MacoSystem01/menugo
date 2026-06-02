@@ -31,11 +31,20 @@ function toSlug(str: string): string {
 }
 
 const PLAN_LABELS: Record<string, string> = {
-    mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
+    starter:    'Starter',
+    basico:     'Básico',
+    trimestral: 'Trimestral',
+    semestral:  'Pro',
+    anual:      'Escala',
+    mensual:    'Mensual (legacy)', // compatibilidad con registros anteriores en DB
 };
 const PLAN_COLORS: Record<string, string> = {
-    mensual: 'bg-zinc-100 text-zinc-700', trimestral: 'bg-blue-100 text-blue-700',
-    semestral: 'bg-purple-100 text-purple-700', anual: 'bg-indigo-100 text-indigo-700',
+    starter:    'bg-emerald-100 text-emerald-700',
+    basico:     'bg-zinc-100 text-zinc-700',
+    trimestral: 'bg-blue-100 text-blue-700',
+    semestral:  'bg-purple-100 text-purple-700',
+    anual:      'bg-indigo-100 text-indigo-700',
+    mensual:    'bg-zinc-100 text-zinc-600',   // legacy
 };
 
 // ── Modal de edición ──────────────────────────────────────────────────────────
@@ -54,34 +63,6 @@ function EditModal({ tenant, onClose }: EditModalProps) {
         restaurant_address: tenant.address ?? '',
     });
     const [saving, setSaving] = useState(false);
-
-    // Nominatim autocomplete para dirección
-    const [suggestions, setSuggestions]   = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
-    const [showSugg,    setShowSugg]      = useState(false);
-    const [addrOk,      setAddrOk]        = useState(!!tenant.address);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    function onAddressChange(val: string) {
-        setForm(f => ({ ...f, restaurant_address: val }));
-        setAddrOk(false);
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        if (val.trim().length < 3) { setSuggestions([]); setShowSugg(false); return; }
-        timeoutRef.current = setTimeout(async () => {
-            try {
-                const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4`, { headers: { 'Accept-Language': 'es' } });
-                const json = await res.json();
-                setSuggestions(json);
-                setShowSugg(json.length > 0);
-            } catch { /* ignorar */ }
-        }, 400);
-    }
-
-    function onAddrSelect(s: { display_name: string }) {
-        setForm(f => ({ ...f, restaurant_address: s.display_name }));
-        setAddrOk(true);
-        setShowSugg(false);
-        setSuggestions([]);
-    }
 
     function handleSave(e: React.FormEvent) {
         e.preventDefault();
@@ -142,10 +123,11 @@ function EditModal({ tenant, onClose }: EditModalProps) {
                                 onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}
                                 className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                             >
-                                <option value="mensual">Mensual</option>
-                                <option value="trimestral">Trimestral</option>
-                                <option value="semestral">Semestral</option>
-                                <option value="anual">Anual</option>
+                                <option value="starter">Starter · $0</option>
+                                <option value="basico">Básico · $34.900</option>
+                                <option value="trimestral">Trimestral · $83.900</option>
+                                <option value="semestral">Pro · $146.900</option>
+                                <option value="anual">Escala · $230.900</option>
                             </select>
                         </div>
                         <div>
@@ -170,27 +152,12 @@ function EditModal({ tenant, onClose }: EditModalProps) {
                             <input
                                 type="text"
                                 value={form.restaurant_address}
-                                onChange={e => onAddressChange(e.target.value)}
+                                onChange={e => setForm(f => ({ ...f, restaurant_address: e.target.value }))}
                                 placeholder="Ej: Carrera 5 #10-20, Cali"
                                 autoComplete="off"
                                 className="w-full rounded-xl border border-input bg-input pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                             />
-                            {showSugg && (
-                                <div className="absolute z-20 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden mt-1">
-                                    {suggestions.map((s, i) => (
-                                        <button key={i} type="button" onClick={() => onAddrSelect(s)}
-                                            className="w-full text-left px-4 py-2.5 text-xs hover:bg-muted transition-colors border-b border-border last:border-0 leading-snug">
-                                            {s.display_name}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
-                        {addrOk && (
-                            <p className="mt-1 flex items-center gap-1 text-[10px] text-green-500">
-                                <Check className="h-3 w-3" /> Dirección seleccionada del mapa
-                            </p>
-                        )}
                     </div>
 
                     {/* Acciones */}
@@ -314,7 +281,7 @@ export default function Tenants({ tenants, flash }: Props) {
 
     const { data, setData, post, processing, errors, reset } = useForm({
         type:                  'restaurante' as 'restaurante' | 'puesto',
-        plan:                  'mensual',
+        plan:                  'basico',
         name:                  '',
         subdomain:             '',
         owner_name:            '',
@@ -327,38 +294,8 @@ export default function Tenants({ tenants, flash }: Props) {
         restaurant_lng:        null as number | null,
     });
 
-    const [addrSuggestions, setAddrSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
-    const [showAddrSugg,    setShowAddrSugg]    = useState(false);
-    const [addrValidated,   setAddrValidated]   = useState(false);
-    const addrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showPassword,    setShowPassword]    = useState(false);
     const [showConfirm,     setShowConfirm]     = useState(false);
-
-    const onAddressChange = (val: string) => {
-        setData('restaurant_address', val);
-        setData('restaurant_lat', null);
-        setData('restaurant_lng', null);
-        setAddrValidated(false);
-        if (addrTimeoutRef.current) clearTimeout(addrTimeoutRef.current);
-        if (val.trim().length < 3) { setAddrSuggestions([]); setShowAddrSugg(false); return; }
-        addrTimeoutRef.current = setTimeout(async () => {
-            try {
-                const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=4`, { headers: { 'Accept-Language': 'es' } });
-                const json = await res.json();
-                setAddrSuggestions(json);
-                setShowAddrSugg(json.length > 0);
-            } catch { /* ignorar */ }
-        }, 400);
-    };
-
-    const onAddrSelect = (s: { display_name: string; lat: string; lon: string }) => {
-        setData('restaurant_address', s.display_name);
-        setData('restaurant_lat', parseFloat(s.lat));
-        setData('restaurant_lng', parseFloat(s.lon));
-        setAddrValidated(true);
-        setShowAddrSugg(false);
-        setAddrSuggestions([]);
-    };
 
     useEffect(() => {
         setData('subdomain', toSlug(data.name));
@@ -367,7 +304,7 @@ export default function Tenants({ tenants, flash }: Props) {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         post('/admin/tenants', {
-            onSuccess: () => { reset(); setShowForm(false); setAddrValidated(false); },
+            onSuccess: () => { reset(); setShowForm(false); },
         });
     }
 
@@ -474,10 +411,11 @@ export default function Tenants({ tenants, flash }: Props) {
 
                             <Field label="Plan" error={errors.plan}>
                                 <select value={data.plan} onChange={e => setData('plan', e.target.value)} className="input-modern appearance-none">
-                                    <option value="mensual">Mensual · $30.000</option>
-                                    <option value="trimestral">Trimestral · $80.000</option>
-                                    <option value="semestral">Semestral · $220.000</option>
-                                    <option value="anual">Anual · $350.000</option>
+                                    <option value="starter">Starter · $0</option>
+                                    <option value="basico">Básico · $34.900</option>
+                                    <option value="trimestral">Trimestral · $83.900</option>
+                                    <option value="semestral">Pro · $146.900</option>
+                                    <option value="anual">Escala · $230.900</option>
                                 </select>
                             </Field>
 
@@ -489,29 +427,13 @@ export default function Tenants({ tenants, flash }: Props) {
                                 </div>
                             </Field>
 
-                            <Field label="Dirección del Establecimiento" error={errors.restaurant_address} hint="Opcional — activa la asignación automática de zona de domicilio.">
+                            <Field label="Dirección del Establecimiento" error={errors.restaurant_address} hint="Opcional.">
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                     <input type="text" value={data.restaurant_address}
-                                        onChange={e => onAddressChange(e.target.value)}
+                                        onChange={e => setData('restaurant_address', e.target.value)}
                                         placeholder="Ej: Carrera 5 #10-20, Cali"
                                         className="input-modern pl-10" autoComplete="off" />
-                                    {showAddrSugg && (
-                                        <div className="absolute z-20 w-full rounded-xl border border-border bg-card shadow-lg overflow-hidden">
-                                            {addrSuggestions.map((s, i) => (
-                                                <button key={i} type="button" onClick={() => onAddrSelect(s)}
-                                                    className="w-full text-left px-4 py-2.5 text-xs text-foreground hover:bg-muted transition-colors border-b border-border last:border-0 leading-snug">
-                                                    {s.display_name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {addrValidated && (
-                                        <p className="mt-1 flex items-center gap-1 text-[10px]" style={{ color: '#22c55e' }}>
-                                            <Check className="h-3 w-3" />
-                                            Ubicación confirmada · {data.restaurant_lat?.toFixed(5)}, {data.restaurant_lng?.toFixed(5)}
-                                        </p>
-                                    )}
                                 </div>
                             </Field>
                         </div>
@@ -635,6 +557,11 @@ export default function Tenants({ tenants, flash }: Props) {
                                                 {tenant.active ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
                                                 {tenant.active ? 'Activo' : 'Inactivo'}
                                             </span>
+                                            {tenant.payment_status === 'trial' && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider w-fit bg-blue-500/15 text-blue-600 border border-blue-500/25">
+                                                    🎁 En prueba
+                                                </span>
+                                            )}
                                             {(tenant.payment_status === 'pending_payment' || tenant.payment_status === 'pending_review') && (
                                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider w-fit ${
                                                     tenant.payment_status === 'pending_review'
@@ -654,7 +581,13 @@ export default function Tenants({ tenants, flash }: Props) {
                                             <span className={`text-[10px] px-2 py-0.5 rounded w-fit font-bold uppercase tracking-tight ${PLAN_COLORS[tenant.plan] ?? 'bg-zinc-100 text-zinc-700'}`}>
                                                 {PLAN_LABELS[tenant.plan] ?? tenant.plan}
                                             </span>
-                                            {tenant.expires_at && (
+                                            {tenant.payment_status === 'trial' && tenant.expires_at && (
+                                                <div className="flex items-center gap-1 text-[10px] font-semibold text-blue-500 mt-1">
+                                                    <span>🎁</span>
+                                                    Prueba hasta {new Date(tenant.expires_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                                                </div>
+                                            )}
+                                            {tenant.payment_status !== 'trial' && tenant.expires_at && (
                                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
                                                     <Calendar className="h-3 w-3 shrink-0" />
                                                     {new Date(tenant.expires_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}

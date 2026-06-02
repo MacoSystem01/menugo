@@ -13,6 +13,11 @@ class DomicilioController extends Controller
 {
     public function index()
     {
+        if (!\App\Services\PlanService::can('delivery')) {
+            return redirect('/dashboard')
+                ->with('warning', 'El módulo de domicilio requiere el plan Escala (anual).');
+        }
+
         // Pedidos de domicilio activos (listos para despachar o en camino)
         $active = Order::with(['items.dish', 'deliveryUser'])
             ->where('type', 'domicilio')
@@ -52,6 +57,10 @@ class DomicilioController extends Controller
 
     public function asignar(Request $request, Order $order)
     {
+        if (!\App\Services\PlanService::can('delivery')) {
+            return back()->with('error', 'El módulo de domicilio requiere el plan Escala.');
+        }
+
         $data = $request->validate([
             'delivery_user_id' => 'required|exists:users,id',
         ]);
@@ -70,6 +79,10 @@ class DomicilioController extends Controller
 
     public function tomar(Order $order)
     {
+        if (!\App\Services\PlanService::can('delivery')) {
+            return back()->with('error', 'El módulo de domicilio requiere el plan Escala.');
+        }
+
         if ($order->type !== 'domicilio' || $order->status !== 'ready') {
             return back()->withErrors(['error' => 'El pedido no está disponible para entrega.']);
         }
@@ -117,6 +130,10 @@ class DomicilioController extends Controller
 
     public function entregar(Order $order)
     {
+        if (!\App\Services\PlanService::can('delivery')) {
+            return back()->with('error', 'El módulo de domicilio requiere el plan Escala.');
+        }
+
         if ($order->type !== 'domicilio' || $order->status !== 'ready') {
             return back()->withErrors(['error' => 'El pedido no está en estado correcto.']);
         }

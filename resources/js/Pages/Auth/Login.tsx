@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 export default function Login() {
@@ -53,10 +53,10 @@ export default function Login() {
 
                         <div className="grid grid-cols-2 gap-4 pt-4">
                             {[
-                                { label: 'Pedidos QR',   desc: 'Sin contacto' },
-                                { label: 'Tiempo real',  desc: 'Cocina al instante' },
-                                { label: 'Multi-rol',    desc: '6 perfiles de acceso' },
-                                { label: 'Reportes',     desc: 'Datos por hora' },
+                                { label: 'Pedidos QR', desc: 'Sin contacto' },
+                                { label: 'Tiempo real', desc: 'Cocina al instante' },
+                                { label: 'Multi-rol', desc: '6 perfiles de acceso' },
+                                { label: 'Reportes', desc: 'Datos por hora' },
                             ].map(s => (
                                 <div key={s.label} className="rounded-xl border border-border bg-card/50 p-4">
                                     <p className="font-semibold text-foreground text-sm">{s.label}</p>
@@ -159,6 +159,22 @@ export default function Login() {
                             </button>
                         </form>
 
+                        {/* Botón de renovación si la cuenta está vencida */}
+                        {(usePage().props as any).flash?.tenant_status === 'overdue' && (
+                            <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-center space-y-3">
+                                <p className="text-xs text-destructive">
+                                    🔒 Tu suscripción ha vencido. Renueva para recuperar el acceso completo.
+                                </p>
+                                <a
+                                    href={`https://wa.me/${(usePage().props as any).support_whatsapp ?? '573172623919'}?text=${encodeURIComponent('Quiero renovar mi plan de MenúGO')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground hover:brightness-110 transition"
+                                >
+                                    🔄 Renovar suscripción
+                                </a>
+                            </div>
+                        )}
 
                     </div>
                 </div>

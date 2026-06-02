@@ -12,60 +12,71 @@ import AdRequestTable, { type AdRequest } from '@/components/AdRequestTable';
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
 interface PaymentMethod {
-    id:           number;
-    name:         string;
+    id: number;
+    name: string;
     account_info: string;
     instructions: string | null;
-    active:       boolean;
-    sort_order:   number;
+    active: boolean;
+    sort_order: number;
 }
 
 interface PendingTenant {
-    id:                    string;
-    name:                  string;
-    email:                 string;
-    plan:                  string;
-    payment_status:        string;
-    deleted_at:            string | null;
+    id: string;
+    name: string;
+    email: string;
+    plan: string;
+    payment_status: string;
+    deleted_at: string | null;
     payment_evidence_path: string | null;
-    subdomain:             string;
-    created_at:            string;
+    subdomain: string;
+    created_at: string;
 }
 
 interface TenantHistoryItem {
-    id:             string;
-    name:           string;
-    email:          string;
-    plan:           string;
+    id: string;
+    name: string;
+    email: string;
+    plan: string;
     payment_status: string;
-    subdomain:      string | null;
-    created_at:     string;
-    deleted_at:     string | null;
+    subdomain: string | null;
+    created_at: string;
+    deleted_at: string | null;
 }
 
 interface Props {
     stats: {
-        por_plan:      Record<string, number>;
+        por_plan: Record<string, number>;
         total_revenue: number;
+        total_monthly: number;
     };
-    pendingTenants:   PendingTenant[];
-    paymentMethods:   PaymentMethod[];
+    pendingTenants: PendingTenant[];
+    paymentMethods: PaymentMethod[];
     adRequestsBanner: AdRequest[];
     adRequestsSlider: AdRequest[];
     tenantHistory: {
-        activas:    TenantHistoryItem[];
-        inactivas:  TenantHistoryItem[];
+        activas: TenantHistoryItem[];
+        inactivas: TenantHistoryItem[];
         eliminadas: TenantHistoryItem[];
     };
     flash?: { success?: string };
 }
 
 const PLAN_PRICES: Record<string, number> = {
-    mensual: 30000, trimestral: 80000, semestral: 220000, anual: 350000,
+    starter: 0,
+    basico: 34900,
+    trimestral: 83900,
+    semestral: 146900,
+    anual: 230900,
+    mensual: 34900,
 };
 
 const PLAN_LABELS: Record<string, string> = {
-    mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
+    starter: 'Starter',
+    basico: 'Básico',
+    trimestral: 'Trimestral',
+    semestral: 'Pro',
+    anual: 'Escala',
+    mensual: 'Mensual (legacy)',
 };
 
 const PER_PAGE = 5;
@@ -114,11 +125,10 @@ function Pager({ page, totalPages, setPage, total }: {
                         key={p}
                         type="button"
                         onClick={() => setPage(p)}
-                        className={`min-w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${
-                            p === page
-                                ? 'bg-primary text-primary-foreground'
-                                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                        }`}
+                        className={`min-w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${p === page
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                            }`}
                     >
                         {p}
                     </button>
@@ -145,7 +155,7 @@ interface MethodModalProps {
 
 function MethodModal({ method, onClose }: MethodModalProps) {
     const [form, setForm] = useState({
-        name:         method?.name         ?? '',
+        name: method?.name ?? '',
         account_info: method?.account_info ?? '',
         instructions: method?.instructions ?? '',
     });
@@ -157,12 +167,12 @@ function MethodModal({ method, onClose }: MethodModalProps) {
         if (method) {
             router.put(`/admin/payment-methods/${method.id}`, form, {
                 onSuccess: () => onClose(),
-                onFinish:  () => setSaving(false),
+                onFinish: () => setSaving(false),
             });
         } else {
             router.post('/admin/payment-methods', form, {
                 onSuccess: () => onClose(),
-                onFinish:  () => setSaving(false),
+                onFinish: () => setSaving(false),
             });
         }
     }
@@ -247,11 +257,11 @@ export default function Billing({
     adRequestsBanner, adRequestsSlider,
     tenantHistory, flash,
 }: Props) {
-    const [editingMethod,   setEditingMethod]   = useState<PaymentMethod | null | false>(false);
-    const [activatingId,    setActivatingId]    = useState<string | null>(null);
+    const [editingMethod, setEditingMethod] = useState<PaymentMethod | null | false>(false);
+    const [activatingId, setActivatingId] = useState<string | null>(null);
     const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
-    const [historyTab,      setHistoryTab]      = useState<HistoryTab>('activas');
-    const [historyPages,    setHistoryPages]    = useState<Record<HistoryTab, number>>({
+    const [historyTab, setHistoryTab] = useState<HistoryTab>('activas');
+    const [historyPages, setHistoryPages] = useState<Record<HistoryTab, number>>({
         activas: 1, inactivas: 1, eliminadas: 1,
     });
 
@@ -273,10 +283,11 @@ export default function Billing({
     }, [tenantHistory]);
 
     const plans = [
-        { key: 'mensual',    name: 'Mensual',    icon: Clock,  color: 'text-zinc-500'   },
-        { key: 'trimestral', name: 'Trimestral', icon: Zap,    color: 'text-blue-500'   },
-        { key: 'semestral',  name: 'Semestral',  icon: Crown,  color: 'text-purple-500' },
-        { key: 'anual',      name: 'Anual',      icon: Crown,  color: 'text-amber-500'  },
+        { key: 'starter', name: 'Starter', icon: Zap, color: 'text-emerald-500' },
+        { key: 'basico', name: 'Básico', icon: Clock, color: 'text-zinc-500' },
+        { key: 'trimestral', name: 'Trimestral', icon: Building, color: 'text-blue-500' },
+        { key: 'semestral', name: 'Pro', icon: CreditCard, color: 'text-purple-500' },
+        { key: 'anual', name: 'Escala', icon: Crown, color: 'text-amber-500' },
     ];
 
     function toggleMethod(id: number) {
@@ -348,8 +359,13 @@ export default function Billing({
 
             <div className="grid gap-4 sm:grid-cols-2 mb-10">
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Ingresos Estimados Mensuales</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Ingresos Totales (pagos reales)</p>
                     <p className="text-3xl font-display font-bold text-foreground">{fmt(stats.total_revenue)}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                        Equiv. mensual:{' '}
+                        <span className="font-semibold text-foreground">{fmt(stats.total_monthly)}</span>
+                        <span className="ml-1 opacity-60">/ mes</span>
+                    </p>
                 </div>
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Pendientes de Activación</p>
@@ -424,11 +440,10 @@ export default function Billing({
                                                         <Ban className="h-2.5 w-2.5" /> Eliminada
                                                     </span>
                                                 ) : (
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                                                        t.payment_status === 'pending_review'
-                                                            ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
-                                                            : 'bg-muted text-muted-foreground border-border'
-                                                    }`}>
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${t.payment_status === 'pending_review'
+                                                        ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                                                        : 'bg-muted text-muted-foreground border-border'
+                                                        }`}>
                                                         {t.payment_status === 'pending_review' ? 'Con comprobante' : 'Sin comprobante'}
                                                     </span>
                                                 )}
@@ -597,28 +612,26 @@ export default function Billing({
                 <div className="flex gap-1 mb-4 p-1 rounded-xl bg-muted w-fit">
                     {(
                         [
-                            { key: 'activas',    label: 'Activas',    color: 'text-accent' },
-                            { key: 'inactivas',  label: 'Inactivas',  color: 'text-amber-500' },
+                            { key: 'activas', label: 'Activas', color: 'text-accent' },
+                            { key: 'inactivas', label: 'Inactivas', color: 'text-amber-500' },
                             { key: 'eliminadas', label: 'Eliminadas', color: 'text-red-500' },
                         ] as { key: HistoryTab; label: string; color: string }[]
                     ).map(tab => {
-                        const count    = tenantHistory[tab.key].length;
+                        const count = tenantHistory[tab.key].length;
                         const isActive = historyTab === tab.key;
                         return (
                             <button
                                 key={tab.key}
                                 type="button"
                                 onClick={() => setHistoryTab(tab.key)}
-                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                                    isActive
-                                        ? 'bg-card text-foreground shadow-sm'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${isActive
+                                    ? 'bg-card text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                    }`}
                             >
                                 {tab.label}
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                    isActive ? `bg-muted ${tab.color}` : 'bg-muted/60 text-muted-foreground'
-                                }`}>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? `bg-muted ${tab.color}` : 'bg-muted/60 text-muted-foreground'
+                                    }`}>
                                     {count}
                                 </span>
                             </button>
@@ -628,12 +641,12 @@ export default function Billing({
 
                 {/* Tabla de historial con paginación */}
                 {(() => {
-                    const list       = tenantHistory[historyTab];
-                    const page       = historyPages[historyTab];
+                    const list = tenantHistory[historyTab];
+                    const page = historyPages[historyTab];
                     const totalPages = Math.max(1, Math.ceil(list.length / PER_PAGE));
                     // Clampear en caso de que historyPages esté un render por delante del useEffect corrector
-                    const safePage   = Math.min(page, totalPages);
-                    const slice      = list.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+                    const safePage = Math.min(page, totalPages);
+                    const slice = list.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
                     const goTo = (p: number) => {
                         setHistoryPages(prev => ({ ...prev, [historyTab]: p }));

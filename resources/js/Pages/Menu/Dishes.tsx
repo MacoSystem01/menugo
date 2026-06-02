@@ -2,6 +2,7 @@ import AppShell from '@/Layouts/AppShell';
 import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Utensils, ToggleLeft, ToggleRight } from 'lucide-react';
+import { usePlan } from '@/hooks/use-plan';
 
 interface Category {
     id: number;
@@ -22,6 +23,8 @@ interface Dish {
 interface Props {
     dishes: Dish[];
     categories: Category[];
+    dish_count: number;        // conteo real desde la DB (backend)
+    dish_limit: number | null; // límite real según plan (backend) — null = ilimitado
     flash?: { success?: string; error?: string };
 }
 
@@ -35,28 +38,34 @@ interface FormFields {
 }
 
 const CAT_PALETTE = [
-    { bg: 'rgba(251,146,60,0.18)',  color: '#fb923c', border: 'rgba(251,146,60,0.45)'  }, // orange
-    { bg: 'rgba(34,211,238,0.18)',  color: '#22d3ee', border: 'rgba(34,211,238,0.45)'  }, // cyan
-    { bg: 'rgba(167,139,250,0.18)', color: '#a78bfa', border: 'rgba(167,139,250,0.45)' }, // violet
-    { bg: 'rgba(52,211,153,0.18)',  color: '#34d399', border: 'rgba(52,211,153,0.45)'  }, // emerald
-    { bg: 'rgba(251,113,133,0.18)', color: '#fb7185', border: 'rgba(251,113,133,0.45)' }, // rose
-    { bg: 'rgba(250,204,21,0.18)',  color: '#facc15', border: 'rgba(250,204,21,0.45)'  }, // yellow
-    { bg: 'rgba(96,165,250,0.18)',  color: '#60a5fa', border: 'rgba(96,165,250,0.45)'  }, // blue
-    { bg: 'rgba(244,114,182,0.18)', color: '#f472b6', border: 'rgba(244,114,182,0.45)' }, // pink
-    { bg: 'rgba(74,222,128,0.18)',  color: '#4ade80', border: 'rgba(74,222,128,0.45)'  }, // green
-    { bg: 'rgba(251,191,36,0.18)',  color: '#fbbf24', border: 'rgba(251,191,36,0.45)'  }, // amber
-    { bg: 'rgba(129,140,248,0.18)', color: '#818cf8', border: 'rgba(129,140,248,0.45)' }, // indigo
-    { bg: 'rgba(45,212,191,0.18)',  color: '#2dd4bf', border: 'rgba(45,212,191,0.45)'  }, // teal
+    { bg: 'rgba(251,146,60,0.18)', color: '#fb923c', border: 'rgba(251,146,60,0.45)' },
+    { bg: 'rgba(34,211,238,0.18)', color: '#22d3ee', border: 'rgba(34,211,238,0.45)' },
+    { bg: 'rgba(167,139,250,0.18)', color: '#a78bfa', border: 'rgba(167,139,250,0.45)' },
+    { bg: 'rgba(52,211,153,0.18)', color: '#34d399', border: 'rgba(52,211,153,0.45)' },
+    { bg: 'rgba(251,113,133,0.18)', color: '#fb7185', border: 'rgba(251,113,133,0.45)' },
+    { bg: 'rgba(250,204,21,0.18)', color: '#facc15', border: 'rgba(250,204,21,0.45)' },
+    { bg: 'rgba(96,165,250,0.18)', color: '#60a5fa', border: 'rgba(96,165,250,0.45)' },
+    { bg: 'rgba(244,114,182,0.18)', color: '#f472b6', border: 'rgba(244,114,182,0.45)' },
+    { bg: 'rgba(74,222,128,0.18)', color: '#4ade80', border: 'rgba(74,222,128,0.45)' },
+    { bg: 'rgba(251,191,36,0.18)', color: '#fbbf24', border: 'rgba(251,191,36,0.45)' },
+    { bg: 'rgba(129,140,248,0.18)', color: '#818cf8', border: 'rgba(129,140,248,0.45)' },
+    { bg: 'rgba(45,212,191,0.18)', color: '#2dd4bf', border: 'rgba(45,212,191,0.45)' },
 ];
 
 function fmt(n: number) {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
 }
 
-export default function Dishes({ dishes, categories, flash }: Props) {
+export default function Dishes({ dishes, categories, dish_count, dish_limit, flash }: Props) {
+    // Usar valores del servidor (fuente de verdad real) en lugar del hook
+    const { planName, requiredPlanFor } = usePlan();
+    const limit = dish_limit;                              // null = ilimitado
+    const atLimit = limit !== null && dish_count >= limit;  // usa conteo real de DB
+    const nearLimit = limit !== null && dish_count >= limit - 5 && !atLimit;
+
     const [showModal, setShowModal] = useState(false);
-    const [editing, setEditing]     = useState<Dish | null>(null);
-    const [search, setSearch]       = useState('');
+    const [editing, setEditing] = useState<Dish | null>(null);
+    const [search, setSearch] = useState('');
     const [activeCat, setActiveCat] = useState<number | null>(null);
 
     const form = useForm<FormFields>({
@@ -64,19 +73,16 @@ export default function Dishes({ dishes, categories, flash }: Props) {
         name: '', description: '', price: '', sort_order: 0, available: true,
     });
 
-    // Assign a fixed vivid color to each category by its position in the list
     const colorMap = useMemo(() => {
         const map = new Map<number, typeof CAT_PALETTE[0]>();
         categories.forEach((cat, i) => map.set(cat.id, CAT_PALETTE[i % CAT_PALETTE.length]));
         return map;
     }, [categories]);
 
-    // Categories that actually have dishes
     const usedCategories = categories.filter(c => dishes.some(d => d.category_id === c.id));
 
-    // Apply filters: category pill + search text
     const filtered = dishes.filter(d => {
-        const matchesCat    = activeCat === null || d.category_id === activeCat;
+        const matchesCat = activeCat === null || d.category_id === activeCat;
         const matchesSearch = !search.trim()
             || d.name.toLowerCase().includes(search.toLowerCase())
             || (d.category ?? '').toLowerCase().includes(search.toLowerCase());
@@ -134,12 +140,10 @@ export default function Dishes({ dishes, categories, flash }: Props) {
         });
     }
 
-    // Build table rows: insert a category header row whenever the category changes
     const tableRows: React.ReactNode[] = [];
     let lastCatId: number | null = null;
 
     filtered.forEach(dish => {
-        // Only show category separator when viewing all categories
         if (activeCat === null && dish.category_id !== lastCatId) {
             lastCatId = dish.category_id;
             const sepColor = colorMap.get(dish.category_id);
@@ -147,10 +151,8 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                 <tr key={`sep-${dish.category_id}`}
                     style={{ backgroundColor: sepColor ? sepColor.bg : undefined }}>
                     <td colSpan={5} className="px-6 py-2">
-                        <span
-                            className="text-xs font-bold uppercase tracking-widest"
-                            style={{ color: sepColor?.color }}
-                        >
+                        <span className="text-xs font-bold uppercase tracking-widest"
+                            style={{ color: sepColor?.color }}>
                             {dish.category ?? 'Sin categoría'}
                         </span>
                     </td>
@@ -163,21 +165,17 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                 <td className="px-6 py-4">
                     <div className="font-medium">{dish.name}</div>
                     {dish.description && (
-                        <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">{dish.description}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
+                            {dish.description}
+                        </div>
                     )}
                 </td>
                 <td className="px-6 py-4 hidden md:table-cell">
                     {(() => {
                         const c = colorMap.get(dish.category_id);
                         return (
-                            <span
-                                className="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
-                                style={{
-                                    backgroundColor: c?.bg,
-                                    color: c?.color,
-                                    borderColor: c?.border,
-                                }}
-                            >
+                            <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold border"
+                                style={{ backgroundColor: c?.bg, color: c?.color, borderColor: c?.border }}>
                                 {dish.category ?? '—'}
                             </span>
                         );
@@ -194,16 +192,12 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                 </td>
                 <td className="px-6 py-4 text-right">
                     <div className="inline-flex gap-2">
-                        <button
-                            onClick={() => openEdit(dish)}
-                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        >
+                        <button onClick={() => openEdit(dish)}
+                            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
                             <Pencil className="h-4 w-4" />
                         </button>
-                        <button
-                            onClick={() => handleDelete(dish)}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-400"
-                        >
+                        <button onClick={() => handleDelete(dish)}
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                         </button>
                     </div>
@@ -222,7 +216,25 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                 </div>
             )}
 
-            {/* Barra superior: búsqueda + botón */}
+            {/* Banner de límite — solo visible si el plan tiene límite (starter) */}
+            {limit !== null && (
+                <div className={`mb-4 rounded-xl border px-4 py-3 text-sm flex items-center gap-3 ${atLimit
+                        ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                        : nearLimit
+                            ? 'border-amber-400/40 bg-amber-400/5 text-amber-700'
+                            : 'border-border bg-muted/30 text-muted-foreground'
+                    }`}>
+                    <span>{atLimit ? '🔒' : '⚠️'}</span>
+                    <span>
+                        {atLimit
+                            ? `Límite de ${limit} platos alcanzado en el plan ${planName()}. Actualiza al plan ${requiredPlanFor('orders')} para agregar más.`
+                            : `Plan ${planName()}: ${dish_count}/${limit} platos usados.`
+                        }
+                    </span>
+                </div>
+            )}
+
+            {/* Barra superior */}
             <div className="flex flex-col sm:flex-row justify-between gap-3 mb-4">
                 <input
                     placeholder="Buscar plato..."
@@ -232,7 +244,8 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                 />
                 <button
                     onClick={openCreate}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                    disabled={atLimit}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus className="h-4 w-4" /> Nuevo plato
                 </button>
@@ -243,10 +256,10 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                 <div className="flex flex-wrap gap-2 mb-5">
                     <button
                         onClick={() => setActiveCat(null)}
-                        className={`h-7 px-3 rounded-full text-xs font-medium transition-colors
-                            ${activeCat === null
+                        className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${activeCat === null
                                 ? 'bg-primary text-primary-foreground'
-                                : 'border border-border text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                                : 'border border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                            }`}
                     >
                         Todos
                         <span className="ml-1.5 opacity-70">({dishes.length})</span>
@@ -281,7 +294,9 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                     <Utensils className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                     <p className="font-medium">{search || activeCat ? 'Sin resultados' : 'Sin platos'}</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {search || activeCat ? 'Intenta con otro término o categoría.' : 'Agrega el primer plato a tu Menu.'}
+                        {search || activeCat
+                            ? 'Intenta con otro término o categoría.'
+                            : 'Agrega el primer plato a tu Menu.'}
                     </p>
                 </div>
             ) : (
@@ -311,6 +326,15 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                             {editing ? 'Editar plato' : 'Nuevo plato'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
+
+                            {/* Error de límite de plan */}
+                            {(form.errors as Record<string, string>).plan_limit && (
+                                <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive flex items-center gap-2">
+                                    <span>🔒</span>
+                                    <span>{(form.errors as Record<string, string>).plan_limit}</span>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">
                                     Categoría <span className="text-red-400">*</span>
@@ -323,8 +347,11 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                                     <option value="">Seleccionar categoría...</option>
                                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
-                                {form.errors.category_id && <p className="text-xs text-red-400 mt-1">{form.errors.category_id}</p>}
+                                {form.errors.category_id && (
+                                    <p className="text-xs text-red-400 mt-1">{form.errors.category_id}</p>
+                                )}
                             </div>
+
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">
                                     Nombre <span className="text-red-400">*</span>
@@ -336,8 +363,8 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                                     placeholder="Ej: Tacos al pastor..."
                                     autoFocus
                                 />
-                                {form.errors.name && <p className="text-xs text-red-400 mt-1">{form.errors.name}</p>}
                             </div>
+
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">Descripción</label>
                                 <textarea
@@ -348,6 +375,7 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                                     placeholder="Descripción opcional..."
                                 />
                             </div>
+
                             <div>
                                 <label className="block text-sm font-medium mb-1.5">
                                     Precio <span className="text-red-400">*</span>
@@ -359,8 +387,11 @@ export default function Dishes({ dishes, categories, flash }: Props) {
                                     onChange={e => form.setData('price', e.target.value)}
                                     placeholder="0"
                                 />
-                                {form.errors.price && <p className="text-xs text-red-400 mt-1">{form.errors.price}</p>}
+                                {form.errors.price && (
+                                    <p className="text-xs text-red-400 mt-1">{form.errors.price}</p>
+                                )}
                             </div>
+
                             <div className="flex gap-3 pt-2">
                                 <button
                                     type="button"

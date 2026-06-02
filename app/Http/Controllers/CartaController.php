@@ -99,6 +99,7 @@ class CartaController extends Controller
             'settings'         => $settings,
             'tables'           => $tables,
             'initial_table_id' => $initialTableId,
+            'orders_enabled'   => \App\Services\PlanService::can('orders'),
         ]);
     }
 
@@ -106,6 +107,14 @@ class CartaController extends Controller
 
     public function placeOrder(Request $request)
     {
+        // ── Verificar que el plan permite pedidos desde mesa ─────────────────
+        if (!\App\Services\PlanService::can('orders')) {
+            return redirect('/carta')->withErrors([
+                'plan' => 'Los pedidos desde mesa no están disponibles en el plan Starter. ' .
+                          'Comunícate directamente con el staff del restaurante.',
+            ]);
+        }
+
         // ── Prevenir pedidos duplicados por doble clic ────────────────────────
         // Si existe un pedido con el mismo teléfono y nombre en los últimos
         // 5 segundos, lo consideramos un duplicado y lo ignoramos silenciosamente.

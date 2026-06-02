@@ -1,6 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { PlanGate } from '@/components/PlanGate';
 import { TrendingUp, ShoppingBag, DollarSign, Bike, AlertTriangle, BarChart3, FileText, FileSpreadsheet, Download, TrendingDown, Printer } from 'lucide-react';
 
 interface Resumen {
@@ -127,6 +128,7 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
     return (
         <AppShell title="Reporte" subtitle="Análisis de ventas y operaciones">
             <Head title="Reporte" />
+            <PlanGate feature="analytics">
 
             {/* Filtro de fechas */}
             <div className="flex flex-wrap gap-3 items-end mb-6 p-4 rounded-2xl border border-border bg-card">
@@ -310,6 +312,7 @@ export default function Reporte({ resumen, top_platos, ventas_por_dia, novedades
                     )}
                 </div>
             </div>
+            </PlanGate>
         </AppShell>
     );
 }

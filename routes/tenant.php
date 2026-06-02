@@ -28,6 +28,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         'web',
         InitializeTenancyByDomain::class,
         PreventAccessFromCentralDomains::class,
+        \App\Http\Middleware\CheckTenantActive::class,
     ])->group(function () {
 
     // ── Auth del restaurante ──────────────────────────────────────────────────
@@ -316,6 +317,11 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         Route::delete('/gastos/{gasto}', [GastoController::class, 'destroy'])
             ->middleware('perm:reporte.ver')
             ->name('gastos.destroy');
+
+        // ── Mi Plan ───────────────────────────────────────────────────────────────
+        Route::get('/mi-plan', [ConfiguracionController::class, 'miPlan'])
+            ->middleware('perm:carta.ver')
+            ->name('mi-plan');
 
         // ── Configuraciones ───────────────────────────────────────────────────
         Route::get('/configuracion/pagos',      [ConfiguracionController::class, 'pagos'])

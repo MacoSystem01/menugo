@@ -23,6 +23,11 @@ class ReporteController extends Controller
 
     public function index(Request $request)
     {
+        if (!\App\Services\PlanService::can('analytics')) {
+            return redirect('/dashboard')
+                ->with('warning', 'Los reportes avanzados requieren el plan Trimestral o superior.');
+        }
+
         // Validar fechas — evita queries con valores no controlados
         $request->validate([
             'desde' => 'nullable|date_format:Y-m-d|before_or_equal:today',
