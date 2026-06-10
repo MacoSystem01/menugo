@@ -383,14 +383,14 @@ function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
                 {/* Menu desktop */}
                 <nav className="hidden items-center gap-10 md:flex">
                     <Link href="/" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Inicio</Link>
-                    <a href="#features" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Funciones</a>
+                    <button type="button" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Funciones</button>
                     <Link href="/pricing" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Planes</Link>
-                    <a href="#publicidad" className="relative text-base font-medium text-accent hover:text-accent/80 transition-colors flex items-center gap-1.5">
+                    <button type="button" onClick={() => document.getElementById('publicidad')?.scrollIntoView({ behavior: 'smooth' })} className="relative text-base font-medium text-accent hover:text-accent/80 transition-colors flex items-center gap-1.5">
                         <Megaphone className="h-4 w-4" />
                         Publicidad
                         <span className="absolute -top-2 -right-6 text-[9px] font-black uppercase tracking-wider bg-accent text-accent-foreground rounded-full px-1.5 py-0.5 leading-none">nuevo</span>
-                    </a>
-                    <a href="#testimonios" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Clientes</a>
+                    </button>
+                    <button type="button" onClick={() => document.getElementById('testimonios')?.scrollIntoView({ behavior: 'smooth' })} className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Clientes</button>
                 </nav>
 
                 {/* Botones desktop */}
@@ -415,12 +415,12 @@ function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
             {mobileOpen && (
                 <div className="md:hidden border-t border-border bg-background/98 backdrop-blur-md px-6 py-4 space-y-1">
                     <Link href="/" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Inicio</Link>
-                    <a href="#features" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Funciones</a>
+                    <button type="button" className="block w-full text-left rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Funciones</button>
                     <Link href="/pricing" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Planes</Link>
-                    <a href="#publicidad" className="flex items-center gap-2 rounded-xl px-3 py-3 text-base font-medium text-accent hover:bg-accent/10 transition-colors" onClick={() => setMobileOpen(false)}>
+                    <button type="button" className="flex items-center gap-2 w-full rounded-xl px-3 py-3 text-base font-medium text-accent hover:bg-accent/10 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('publicidad')?.scrollIntoView({ behavior: 'smooth' }); }}>
                         <Megaphone className="h-4 w-4" /> Publicidad
-                    </a>
-                    <a href="#testimonios" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Clientes</a>
+                    </button>
+                    <button type="button" className="block w-full text-left rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('testimonios')?.scrollIntoView({ behavior: 'smooth' }); }}>Clientes</button>
                     <div className="pt-4 mt-2 border-t border-border space-y-3">
                         <LoginSearch triggerClass="flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-medium hover:bg-muted/50 transition-colors" />
                         <Button variant="hero" size="lg" onClick={() => { onOpenPlans(); setMobileOpen(false); }} className="w-full">
