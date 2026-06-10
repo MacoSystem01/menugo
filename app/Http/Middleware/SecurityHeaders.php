@@ -87,7 +87,8 @@ class SecurityHeaders
 
         $csp = implode('; ', [
             "default-src 'self'",
-            "script-src {$scriptSrc} https://maps.googleapis.com",
+            "script-src {$scriptSrc} https://maps.googleapis.com https://static.cloudflareinsights.com",
+            "script-src-elem {$scriptSrc} https://maps.googleapis.com https://static.cloudflareinsights.com",
             // worker-src: Vite HMR crea un Web Worker desde blob: en desarrollo.
             // Sin esta directiva el navegador usa script-src como fallback y bloquea
             // el worker → el HMR no funciona → el JS de la página no se inicializa
@@ -96,7 +97,7 @@ class SecurityHeaders
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com" . ($isViteDev ? " {$viteUrl}" : ''),
             "font-src 'self' https://fonts.gstatic.com data:" . ($isViteDev ? " {$viteUrl}" : ''),
             "img-src 'self' data: blob: {$imgSrcExtra} https://maps.gstatic.com https://maps.googleapis.com",
-            "connect-src {$connectSrc}",
+            "connect-src {$connectSrc} https://cloudflareinsights.com",
             "frame-src 'self'",
             "object-src 'none'",
             "base-uri 'self'",
