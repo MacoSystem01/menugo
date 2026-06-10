@@ -11,7 +11,7 @@ const plans = [
         period: 'COP · para siempre',
         desc: 'Digitaliza tu menú sin costo. Sin tarjeta.',
         badge: 'Gratis',
-        features: ['Menú QR digital', 'Hasta 30 platos', '1 código QR', 'Soporte por email'],
+        features: ['Menú QR digital', 'Hasta 12 platos', '1 código QR', 'Soporte por email'],
         locked: ['Pedidos desde mesa', 'Analytics', 'Delivery propio'],
         cta: 'Empezar gratis',
         variant: 'outline' as const,
