@@ -14,6 +14,9 @@ return [
         '127.0.0.1',
         'localhost',
         'menugo.local',
+        // Dominio central en producción (Hostinger)
+        env('CENTRAL_DOMAIN', 'menugo.com.co'),
+        'www.' . env('CENTRAL_DOMAIN', 'menugo.com.co'),
     ],
 
     /**

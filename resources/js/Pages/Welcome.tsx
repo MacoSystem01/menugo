@@ -87,12 +87,13 @@ function PlansModal({ onClose }: { onClose: () => void }) {
     }, [onClose]);
 
     return (
-        /* Backdrop */
+        /* Backdrop — overflow-y-auto + min-h-full para que el modal nunca quede fuera del viewport en mobile */
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            className="fixed inset-0 z-50 overflow-y-auto"
             style={{ background: 'oklch(0 0 0 / 0.75)', backdropFilter: 'blur(6px)' }}
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
+            <div className="flex min-h-full items-center justify-center px-4 py-6">
             <div
                 className="relative w-full max-w-4xl rounded-3xl border border-border overflow-hidden"
                 style={{ background: 'oklch(0.14 0.018 50)' }}
@@ -215,6 +216,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                         15 días de prueba gratis
                     </p>
                 </div>
+            </div>
             </div>
         </div>
     );
