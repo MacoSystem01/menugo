@@ -34,7 +34,7 @@ export function usePlan() {
     };
 
     const dishLimit = (): number | null => {
-        return plan === 'starter' ? 30 : null;
+        return plan === 'starter' ? 12 : null;
     };
 
     const requiredPlanFor = (feature: string): string => {
