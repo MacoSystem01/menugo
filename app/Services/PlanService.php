@@ -21,7 +21,7 @@ class PlanService
     ];
 
     private const DISH_LIMIT = [
-        'starter'    => 30,
+        'starter'    => 12,
         'basico'     => null,
         'trimestral' => null,
         'semestral'  => null,
