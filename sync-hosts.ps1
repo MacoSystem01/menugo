@@ -1,61 +1,41 @@
-# MenuGo -- Sincronizar y normalizar hosts de tenants
+# MenuGo — Sincronizar hosts de tenants
 # Clic derecho -> "Ejecutar con PowerShell" (acepta el UAC)
-# Este script normaliza todos los dominios a lowercase y agrega los faltantes.
+# Despues de ejecutar esto UNA VEZ, los proximos tenants se registran automaticamente.
 
 $hostsFile = "C:\Windows\System32\drivers\etc\hosts"
 
-# Paso 1: conceder escritura permanente al grupo de usuarios actuales
+# Paso 1: conceder escritura permanente al grupo Users
 Write-Host "Configurando permisos sobre el archivo hosts..." -ForegroundColor Yellow
-icacls $hostsFile /grant "Usuarios:(W)" 2>$null | Out-Null
-icacls $hostsFile /grant "Users:(W)" 2>$null | Out-Null
+icacls $hostsFile /grant "BUILTIN\Users:(W)" | Out-Null
 Write-Host "Listo." -ForegroundColor Green
 
-# Paso 2: leer contenido actual y filtrar entradas con mayusculas incorrectas
-$lines = Get-Content $hostsFile -Encoding ASCII
-$newLines = [System.Collections.Generic.List[string]]::new()
+# Paso 2: agregar dominios faltantes
+$current = Get-Content $hostsFile -Raw
+$added   = 0
 
-foreach ($line in $lines) {
-    # Normalizar entradas .Menugo.local (capital M) -> se omiten y se reemplazan
-    if ($line -match '\.menugo\.local' -and $line -cmatch '\.Menugo\.local') {
-        Write-Host "Eliminando entrada con case incorrecto: $line" -ForegroundColor Yellow
-        continue
-    }
-    $newLines.Add($line)
-}
+if ($current -notmatch [regex]::Escape('lilaburger.macosystem.cloud')) {
+    Add-Content $hostsFile "`n127.0.0.1 lilaburger.macosystem.cloud"
+    Write-Host 'Agregado: 127.0.0.1 lilaburger.macosystem.cloud' -ForegroundColor Green
+    $added++
+} else { Write-Host 'Ya existe: lilaburger.macosystem.cloud' -ForegroundColor DarkGray }
 
-# Paso 3: agregar dominios requeridos si faltan
-$requiredDomains = @(
-    "menugo.local",
-    "prueba.menugo.local",
-    "prueba1.menugo.local",
-    "losmaschimbitas.menugo.local",
-    "latajada.menugo.local"
-)
+if ($current -notmatch [regex]::Escape('lasdeliciasdekathe.macosystem.cloud')) {
+    Add-Content $hostsFile "`n127.0.0.1 lasdeliciasdekathe.macosystem.cloud"
+    Write-Host 'Agregado: 127.0.0.1 lasdeliciasdekathe.macosystem.cloud' -ForegroundColor Green
+    $added++
+} else { Write-Host 'Ya existe: lasdeliciasdekathe.macosystem.cloud' -ForegroundColor DarkGray }
 
-$currentText = $newLines -join "`n"
-$added = 0
-
-foreach ($domain in $requiredDomains) {
-    $escaped = [regex]::Escape($domain)
-    if ($currentText -notmatch "(?i)$escaped") {
-        $newLines.Add("127.0.0.1 $domain")
-        Write-Host "Agregado: 127.0.0.1 $domain" -ForegroundColor Green
-        $added++
-    } else {
-        Write-Host "Ya existe: $domain" -ForegroundColor DarkGray
-    }
-}
-
-# Paso 4: escribir el archivo actualizado
-[System.IO.File]::WriteAllLines($hostsFile, $newLines, [System.Text.Encoding]::ASCII)
+if ($current -notmatch [regex]::Escape('losmaschimbitas.macosystem.cloud')) {
+    Add-Content $hostsFile "`n127.0.0.1 losmaschimbitas.macosystem.cloud"
+    Write-Host 'Agregado: 127.0.0.1 losmaschimbitas.macosystem.cloud' -ForegroundColor Green
+    $added++
+} else { Write-Host 'Ya existe: losmaschimbitas.macosystem.cloud' -ForegroundColor DarkGray }
 
 Write-Host ""
 if ($added -gt 0) {
     Write-Host "$added dominio(s) agregado(s). Reinicia el navegador." -ForegroundColor Cyan
 } else {
-    Write-Host "Todos los dominios ya estaban correctos." -ForegroundColor Green
+    Write-Host "Todos los dominios ya estaban registrados." -ForegroundColor Green
 }
 Write-Host ""
-Write-Host "=== Entradas MenuGo en hosts ===" -ForegroundColor Cyan
-Get-Content $hostsFile | Where-Object { $_ -match 'menugo' }
-Write-Host ""
+Read-Host "Presiona Enter para cerrar"

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -13,7 +14,7 @@ return new class extends Migration
         });
 
         Schema::table('carta_settings', function (Blueprint $table) {
-            $table->json('payment_methods')->default('["efectivo"]')->after('banner_image');
+            $table->json('payment_methods')->default(new Expression('(JSON_ARRAY("efectivo"))'))->after('banner_image');
         });
     }
 

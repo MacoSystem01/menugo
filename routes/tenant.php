@@ -45,9 +45,13 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     ->middleware('throttle:60,1')
         ->name('carta.pedido');
 
+    // ── Raíz del tenant: invitado → login, autenticado → dashboard ───────────
+    Route::get('/', fn() => auth()->check()
+        ? redirect('/dashboard')
+        : redirect()->route('tenant.login'));
+
     // ── Panel restaurante (requiere auth) ─────────────────────────────────────
     Route::middleware('auth')->group(function () {
-        Route::get('/', fn() => redirect('/dashboard'));
 
         // Dashboard — accesible para todos los roles autenticados
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

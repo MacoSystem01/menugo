@@ -77,7 +77,8 @@ function KpiCard({
 
 // ── Dashboard Gerente / Administrador ──────────────────────────────────────────
 
-function FullDashboard({ stats, pedidos_recientes, top_platos }: FullDashboardProps) {
+function FullDashboard(props: FullDashboardProps) {
+    const { stats, pedidos_recientes, top_platos } = props;
     const { can, planName, requiredPlanFor } = usePlan();
     const { url: waUrl } = useSupportWhatsapp();
     const maxVendidos = top_platos[0]?.vendidos ?? 1;
