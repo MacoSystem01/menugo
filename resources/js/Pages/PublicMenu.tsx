@@ -160,6 +160,8 @@ interface Props {
     tables: Table[];
     initial_table_id?: number;
     orders_enabled: boolean;
+    is_open_now?: boolean;
+    now_iso?: string;
 }
 
 interface CartItem {
@@ -211,7 +213,7 @@ type Screen = 'menu' | 'cart' | 'checkout';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id, orders_enabled }: Props) {
+export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id, orders_enabled, is_open_now }: Props) {
     const s = {
         primary: settings?.primary_color ?? '#e85d04',
         bg: settings?.bg_color ?? '#ffffff',
@@ -222,24 +224,6 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const nameClass = NAME_SIZES[settings?.name_size] ?? 'text-xl';
     const sloganClass = SLOGAN_SIZES[settings?.slogan_size] ?? 'text-sm';
     const payMethods = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
-
-    // ── Estado operativo del restaurante ──────────────────────────────────────
-    const [closedOverlay, setClosedOverlay] = useState(false);
-    useEffect(() => {
-        const schedule = settings?.work_schedule;
-        if (!schedule) return;
-        const DAY_KEYS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'] as const;
-        const now = new Date();
-        const dayKey = DAY_KEYS[now.getDay()];
-        const todaySch = schedule[dayKey];
-        if (!todaySch) return;
-        if (!todaySch.activo) { setClosedOverlay(true); return; }
-        const toMins = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
-        const nowMins = now.getHours() * 60 + now.getMinutes();
-        const apertura = toMins(todaySch.apertura);
-        const cierre = toMins(todaySch.cierre);
-        if (nowMins < apertura || nowMins >= cierre) setClosedOverlay(true);
-    }, [settings?.work_schedule]);
 
     // ── Cart state ─────────────────────────────────────────────────────────────
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -440,63 +424,57 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         <div className="min-h-screen" style={{ backgroundColor: s.bg, color: s.text }}>
             <Head title={`Carta — ${tenant_name}`} />
 
-            {/* ── Overlay restaurante cerrado ── */}
-            {closedOverlay && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)' }}>
-                    <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
-                        style={{ backgroundColor: s.bg, color: s.text }}>
-
+            {/* ── Banner restaurante cerrado ── */}
+            {!is_open_now && (
+                <div className="w-full border-b px-4 py-5" style={{ backgroundColor: `${s.primary}08`, borderColor: `${s.primary}20` }}>
+                    <div className="max-w-4xl mx-auto space-y-4">
                         {/* Header */}
-                        <div className="px-6 pt-8 pb-5 text-center border-b" style={{ borderColor: 'rgba(128,128,128,0.15)' }}>
-                            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full mb-4"
-                                style={{ backgroundColor: `${s.primary}22` }}>
-                                <Clock className="h-8 w-8" style={{ color: s.primary }} />
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                                <Clock className="h-5 w-5" style={{ color: s.primary }} />
                             </div>
-                            <h2 className="text-xl font-bold mb-1">{tenant_name}</h2>
-                            <p className="text-sm font-semibold" style={{ color: s.primary }}>
-                                Restaurante cerrado
-                            </p>
-                            <p className="text-xs mt-1 opacity-60">
-                                {schedule?.[todayKey]?.activo === false
-                                    ? 'Hoy no tenemos servicio. Consulta nuestros horarios.'
-                                    : 'En este momento estamos fuera del horario de atención.'}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-sm" style={{ color: s.primary }}>
+                                    Estamos cerrados ahora
+                                </h3>
+                                <p className="text-xs mt-1 opacity-60">
+                                    {schedule?.[todayKey]?.activo === false
+                                        ? 'Hoy no tenemos servicio. Consulta nuestros horarios.'
+                                        : 'En este momento estamos fuera del horario de atención.'}
+                                </p>
+                            </div>
                         </div>
 
                         {/* Horarios */}
                         {schedule && (
-                            <div className="px-6 py-5 space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-widest opacity-40 mb-3">
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-widest opacity-40">
                                     Horario de atención
                                 </p>
-                                {DAYS_LABELS.map(({ key, label }) => {
-                                    const day = schedule[key];
-                                    const isToday = key === todayKey;
-                                    return (
-                                        <div key={key}
-                                            className="flex items-center justify-between text-sm rounded-xl px-3 py-2"
-                                            style={{
-                                                backgroundColor: isToday ? `${s.primary}18` : 'transparent',
-                                                fontWeight: isToday ? 600 : 400,
-                                            }}>
-                                            <span style={{ color: isToday ? s.primary : undefined }}>
-                                                {label}{isToday && ' (hoy)'}
-                                            </span>
-                                            {day?.activo
-                                                ? <span className="text-xs opacity-80">{fmtHour(day.apertura)} – {fmtHour(day.cierre)}</span>
-                                                : <span className="text-xs opacity-40">Cerrado</span>
-                                            }
-                                        </div>
-                                    );
-                                })}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {DAYS_LABELS.map(({ key, label }) => {
+                                        const day = schedule[key];
+                                        const isToday = key === todayKey;
+                                        return (
+                                            <div key={key}
+                                                className="flex items-center justify-between text-sm rounded-lg px-3 py-2"
+                                                style={{
+                                                    backgroundColor: isToday ? `${s.primary}12` : 'transparent',
+                                                    fontWeight: isToday ? 600 : 400,
+                                                }}>
+                                                <span style={{ color: isToday ? s.primary : undefined }}>
+                                                    {label}{isToday && ' (hoy)'}
+                                                </span>
+                                                {day?.activo
+                                                    ? <span className="text-xs opacity-80">{fmtHour(day.apertura)} – {fmtHour(day.cierre)}</span>
+                                                    : <span className="text-xs opacity-40">Cerrado</span>
+                                                }
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
-
-                        {/* Footer */}
-                        <div className="px-6 pb-7 text-center">
-                            <p className="text-xs opacity-40">Vuelve pronto · {tenant_name}</p>
-                        </div>
                     </div>
                 </div>
             )}
@@ -687,7 +665,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                                         <div className="font-display text-lg font-bold" style={{ color: s.primary }}>
                                                             {fmt(dish.price)}
                                                         </div>
-                                                        {orders_enabled && (qty === 0 ? (
+                                                        {orders_enabled && is_open_now && (qty === 0 ? (
                                                             <button
                                                                 onClick={() => addItem(dish)}
                                                                 className="flex items-center gap-1.5 h-8 px-4 rounded-full text-sm font-semibold"
@@ -931,13 +909,15 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                         <span className="w-5 text-center text-sm font-bold" style={{ color: s.primary }}>
                                             {item.quantity}
                                         </span>
-                                        <button
-                                            onClick={() => addItem(item.dish)}
-                                            className="h-7 w-7 flex items-center justify-center rounded-full"
-                                            style={{ color: s.primary }}
-                                        >
-                                            <Plus className="h-3 w-3" />
-                                        </button>
+                                        {is_open_now && (
+                                            <button
+                                                onClick={() => addItem(item.dish)}
+                                                className="h-7 w-7 flex items-center justify-center rounded-full"
+                                                style={{ color: s.primary }}
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                            </button>
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => deleteItem(item.dish.id)}
