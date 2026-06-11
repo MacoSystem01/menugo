@@ -280,14 +280,7 @@ function HeroSlider({ ads }: { ads: Advertisement[] }) {
         : ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
     return (
-        <div className="relative rounded-3xl shadow-glow border border-border/50 overflow-hidden aspect-4/3 w-full bg-black/20">
-            {/* Fondo difuminado para rellenar el espacio sin barras */}
-            <img
-                key={`bg-${current}`}
-                src={ad.image_url}
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40 pointer-events-none select-none"
-            />
+        <div className="relative rounded-3xl shadow-glow border border-border/50 overflow-hidden aspect-4/3 w-full">
             <Wrap>
                 <img
                     key={current}
@@ -1655,18 +1648,11 @@ function Advertising({ ads, logos }: { ads: Advertisement[]; logos: SliderLogo[]
                     {/* Preview vivo del slot de publicidad */}
                     <div className="relative h-64 overflow-hidden bg-black/10">
                         {ads.length > 0 ? (
-                            <>
-                                <img
-                                    src={ads[0].image_url}
-                                    aria-hidden="true"
-                                    className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-30 pointer-events-none"
-                                />
-                                <img
-                                    src={ads[0].image_url}
-                                    alt={ads[0].title ?? 'Anuncio demo'}
-                                    className="relative w-full h-full object-contain z-10"
-                                />
-                            </>
+                            <img
+                                src={ads[0].image_url}
+                                alt={ads[0].title ?? 'Anuncio demo'}
+                                className="relative w-full h-full object-contain z-10"
+                            />
                         ) : (
                             /* Placeholder cuando no hay anuncios cargados */
                             <div className="w-full h-full flex flex-col items-center justify-center gap-3"
