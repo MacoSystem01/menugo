@@ -225,7 +225,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
 /* ─────────────────────────────────────────────
    Página principal Welcome
 ───────────────────────────────────────────── */
-export default function Welcome({ advertisements = [], sliderLogos = [] }: { advertisements?: Advertisement[]; sliderLogos?: SliderLogo[] }) {
+export default function Welcome({ heroSlots = [], partnerLogos = [] }: { heroSlots?: Advertisement[]; partnerLogos?: SliderLogo[] }) {
     const [showPlansModal, setShowPlansModal] = useState(true);
 
     return (
@@ -239,11 +239,11 @@ export default function Welcome({ advertisements = [], sliderLogos = [] }: { adv
 
             <div className="min-h-screen">
                 <SiteHeader onOpenPlans={() => setShowPlansModal(true)} />
-                <Hero ads={advertisements} />
-                <Marquee logos={sliderLogos} />
+                <Hero ads={heroSlots} />
+                <Marquee logos={partnerLogos} />
                 <Features />
                 <ForEveryone />
-                <Advertising ads={advertisements} logos={sliderLogos} />
+                <Advertising ads={heroSlots} logos={partnerLogos} />
                 <Testimonials />
                 <CTA onOpenPlans={() => setShowPlansModal(true)} />
                 <SiteFooter />
@@ -385,7 +385,7 @@ function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
                     <Link href="/" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Inicio</Link>
                     <button type="button" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Funciones</button>
                     <Link href="/pricing" className="text-base font-medium text-muted-foreground hover:text-foreground transition-colors">Planes</Link>
-                    <button type="button" onClick={() => document.getElementById('publicidad')?.scrollIntoView({ behavior: 'smooth' })} className="relative text-base font-medium text-accent hover:text-accent/80 transition-colors flex items-center gap-1.5">
+                    <button type="button" onClick={() => document.getElementById('alianzas')?.scrollIntoView({ behavior: 'smooth' })} className="relative text-base font-medium text-accent hover:text-accent/80 transition-colors flex items-center gap-1.5">
                         <Megaphone className="h-4 w-4" />
                         Publicidad
                         <span className="absolute -top-2 -right-6 text-[9px] font-black uppercase tracking-wider bg-accent text-accent-foreground rounded-full px-1.5 py-0.5 leading-none">nuevo</span>
@@ -417,7 +417,7 @@ function SiteHeader({ onOpenPlans }: { onOpenPlans: () => void }) {
                     <Link href="/" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Inicio</Link>
                     <button type="button" className="block w-full text-left rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Funciones</button>
                     <Link href="/pricing" className="block rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => setMobileOpen(false)}>Planes</Link>
-                    <button type="button" className="flex items-center gap-2 w-full rounded-xl px-3 py-3 text-base font-medium text-accent hover:bg-accent/10 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('publicidad')?.scrollIntoView({ behavior: 'smooth' }); }}>
+                    <button type="button" className="flex items-center gap-2 w-full rounded-xl px-3 py-3 text-base font-medium text-accent hover:bg-accent/10 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('alianzas')?.scrollIntoView({ behavior: 'smooth' }); }}>
                         <Megaphone className="h-4 w-4" /> Publicidad
                     </button>
                     <button type="button" className="block w-full text-left rounded-xl px-3 py-3 text-base font-medium hover:bg-muted/50 transition-colors" onClick={() => { setMobileOpen(false); document.getElementById('testimonios')?.scrollIntoView({ behavior: 'smooth' }); }}>Clientes</button>
@@ -1625,7 +1625,7 @@ function Advertising({ ads, logos }: { ads: Advertisement[]; logos: SliderLogo[]
         <>
         {modalType && <AdvertisingModal type={modalType} onClose={() => setModalType(null)} />}
 
-        <section id="publicidad" className="mx-auto max-w-7xl px-6 py-24">
+        <section id="alianzas" className="mx-auto max-w-7xl px-6 py-24">
 
             {/* Encabezado */}
             <div className="text-center max-w-2xl mx-auto mb-16">

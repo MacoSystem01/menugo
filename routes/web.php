@@ -35,11 +35,11 @@ Route::get('/', function () {
     }
 
     return Inertia::render('Welcome', [
-        'advertisements' => $ads,
-        'sliderLogos'    => $sliderLogos,
+        'heroSlots' => $ads,
+        'partnerLogos' => $sliderLogos,
     ]);
 });
-Route::get('/welcome', fn() => Inertia::render('Welcome', ['advertisements' => [], 'sliderLogos' => []]));
+Route::get('/welcome', fn() => Inertia::render('Welcome', ['heroSlots' => [], 'partnerLogos' => []]));
 Route::get('/pricing',          fn() => Inertia::render('Pricing'));
 Route::get('/register',         fn() => Inertia::render('Auth/Register'));
 Route::get('/register/success', [TenantController::class, 'registerSuccess'])->name('register.success');
