@@ -165,9 +165,6 @@ class TenantController extends Controller
 
     public function index()
     {
-        // NOTA: getTenantAddress() fue eliminada del listado para evitar el N+1 problem
-        // (inicializar la BD de cada tenant por cada fila es extremadamente lento).
-        // La dirección se muestra sólo en la vista de edición individual.
         $tenants = Tenant::with('domains')->latest()->get()->map(fn($t) => [
             'id'                   => $t->id,
             'name'                 => $t->name,
@@ -180,7 +177,7 @@ class TenantController extends Controller
             'subdomain'            => $t->domains->first()?->domain,
             'expires_at'           => $t->expires_at,
             'created_at'           => $t->created_at->format('d/m/Y'),
-            // address eliminada del listado — evita N+1 (1 conexión BD por tenant)
+            'address'              => $t->address,  // ← Ahora se incluye (está en la tabla central)
         ]);
 
         return Inertia::render('Admin/Tenants', compact('tenants'));
@@ -338,6 +335,11 @@ class TenantController extends Controller
 
         $address = array_key_exists('restaurant_address', $data) ? $data['restaurant_address'] : false;
         unset($data['restaurant_address']);
+
+        // Guardar la dirección en la tabla central de tenants
+        if ($address !== false) {
+            $data['address'] = $address ?: null;
+        }
 
         // array_filter con fn($v) => $v !== null: preserva false y 0 (crítico para 'active' = false)
         $tenant->update(array_filter($data, fn($v) => $v !== null));

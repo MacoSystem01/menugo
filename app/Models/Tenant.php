@@ -18,6 +18,6 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         // Las columnas aquí listadas son columnas REALES de la tabla tenants.
         // Los campos almacenados en 'data' (JSON) son: active, type, expires_at, phone
         // Stancl los maneja automáticamente vía __get/__set en el JSON data field.
-        return ['id', 'name', 'owner_name', 'email', 'plan', 'payment_status', 'payment_evidence_path', 'payment_evidence_at', 'deleted_at'];
+        return ['id', 'name', 'owner_name', 'email', 'address', 'plan', 'payment_status', 'payment_evidence_path', 'payment_evidence_at', 'deleted_at'];
     }
 }
