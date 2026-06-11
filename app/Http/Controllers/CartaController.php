@@ -111,7 +111,7 @@ class CartaController extends Controller
         if (!\App\Services\PlanService::can('orders')) {
             return redirect('/carta')->withErrors([
                 'plan' => 'Los pedidos desde mesa no están disponibles en el plan Starter. ' .
-                          'Comunícate directamente con el staff del restaurante.',
+                    'Comunícate directamente con el staff del restaurante.',
             ]);
         }
 
@@ -137,6 +137,14 @@ class CartaController extends Controller
         // (no contra una lista global hardcodeada) para evitar que un cliente
         // envíe un método de pago que el restaurante no acepta.
         $cfg             = CartaSetting::firstOrCreate([]);
+
+        // Rechazar el pedido si el restaurante está cerrado por horario
+        if (!$cfg->isOpenNow()) {
+            return redirect('/carta')->withErrors([
+                'restaurant_closed' => 'El restaurante está cerrado en este momento.',
+            ]);
+        }
+
         $allowedMethods  = $cfg->payment_methods ?? ['efectivo'];
         // Fallback a la lista completa si CartaSetting está vacío (tenant recién creado)
         if (empty($allowedMethods)) {
@@ -489,6 +497,8 @@ class CartaController extends Controller
             'restaurant_lng'     => $s->restaurant_lng     ? (float) $s->restaurant_lng : null,
             'restaurant_address' => $s->restaurant_address ?? null,
             'work_schedule'      => $s->work_schedule      ?? null,
+            'is_open_now'        => $s->isOpenNow(),
+            'now_iso'            => now('America/Bogota')->toIso8601String(),
         ];
     }
 }

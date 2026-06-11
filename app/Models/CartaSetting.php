@@ -72,4 +72,32 @@ class CartaSetting extends Model
             : null;
     }
 
+    /**
+     * Determina si el restaurante está abierto AHORA según work_schedule.
+     * Devuelve true si no hay horario configurado (sistema permisivo por defecto).
+     */
+    public function isOpenNow(): bool
+    {
+        $schedule = $this->work_schedule ?? null;
+        if (!$schedule || !is_array($schedule)) {
+            return true; // Sin horario configurado → siempre abierto
+        }
+
+        $now = now('America/Bogota');
+        $dayMap = ['Sun' => 'dom', 'Mon' => 'lun', 'Tue' => 'mar', 'Wed' => 'mie', 'Thu' => 'jue', 'Fri' => 'vie', 'Sat' => 'sab'];
+        $todayKey = $dayMap[$now->format('D')] ?? null;
+        $today = $todayKey ? ($schedule[$todayKey] ?? null) : null;
+
+        if (!$today || empty($today['activo'])) {
+            return false;
+        }
+
+        $apertura = $today['apertura'] ?? null;
+        $cierre   = $today['cierre']   ?? null;
+        if (!$apertura || !$cierre) {
+            return false;
+        }
+
+        return $now->format('H:i') >= $apertura && $now->format('H:i') <= $cierre;
+    }
 }
