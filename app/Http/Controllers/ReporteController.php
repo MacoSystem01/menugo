@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\KitchenNote;
 use App\Models\InventoryItem;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -38,7 +39,7 @@ class ReporteController extends Controller
         $hasta = $request->filled('hasta') ? $request->hasta : now()->format('Y-m-d');
 
         $ventas = Order::whereNotIn('status', ['cancelled'])
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta]);
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta));
 
         $totalVentas      = (float) $ventas->sum('total');
         $totalPedidos     = $ventas->count();
@@ -52,18 +53,18 @@ class ReporteController extends Controller
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('dishes', 'dishes.id', '=', 'order_items.dish_id')
             ->whereNotIn('orders.status', ['cancelled'])
-            ->whereBetween(DB::raw('DATE(orders.created_at)'), [$desde, $hasta])
+            ->whereBetween('orders.created_at', $this->dateRange($desde, $hasta))
             ->groupBy('dishes.id', 'dishes.name')
             ->select('dishes.name', DB::raw('SUM(order_items.quantity) as vendidos'), DB::raw('SUM(order_items.quantity * order_items.unit_price) as ingresos'))
             ->orderByDesc('vendidos')->take(10)->get();
 
         $ventasPorDia = Order::whereNotIn('status', ['cancelled'])
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->groupBy('fecha')
             ->select(DB::raw('DATE(created_at) as fecha'), DB::raw('SUM(total) as total'), DB::raw('COUNT(*) as pedidos'))
             ->orderBy('fecha')->get();
 
-        $novedades = KitchenNote::whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+        $novedades = KitchenNote::whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->groupBy('type')->select('type', DB::raw('COUNT(*) as total'))->get();
 
         $inventarioCritico = InventoryItem::whereIn('status', ['bajo', 'agotado', 'vencido'])
@@ -134,6 +135,14 @@ class ReporteController extends Controller
         };
     }
 
+    private function dateRange(string $desde, string $hasta): array
+    {
+        return [
+            Carbon::createFromFormat('Y-m-d', $desde)->startOfDay(),
+            Carbon::createFromFormat('Y-m-d', $hasta)->endOfDay(),
+        ];
+    }
+
     private function fmt(float $n): string
     {
         return '$ ' . number_format($n, 0, ',', '.');
@@ -145,7 +154,7 @@ class ReporteController extends Controller
     {
         $orders = Order::with('table')
             ->where('amount_paid', '>', 0)
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->orderBy('created_at')
             ->get();
 
@@ -191,7 +200,7 @@ class ReporteController extends Controller
     private function reportePedidos(string $desde, string $hasta): array
     {
         $orders = Order::with('table')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->orderBy('created_at')
             ->get();
 
@@ -244,7 +253,7 @@ class ReporteController extends Controller
     private function reporteCocina(string $desde, string $hasta): array
     {
         $orders = Order::with(['table', 'items.dish'])
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->orderBy('created_at')
             ->get();
 
@@ -286,7 +295,7 @@ class ReporteController extends Controller
     private function reporteNovedades(string $desde, string $hasta): array
     {
         $notes = KitchenNote::with(['verifiedBy'])
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->orderBy('created_at')
             ->get();
 
@@ -326,7 +335,7 @@ class ReporteController extends Controller
     {
         $orders = Order::with(['table', 'items.dish'])
             ->where('type', 'mesa')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->orderBy('table_id')
             ->orderBy('created_at')
             ->get();
@@ -376,7 +385,7 @@ class ReporteController extends Controller
     {
         $orders = Order::with('deliveryUser')
             ->where('type', 'domicilio')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$desde, $hasta])
+            ->whereBetween('created_at', $this->dateRange($desde, $hasta))
             ->orderBy('delivery_user_id')
             ->orderBy('created_at')
             ->get();

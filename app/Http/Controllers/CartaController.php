@@ -69,12 +69,17 @@ class CartaController extends Controller
             }
         );
 
-        // ── Settings: cacheados 5 min por tenant ──────────────────────────────
+        // ── Settings: cacheados 5 min por tenant ─────────────────────────────
         $settings = Cache::remember(
             "carta_settings_{$tenantId}",
             self::CARTA_CACHE_TTL,
             fn() => $this->settingsArray(CartaSetting::firstOrCreate([]))
         );
+
+        // ── is_open_now y now_iso: NUNCA se cachean (valores dinámicos) ──────
+        $cfg      = CartaSetting::firstOrCreate([]);
+        $isOpen   = $cfg->isOpenNow();
+        $nowIso   = now()->toIso8601String();
 
         // ── Mesas: NO se cachean — cambian con cada pedido ────────────────────
         $tables = RestaurantTable::withCount(['activeOrders'])
@@ -100,6 +105,8 @@ class CartaController extends Controller
             'tables'           => $tables,
             'initial_table_id' => $initialTableId,
             'orders_enabled'   => \App\Services\PlanService::can('orders'),
+            'is_open_now'      => $isOpen,
+            'now_iso'          => $nowIso,
         ]);
     }
 
@@ -341,7 +348,7 @@ class CartaController extends Controller
     public function uploadLogo(Request $request)
     {
         $request->validate([
-            'logo' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'logo' => 'required|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $settings = CartaSetting::firstOrCreate([]);
@@ -377,7 +384,7 @@ class CartaController extends Controller
     public function uploadBanner(Request $request)
     {
         $request->validate([
-            'banner' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'banner' => 'required|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:5120',
         ]);
 
         $settings = CartaSetting::firstOrCreate([]);
@@ -415,7 +422,7 @@ class CartaController extends Controller
     public function uploadImage(Request $request, Dish $dish)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:2048',
         ]);
 
         if ($dish->image) {
@@ -497,8 +504,6 @@ class CartaController extends Controller
             'restaurant_lng'     => $s->restaurant_lng     ? (float) $s->restaurant_lng : null,
             'restaurant_address' => $s->restaurant_address ?? null,
             'work_schedule'      => $s->work_schedule      ?? null,
-            'is_open_now'        => $s->isOpenNow(),
-            'now_iso'            => now('America/Bogota')->toIso8601String(),
         ];
     }
 }

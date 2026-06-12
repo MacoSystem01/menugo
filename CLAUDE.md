@@ -4,4 +4,4 @@ Antes de aplicar cambios, se debe de validar mentalmente al menos 3 casos de uso
 Para terminar función, realiza un ultimo chequeo ejecutando el por completo el "Archivo CLAUDE.md" hasta resolver todo.
 "
 Se debe de realizar lo siguiente, teniendo en cuenta lo comentado anteriormente:
-* Estoy en la vista "https://macosystem.cloud/admin/tenants" y al momento de "Editar Local", NO Me captura lo digtado en "Dirección del establecimiento". Organiza ese conflicto para que todo funcione acordemente y que ello no suceda en ninguna otra vista. 
+* Resolver todo conflicto y falla de seguridad, dejando "TODO" encriptado y sin fuga alta, media o baja de información.

@@ -75,6 +75,8 @@ class CartaSetting extends Model
     /**
      * Determina si el restaurante está abierto AHORA según work_schedule.
      * Devuelve true si no hay horario configurado (sistema permisivo por defecto).
+     * 
+     * Usa conversión a minutos para evitar problemas con comparación de strings.
      */
     public function isOpenNow(): bool
     {
@@ -98,6 +100,19 @@ class CartaSetting extends Model
             return false;
         }
 
-        return $now->format('H:i') >= $apertura && $now->format('H:i') <= $cierre;
+        // Convertir horarios a minutos para comparación numérica robusta
+        $horaActual = (int)$now->format('H') * 60 + (int)$now->format('i');
+        [$hApe, $mApe] = array_map('intval', explode(':', $apertura));
+        [$hCie, $mCie] = array_map('intval', explode(':', $cierre));
+        
+        $minApertura = $hApe * 60 + $mApe;
+        $minCierre = $hCie * 60 + $mCie;
+
+        // Si cierre < apertura (ej: abierto 22:00-06:00), manejo especial
+        if ($minCierre < $minApertura) {
+            return $horaActual >= $minApertura || $horaActual <= $minCierre;
+        }
+
+        return $horaActual >= $minApertura && $horaActual <= $minCierre;
     }
 }

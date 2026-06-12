@@ -119,10 +119,10 @@ class AdvertisingController extends Controller
             'contact_email' => 'required|email|max:255',
             'contact_phones'   => 'nullable|array|max:3',
             'contact_phones.*' => 'nullable|string|max:30',
-            'image'            => 'required|image|mimes:jpg,jpeg,png,webp|max:8192',
+            'image'            => 'required|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:8192',
             'tenant_id'        => 'nullable|string',
             'ai_enhanced'      => 'nullable|boolean',
-            'payment_proof'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+            'payment_proof'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|extensions:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
 
         // ── Re-verificación de identidad al enviar (si se eligió tenant) ─────

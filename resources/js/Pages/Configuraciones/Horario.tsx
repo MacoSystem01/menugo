@@ -39,7 +39,8 @@ const DEFAULT_DAY: DaySchedule = { activo: true, apertura: '08:00', cierre: '22:
 
 type OpStatus = 'abierto' | 'por_abrir' | 'cerrado_hoy' | 'dia_cerrado';
 
-function toMins(hhmm: string): number {
+function toMins(hhmm: string | undefined | null): number {
+    if (!hhmm) return 0;
     const [h, m] = hhmm.split(':').map(Number);
     return h * 60 + m;
 }

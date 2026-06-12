@@ -32,7 +32,7 @@ class TenantController extends Controller
             'restaurant_address'    => 'nullable|string|max:255',
             'restaurant_lat'        => 'nullable|numeric|between:-90,90',
             'restaurant_lng'        => 'nullable|numeric|between:-180,180',
-            'evidence'              => 'nullable|file|mimes:jpg,jpeg,png,pdf,webp|max:10240',
+            'evidence'              => 'nullable|file|mimes:jpg,jpeg,png,pdf,webp|extensions:jpg,jpeg,png,pdf,webp|max:10240',
         ]);
 
         $subdomain  = strtolower($data['subdomain']);

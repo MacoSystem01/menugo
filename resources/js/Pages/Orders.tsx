@@ -2,6 +2,10 @@ import AppShell from '@/Layouts/AppShell';
 import { PageProps } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import React, { useEffect, useRef, useState } from 'react';
+
+function decodePaginationLabel(label: string): string {
+    return label.replace(/&laquo;/g, '«').replace(/&raquo;/g, '»').replace(/&amp;/g, '&');
+}
 import { ShoppingBag, ChevronDown, ChevronUp, Printer, X, Bell, Bike } from 'lucide-react';
 
 interface OrderItem {
@@ -777,8 +781,7 @@ export default function Orders({ orders, tables, filters, delivery_zones, flash 
                                     onClick={() => link.url && router.get(link.url)}
                                     className={`min-w-8 h-8 px-2 rounded-lg text-xs font-medium transition-colors
                                         ${link.active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground disabled:opacity-40'}`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
+                                >{decodePaginationLabel(link.label)}</button>
                             ))}
                         </div>
                     )}

@@ -12,7 +12,7 @@ class AuditLog extends Model
         'description', 'causer_id', 'causer_name', 'properties',
     ];
 
-    protected $casts = ['properties' => 'array'];
+    protected $casts = ['properties' => 'encrypted:array'];
 
     public function causer(): BelongsTo
     {

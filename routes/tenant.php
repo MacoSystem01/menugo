@@ -32,7 +32,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     ])->group(function () {
 
     // ── Auth del restaurante ──────────────────────────────────────────────────
-    Route::middleware(['guest', 'throttle:10,1'])->group(function () {
+    Route::middleware(['guest', 'throttle:5,1'])->group(function () {
         Route::get('/login',  [AuthController::class, 'showLogin'])->name('tenant.login');
         Route::post('/login', [AuthController::class, 'login']);
         Route::get('/forgot-password', fn() => Inertia::render('Auth/ForgotPassword'))->name('password.request');

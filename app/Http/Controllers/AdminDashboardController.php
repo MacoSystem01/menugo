@@ -460,7 +460,7 @@ class AdminDashboardController extends Controller
     public function storeAnuncio(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:5120',
             'title' => 'nullable|string|max:120',
             'url'   => 'nullable|url|max:255',
         ]);
@@ -516,7 +516,7 @@ class AdminDashboardController extends Controller
     public function storeSliderLogo(Request $request)
     {
         $request->validate([
-            'image'         => 'required|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
+            'image'         => 'required|image|mimes:jpg,jpeg,png,webp,svg|extensions:jpg,jpeg,png,webp,svg|max:2048',
             'business_name' => 'nullable|string|max:120',
         ]);
 

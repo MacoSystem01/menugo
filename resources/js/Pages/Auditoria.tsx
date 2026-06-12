@@ -2,6 +2,10 @@ import AppShell from '@/Layouts/AppShell';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 
+function decodePaginationLabel(label: string): string {
+    return label.replace(/&laquo;/g, '«').replace(/&raquo;/g, '»').replace(/&amp;/g, '&');
+}
+
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
 interface AuditEntry {
@@ -273,10 +277,9 @@ function Pagination({ logs }: { logs: Paginated<AuditEntry> }) {
                                     ? 'bg-primary text-primary-foreground border-primary'
                                     : 'border-border hover:bg-accent/10'
                             }`}
-                            dangerouslySetInnerHTML={{ __html: link.label }}
-                          />
+                          >{decodePaginationLabel(link.label)}</button>
                         : <span key={i} className="px-3 py-1.5 text-muted-foreground/40"
-                            dangerouslySetInnerHTML={{ __html: link.label }} />
+                          >{decodePaginationLabel(link.label)}</span>
                 ))}
             </div>
         </div>
