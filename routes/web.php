@@ -50,9 +50,9 @@ Route::get('/tenant/find',      [TenantController::class, 'find'])->name('tenant
 // config() funciona correctamente con php artisan config:cache; env() no.
 $adminPath = config('app.admin_login_path', env('ADMIN_LOGIN_PATH', 'sistema/acceso-control'));
 
-Route::middleware(['guest', 'throttle:5,1'])->group(function () use ($adminPath) {
+Route::middleware('guest')->group(function () use ($adminPath) {
     Route::get("/{$adminPath}",  [AuthController::class, 'showAdminLogin'])->name('admin.login');
-    Route::post("/{$adminPath}", [AuthController::class, 'adminLogin']);
+    Route::post("/{$adminPath}", [AuthController::class, 'adminLogin'])->middleware('throttle:5,1');
 });
 
 // Sin restricción de dominio ni auth middleware — funciona para el dominio central,

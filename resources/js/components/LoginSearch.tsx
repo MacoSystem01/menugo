@@ -45,14 +45,17 @@ export function LoginSearch({ triggerClass }: Props) {
         return () => document.removeEventListener('keydown', onKey);
     }, [open]);
 
-    async function search(e: React.FormEvent) {
-        e.preventDefault();
-        if (query.trim().length < 2) return;
+    async function search() {
+        if (query.trim().length < 2 || loading) return;
         setLoading(true);
         setResult(null);
         try {
             const res = await fetch(`/tenant/find?name=${encodeURIComponent(query.trim())}`);
-            setResult(await res.json());
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setResult(data);
+        } catch {
+            setResult({ found: false, message: 'Error al buscar. Intenta de nuevo.' });
         } finally {
             setLoading(false);
         }
@@ -81,17 +84,19 @@ export function LoginSearch({ triggerClass }: Props) {
                         Escribe el nombre de tu negocio para encontrar tu subdominio de acceso.
                     </p>
 
-                    <form onSubmit={search} className="flex gap-2">
+                    <div className="flex gap-2">
                         <input
                             ref={inputRef}
                             type="text"
                             value={query}
                             onChange={e => { setQuery(e.target.value); setResult(null); }}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search(); } }}
                             placeholder="Ej: La Tajada"
                             className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 transition"
                         />
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={search}
                             disabled={loading || query.trim().length < 2}
                             className="grid place-items-center rounded-xl bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition"
                         >
@@ -100,7 +105,7 @@ export function LoginSearch({ triggerClass }: Props) {
                                 : <Search className="h-4 w-4" />
                             }
                         </button>
-                    </form>
+                    </div>
 
                     {result && (
                         <div className={`rounded-xl px-4 py-3 text-sm ${

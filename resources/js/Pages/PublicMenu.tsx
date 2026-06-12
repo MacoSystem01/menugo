@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock, MapPin, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock, MapPin, AlertTriangle, ZoomIn } from 'lucide-react';
 
 // ── Google Maps helpers ───────────────────────────────────────────────────────
 
@@ -224,6 +224,16 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const nameClass = NAME_SIZES[settings?.name_size] ?? 'text-xl';
     const sloganClass = SLOGAN_SIZES[settings?.slogan_size] ?? 'text-sm';
     const payMethods = settings?.payment_methods?.length ? settings.payment_methods : ['efectivo'];
+
+    // ── Lightbox ───────────────────────────────────────────────────────────────
+    const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
+
+    useEffect(() => {
+        if (!lightbox) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [lightbox]);
 
     // ── Cart state ─────────────────────────────────────────────────────────────
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -700,12 +710,22 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                                     </div>
                                                 </div>
                                                 {dish.image_url && (
-                                                    <img
-                                                        src={dish.image_url}
-                                                        alt={dish.name}
-                                                        className="shrink-0 h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover"
-                                                        style={{ border: `1px solid ${s.text}20` }}
-                                                    />
+                                                    <button
+                                                        onClick={() => setLightbox({ url: dish.image_url!, name: dish.name })}
+                                                        className="shrink-0 relative group rounded-xl focus:outline-none focus-visible:ring-2"
+                                                        style={{ ['--tw-ring-color' as string]: s.primary }}
+                                                        aria-label={`Ver imagen de ${dish.name}`}
+                                                    >
+                                                        <img
+                                                            src={dish.image_url}
+                                                            alt={dish.name}
+                                                            className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover"
+                                                            style={{ border: `1px solid ${s.text}20` }}
+                                                        />
+                                                        <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-black/0 group-hover:bg-black/35 transition-colors duration-200">
+                                                            <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow" />
+                                                        </div>
+                                                    </button>
                                                 )}
                                             </div>
                                         );
@@ -1571,6 +1591,37 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         >
                             Ver la carta
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Lightbox: imagen expandida del producto ── */}
+            {lightbox && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.88)' }}
+                    onClick={() => setLightbox(null)}
+                >
+                    <div
+                        className="relative max-w-md w-full flex flex-col items-center"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => setLightbox(null)}
+                            className="absolute -top-10 right-0 flex items-center justify-center h-8 w-8 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label="Cerrar imagen"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                        <img
+                            src={lightbox.url}
+                            alt={lightbox.name}
+                            className="w-full rounded-2xl object-contain shadow-2xl"
+                            style={{ maxHeight: '75vh' }}
+                        />
+                        <p className="mt-3 text-white/75 text-sm font-medium text-center">
+                            {lightbox.name}
+                        </p>
                     </div>
                 </div>
             )}
