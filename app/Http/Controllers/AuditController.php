@@ -47,13 +47,13 @@ class AuditController extends Controller
 
         $logs = $query->paginate(50)->through(fn($l) => [
             'id'             => $l->id,
-            'action'         => $l->action,
-            'auditable_type' => $l->auditable_type,
+            'action'         => $l->action ?? '',
+            'auditable_type' => $l->auditable_type ?? '',
             'auditable_id'   => $l->auditable_id,
-            'description'    => $l->description,
-            'causer_name'    => $l->causer_name,
+            'description'    => $l->description ?? '',
+            'causer_name'    => $l->causer_name ?? '',
             'properties'     => rescue(fn() => $l->properties, null, false),
-            'created_at'     => $l->created_at->format('d/m/Y H:i:s'),
+            'created_at'     => $l->created_at?->format('d/m/Y H:i:s') ?? '',
         ]);
 
         $actions = AuditLog::select('action')->distinct()->pluck('action')->sort()->values();
