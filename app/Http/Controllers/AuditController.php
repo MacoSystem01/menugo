@@ -52,7 +52,7 @@ class AuditController extends Controller
             'auditable_id'   => $l->auditable_id,
             'description'    => $l->description,
             'causer_name'    => $l->causer_name,
-            'properties'     => $l->properties,
+            'properties'     => rescue(fn() => $l->properties, null, false),
             'created_at'     => $l->created_at->format('d/m/Y H:i:s'),
         ]);
 
