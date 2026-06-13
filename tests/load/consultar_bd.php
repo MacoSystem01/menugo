@@ -8,18 +8,10 @@
  * ══════════════════════════════════════════════════════════
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN — datos de MySQL de tu XAMPP             │
-// └─────────────────────────────────────────────────────────┘
-define('DB_HOST',    '127.0.0.1');
-define('DB_PORT',    '3306');
-define('DB_USER',    'root');
-define('DB_PASS',    '');       // En XAMPP por defecto es vacío
-define('DB_CENTRAL', 'menugo'); // BD central (tiene la tabla tenants y domains)
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
 
 echo "╔══════════════════════════════════════════════════════╗\n";
 echo "║      MenuGo — Consulta de Tenants y Platos           ║\n";

@@ -6,14 +6,10 @@
  */
 
 // ════════════════════════════════════════════════════════
-// ⚠️  IMPORTANTE: NO uses 'latajada' (slug de ejemplo).
-//    Corre primero: php tests/load/consultar_bd.php
-//    para obtener el TENANT_SLUG real de TU instalación.
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// Para regenerar: php tests/load/_gen_encrypted_env.php
 // ════════════════════════════════════════════════════════
-define('TENANT_SLUG', 'latajada');   // ← reemplazar con slug real de consultar_bd.php
-define('BASE_HOST',   'menugo.local');
-define('DISH_ID_1',   1);            // ← reemplazar con ID real de consultar_bd.php
-define('DISH_ID_2',   2);            // ← reemplazar con ID real de consultar_bd.php
+require_once __DIR__ . '/env_loader.php';
 
 // ── NO TOCAR DE AQUÍ EN ADELANTE ─────────────────────────────────────────────
 

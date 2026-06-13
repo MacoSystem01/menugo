@@ -2,6 +2,9 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Credenciales desde .env.test (cifradas con APP_KEY)
+require_once __DIR__ . '/env_loader.php';
+
 echo "Iniciando...\n";
 
 if (!function_exists('curl_init')) {
@@ -11,7 +14,7 @@ if (!function_exists('curl_init')) {
 
 echo "curl disponible\n";
 
-$ch = curl_init('https://latajada.menugo.local/carta');
+$ch = curl_init('https://' . TENANT_SLUG . '.' . BASE_HOST . '/carta');
 
 if (!$ch) {
     echo "ERROR: curl_init falló\n";

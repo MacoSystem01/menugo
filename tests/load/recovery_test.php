@@ -16,25 +16,10 @@
  * 8. Integridad de datos después de fallos simulados
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN                                          │
-// └─────────────────────────────────────────────────────────┘
-define('TENANT_SLUG',  'latajada');
-define('BASE_HOST',    'menugo.local');
-define('ADMIN_EMAIL',  'macosystem01@gmail.com');
-define('ADMIN_PASS',   'prueba123');
-define('COCINA_EMAIL', 'cocina@cocina.com');
-define('COCINA_PASS',  'prueba123');
-define('DISH_ID_1',    1);
-define('TABLE_ID',     1);
-define('DB_HOST',      '127.0.0.1');
-define('DB_USER',      'root');
-define('DB_PASS',      '');
-define('DB_CENTRAL',   'menugo');
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
 $passed = $failed = $warnings = 0;
 $resultados = [];
 $baseUrl = 'https://' . TENANT_SLUG . '.' . BASE_HOST;

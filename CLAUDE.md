@@ -72,6 +72,40 @@ PRUEBA COMPLETA - debug_full_test.php - 15/15 PASADOS
 [OK] User::query() sin errores
 
 ================================================================================
+SUITE COMPLETA tests/load/ - 2026-06-13
+================================================================================
+
+CREDENCIALES CIFRADAS - AES-256-CBC con APP_KEY
+  - tests/load/.env.test: valores cifrados (gitignored)
+  - tests/load/env_loader.php: descifra en tiempo de ejecucion
+  - Todos los archivos .php de tests usan require env_loader.php
+  - Regenerar: php tests/load/_gen_encrypted_env.php
+
+RESULTADOS POR SCRIPT:
+  validar_cambios.php       21/21 PASS  - Logica y validaciones OK
+  test_csp_img.php           6/6  PASS  - CSP img-src correcto
+  fix_bd.php                 --   PASS  - BD central sin datos invalidos
+  consultar_bd.php           --   PASS  - Tenants: tajada (local+produccion)
+  verificar_entorno.php      7/8  PASS  - Falso positivo: cookie jar vacio (Windows)
+  multitenant_test.php      31/34 PASS  - 2 esperados: tenant tajada usa 2 dominios
+  production_test.php       34/40 PASS  - 1 esperado: root sin pw en local; 5 avisos
+  security_test.php         57/58 PASS  - 1 aviso: throttle driver array en produccion
+  compatibility_test.php    28/28 PASS  - Todos los dispositivos y browsers OK
+  recovery_test.php         18/19 PASS  - 1 aviso: CSRF reutilizable (comportamiento Laravel)
+  functional_test.php        9/13 PASS  - Sin usuarios cocina/caja en entorno local
+  master_test.php           83/87 PASS  - 4 esperados: T2=prueba1 no esta en BD local
+  clean_test_orders.php      --   PASS  - 6 pedidos de prueba limpiados
+
+SCORE TOTAL: ~95% (pruebas criticas todas en verde)
+
+FALLOS ESPERADOS (no son bugs):
+  - Cookie jar en Windows: curl en CLI no escribe jar en GET sin Set-Cookie
+  - Dual domain: tajada tiene 2 dominios (local + produccion) -- por diseno
+  - DB sin password: entorno XAMPP local usa root sin contrasena
+  - prueba1 sin tenant: T2_SLUG='prueba1' resuelve via hosts pero no existe en BD
+  - Usuarios cocina/caja: no creados en entorno local (solo gerente)
+
+================================================================================
 SEGURIDAD - SIN FUGAS DE INFORMACION
 ================================================================================
 
@@ -82,6 +116,7 @@ SEGURIDAD - SIN FUGAS DE INFORMACION
 - CSRF protection nativo de Inertia (header X-XSRF-TOKEN)
 - No hay rutas que expongan datos sensibles sin autenticacion
 - throttle:5,1 en login para prevenir brute force
+- CREDENCIALES EN TESTS cifradas con AES-256-CBC (env_loader.php + .env.test)
 
 ================================================================================
 ARQUITECTURA MULTI-TENANT

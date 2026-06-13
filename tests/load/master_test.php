@@ -11,19 +11,12 @@
  */
 
 // ════════════════════════════════════════════════════════════════════
-//  CONFIGURACIÓN
+//  CONFIGURACIÓN — credenciales cifradas con APP_KEY en .env.test
 // ════════════════════════════════════════════════════════════════════
-define('T1_SLUG',      'latajada');   // La Tajada — tiene platos y mesas reales
-define('T2_SLUG',      'prueba1');    // prueba1 — tenant secundario cross-tenant
-define('BASE_HOST',    'menugo.local');
-define('ADMIN_EMAIL',  'macosystem01@gmail.com');
-define('ADMIN_PASS',   'prueba123');
-define('DISH_ID',      1);            // Costillon 400g (latajada)
-define('TABLE_ID',     2);            // Mesa 2 disponible (latajada)
-define('DB_HOST',      '127.0.0.1');
-define('DB_USER',      'root');
-define('DB_PASS',      '');
-define('DB_CENTRAL',   'menugo');
+require_once __DIR__ . '/env_loader.php';
+define('T1_SLUG',      TENANT_SLUG); // alias del slug principal
+define('T2_SLUG',      'prueba1');   // tenant secundario (sin auth, solo cross-tenant)
+define('DISH_ID',      (int) DISH_ID_1);
 define('CONCURRENCIA', 15);
 define('ENV_PATH',     'C:/xampp/htdocs/menugo/.env');
 

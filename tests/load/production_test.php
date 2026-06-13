@@ -18,16 +18,11 @@
  * 11. Optimizaciones de Laravel aplicadas
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN                                          │
-// └─────────────────────────────────────────────────────────┘
-define('TENANT_SLUG', 'latajada');
-define('BASE_HOST',   'menugo.local');
-define('ENV_FILE',    'C:/xampp/htdocs/menugo/.env');
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
+define('ENV_FILE', 'C:/xampp/htdocs/menugo/.env');
 $passed = $failed = $warnings = 0;
 $resultados = [];
 $baseUrl    = 'https://' . TENANT_SLUG . '.' . BASE_HOST;

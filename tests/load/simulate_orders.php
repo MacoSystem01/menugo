@@ -8,13 +8,11 @@
  * ══════════════════════════════════════════════════════════
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN — EDITAR ESTOS VALORES                   │
-// └─────────────────────────────────────────────────────────┘
-define('TENANT_SLUG',  'latajada');
-define('BASE_HOST',    'menugo.local');
-define('DISH_ID_1',    1);
-define('DISH_ID_2',    2);
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
+// Parámetros de carga (no sensibles)
 define('CONCURRENCIA', 50);
 define('TAMANO_LOTE',  10);
 define('PAUSA_LOTE',   3);

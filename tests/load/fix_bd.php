@@ -5,12 +5,15 @@
  * C6: email prueba@prueba → prueba@menugo.local
  */
 
+// Credenciales desde .env.test (cifradas con APP_KEY)
+require_once __DIR__ . '/env_loader.php';
+
 $validStatuses = ['pending_payment', 'pending_review', 'paid', 'overdue', 'cancelled'];
 
 try {
     $pdo = new PDO(
-        'mysql:host=127.0.0.1;port=3306;dbname=menugo;charset=utf8mb4',
-        'root', '',
+        'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_CENTRAL . ';charset=utf8mb4',
+        DB_USER, DB_PASS,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 

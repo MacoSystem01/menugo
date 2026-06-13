@@ -3,7 +3,10 @@
  * Verifica que el img-src del CSP cubre todos los orígenes necesarios
  * en la arquitectura multi-tenant de MenuGo.
  */
-$appUrl      = 'https://menugo.local';
+// Credenciales/entorno desde .env.test (cifradas con APP_KEY)
+require_once __DIR__ . '/env_loader.php';
+
+$appUrl      = 'https://' . BASE_HOST;
 $parsed      = parse_url($appUrl);
 $scheme      = $parsed['scheme'] ?? 'https';
 $host        = $parsed['host']   ?? '';
@@ -11,9 +14,9 @@ $wildcardUrl = "{$scheme}://*.{$host}";
 $viteUrl     = $appUrl . ':5173';
 
 // Imagen del storage central vista desde un tenant
-$storageImg  = 'https://menugo.local/storage/dishes/plato.jpg';
+$storageImg  = $appUrl . '/storage/dishes/plato.jpg';
 // Imagen de un tenant vista desde el admin central
-$tenantImg   = 'https://latajada.menugo.local/storage/banner.jpg';
+$tenantImg   = 'https://' . TENANT_SLUG . '.' . BASE_HOST . '/storage/banner.jpg';
 // QR code generado como blob
 $blobImg     = 'blob:https://menugo.local/abc-123';
 // Imagen base64

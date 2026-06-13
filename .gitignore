@@ -1,6 +1,10 @@
 *.log
 .DS_Store
 .env
+/tests/load/.env.test
+/tests/load/_gen_encrypted_env.php
+/tests/load/_check_users.php
+/tests/load/_check_migrations.php
 .env.backup
 .env.production
 .phpactor.json

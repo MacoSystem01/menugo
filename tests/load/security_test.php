@@ -5,27 +5,17 @@
  * Uso: php tests/load/security_test.php
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN                                          │
-// └─────────────────────────────────────────────────────────┘
-define('DB_HOST',    '127.0.0.1');
-define('DB_PORT',    '3306');
-define('DB_USER',    'root');
-define('DB_PASS',    '');
-define('DB_CENTRAL', 'menugo');
-define('BASE_HOST',  'menugo.local');
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
 
 $TENANT_CREDENTIALS = [
-    'latajada' => ['email' => 'macosystem01@gmail.com', 'pass' => 'prueba123'],
-    'prueba1'  => ['email' => 'macosystem01@gmail.com', 'pass' => 'prueba123'],
+    TENANT_SLUG => ['email' => ADMIN_EMAIL, 'pass' => ADMIN_PASS],
 ];
 
-define('DISH_ID_PRUEBA',  1);
+define('DISH_ID_PRUEBA',  (int) DISH_ID_1);
 define('ORDER_ID_PRUEBA', 1);
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
 $passed = $failed = $warnings = 0;
 $resultados = [];
 $cookieDir  = sys_get_temp_dir();
@@ -34,7 +24,9 @@ array_map('unlink', glob($cookieDir . '/menugo_sec_*.txt'));
 array_map('unlink', glob($cookieDir . '/menugo_brute_*.txt'));
 
 function tenantUrl(string $slug, string $path = ''): string {
-    return 'https://' . $slug . '.' . BASE_HOST . $path;
+    global $DOMAIN_MAP;
+    $domain = $DOMAIN_MAP[$slug] ?? ($slug . '.' . BASE_HOST);
+    return 'https://' . $domain . $path;
 }
 
 function newCookie(): string {
@@ -159,13 +151,20 @@ echo "╔═══════════════════════�
 echo "║       MenuGo — Pruebas de Seguridad Completas        ║\n";
 echo "╚══════════════════════════════════════════════════════╝\n\n";
 
-$tenants = cargarTenants();
-$slugs   = array_values(array_filter(
-    array_map(fn($t) => explode('.', $t['domain'] ?? '')[0], $tenants)
-));
+$tenants   = cargarTenants();
+// Mapa slug → dominio completo (respeta dominios de producción y locales)
+$DOMAIN_MAP = [];
+foreach ($tenants as $t) {
+    if (!$t['domain']) continue;
+    $slug = explode('.', $t['domain'])[0];
+    if (!isset($DOMAIN_MAP[$slug])) {
+        $DOMAIN_MAP[$slug] = $t['domain'];
+    }
+}
+$slugs = array_values(array_keys($DOMAIN_MAP));
 
-echo "Tenants: " . implode(', ', $slugs) . "\n\n";
-$slugPrincipal = $slugs[0] ?? 'latajada';
+echo "Tenants: " . implode(', ', array_map(fn($s) => "{$s} ({$DOMAIN_MAP[$s]})", $slugs)) . "\n\n";
+$slugPrincipal = TENANT_SLUG;
 $sesiones      = [];
 
 // ══════════════════════════════════════════════════════════

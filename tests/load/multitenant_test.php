@@ -16,19 +16,10 @@
  * 8. Rutas responden por subdominio correcto
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN                                          │
-// └─────────────────────────────────────────────────────────┘
-define('DB_HOST',    '127.0.0.1');
-define('DB_PORT',    '3306');
-define('DB_USER',    'root');
-define('DB_PASS',    '');
-define('DB_CENTRAL', 'menugo');
-define('BASE_HOST',  'menugo.local');
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
 $passed = $failed = $warnings = 0;
 $resultados = [];
 
@@ -99,7 +90,7 @@ $tablasRequeridas = [
 ];
 
 // Número esperado de migraciones aplicadas
-$migracionesEsperadas = 25; // según los archivos en database/migrations/tenant/
+$migracionesEsperadas = 28; // según los archivos en database/migrations/tenant/ (0001-0027 + framework)
 
 echo "╔══════════════════════════════════════════════════════╗\n";
 echo "║     MenuGo — Pruebas de Configuración Multi-tenant   ║\n";

@@ -12,15 +12,10 @@
  * - Rutas clave responden correctamente desde cada "dispositivo"
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN                                          │
-// └─────────────────────────────────────────────────────────┘
-define('TENANT_SLUG', 'latajada');
-define('BASE_HOST',   'menugo.local');
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
 
 $passed = $failed = $warnings = 0;
 $resultados = [];

@@ -8,28 +8,11 @@
  * Cliente hace pedido → Cocina lo procesa → Caja cobra → Cierre cuadra
  */
 
-// ┌─────────────────────────────────────────────────────────┐
-// │  CONFIGURACIÓN                                          │
-// └─────────────────────────────────────────────────────────┘
-define('TENANT_SLUG', 'latajada');
-define('BASE_HOST',   'menugo.local');
-
-// Credenciales de usuarios reales del tenant
-define('ADMIN_EMAIL',  'macosystem01@gmail.com');
-define('ADMIN_PASS',   'prueba123');
-define('COCINA_EMAIL', 'cocina@cocina.com');
-define('COCINA_PASS',  'cocina123');  // ← ajustar si es diferente
-define('CAJA_EMAIL',   'caja@caja.com');
-define('CAJA_PASS',    'caja1234');  // ← ajustar si es diferente
-
-// IDs reales del tenant
-define('DISH_ID_1',  1);
-define('DISH_ID_2',  2);
-define('TABLE_ID',   1);
-
-// ┌─────────────────────────────────────────────────────────┐
-// │  NO TOCAR DE AQUÍ EN ADELANTE                           │
-// └─────────────────────────────────────────────────────────┘
+// ════════════════════════════════════════════════════════
+// Credenciales cargadas desde tests/load/.env.test (cifradas con APP_KEY)
+// Para regenerar: php tests/load/_gen_encrypted_env.php
+// ════════════════════════════════════════════════════════
+require_once __DIR__ . '/env_loader.php';
 
 $passed = $failed = $warnings = 0;
 $resultados = [];
