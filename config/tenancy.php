@@ -14,8 +14,6 @@ return [
         '127.0.0.1',
         'localhost',
         'menugo.local',
-        'macosystem.cloud',
-        'www.macosystem.cloud',
     ],
 
     /**
