@@ -36,7 +36,9 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         Route::get('/login',  [AuthController::class, 'showLogin'])->name('tenant.login');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
         Route::get('/forgot-password', fn() => Inertia::render('Auth/ForgotPassword'))->name('password.request');
-        Route::post('/forgot-password', fn() => back())->name('password.email');
+        Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
+        Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
+        Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
     });
 
     // ── Carta pública (sin auth, acceso del cliente vía QR) ──────────────────

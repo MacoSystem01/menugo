@@ -2,6 +2,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 
 export default function Login() {
+    const flash = (usePage().props as any).flash as { success?: string } | undefined;
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
@@ -94,6 +95,12 @@ export default function Login() {
                             <h2 className="font-display text-2xl font-bold text-foreground">Bienvenido de vuelta</h2>
                             <p className="text-muted-foreground text-sm mt-1">Ingresa tus credenciales para continuar</p>
                         </div>
+
+                        {flash?.success && (
+                            <div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent text-center">
+                                {flash.success}
+                            </div>
+                        )}
 
                         <form onSubmit={submit} className="space-y-5">
                             <div className="space-y-1.5">

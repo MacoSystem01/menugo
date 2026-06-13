@@ -3,12 +3,71 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Inertia\Inertia;
 
 class AuthController extends Controller
 {
+    // ── Password reset ────────────────────────────────────────────────────────
+
+    public function sendResetLink(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        ResetPasswordNotification::createUrlUsing(function ($notifiable, $token) {
+            return request()->getSchemeAndHttpHost()
+                . '/reset-password/' . $token
+                . '?email=' . urlencode($notifiable->getEmailForPasswordReset());
+        });
+
+        Password::sendResetLink($request->only('email'));
+
+        // Siempre responde con éxito para no revelar si el correo existe
+        return back();
+    }
+
+    public function showResetForm(Request $request, string $token)
+    {
+        return Inertia::render('Auth/ResetPassword', [
+            'token' => $token,
+            'email' => $request->query('email', ''),
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token'    => 'required',
+            'email'    => 'required|email',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill(['password' => Hash::make($password)])->save();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return redirect('/login')->with('success', 'Contraseña restablecida. Ya puedes iniciar sesión.');
+        }
+
+        $mensaje = match ($status) {
+            Password::INVALID_TOKEN => 'El enlace de recuperación es inválido o ha expirado.',
+            Password::INVALID_USER  => 'No encontramos una cuenta con ese correo.',
+            default                 => 'No se pudo restablecer la contraseña. Intenta de nuevo.',
+        };
+
+        return back()->withErrors(['email' => $mensaje]);
+    }
+
+    // ── Auth views / login ────────────────────────────────────────────────────
+
     public function showLogin()
     {
         return Inertia::render('Auth/Login');
