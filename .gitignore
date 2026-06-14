@@ -30,3 +30,15 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Scripts de diagnostico y mantenimiento - nunca subir a Git
+/actualizar_*.php
+/check_*.php
+/debug_*.php
+/get_latest_logs.php
+/invalidar_*.php
+/scratch_*.php
+/test2.php
+/test3.php
+/test_csrf.php
+/tmp_*.php
