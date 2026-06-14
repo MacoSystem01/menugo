@@ -1,9 +1,9 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, LayoutDashboard, ChevronDown, ChevronUp, CheckCircle2, Unlock, Bell, Clock, XCircle, QrCode } from 'lucide-react';
+import { Plus, Pencil, Trash2, LayoutDashboard, ChevronDown, ChevronUp, CheckCircle2, Unlock, Bell, Clock, XCircle, QrCode, UtensilsCrossed } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import type { OrderStatus, TableOrder, PageProps } from '@/types';
+import type { OrderStatus, TableOrder, TablelessOrder, PageProps } from '@/types';
 
 interface TableRow {
     id: number;
@@ -24,6 +24,7 @@ interface CancelledOrder {
 interface Props {
     tables: TableRow[];
     recentCancellations: CancelledOrder[];
+    tablelessOrders: TablelessOrder[];
     flash?: { success?: string; error?: string };
 }
 
@@ -217,10 +218,105 @@ function DeliveredOrderRow({ order }: { order: TableOrder }) {
     );
 }
 
+// ── Panel de pedidos de mesa sin número asignado ───────────────────────────────
+function TablelessOrdersPanel({ orders }: { orders: TablelessOrder[] }) {
+    const [expanded, setExpanded] = useState<number | null>(null);
+
+    const active = orders.filter(o => o.status !== 'delivered');
+    if (active.length === 0) return null;
+
+    const hasReady = active.some(o => o.status === 'ready');
+
+    return (
+        <div className={`mb-6 rounded-2xl border-2 p-4 ${hasReady ? 'border-accent/50 bg-accent/5' : 'border-orange-500/40 bg-orange-500/5'}`}>
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+                <UtensilsCrossed className={`h-4 w-4 shrink-0 ${hasReady ? 'text-accent' : 'text-orange-400'}`} />
+                <h2 className={`font-display text-sm font-semibold ${hasReady ? 'text-accent' : 'text-orange-400'}`}>
+                    Sin mesa asignada
+                </h2>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${hasReady ? 'bg-accent/15 text-accent' : 'bg-orange-500/15 text-orange-400'}`}>
+                    {active.length}
+                </span>
+                <span className="text-xs text-muted-foreground ml-1">· Pedidos de mesa sin número asignado</span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {active.map(order => {
+                    const isExpanded = expanded === order.id;
+                    const isReady    = order.status === 'ready';
+
+                    return (
+                        <div
+                            key={order.id}
+                            className={`rounded-xl border text-xs transition-colors bg-card ${
+                                isReady ? 'border-accent/30' : 'border-border/60'
+                            }`}
+                        >
+                            <button
+                                onClick={() => setExpanded(isExpanded ? null : order.id)}
+                                className="w-full flex flex-wrap items-center justify-between gap-y-1.5 gap-x-2 px-3 py-2.5 text-left"
+                            >
+                                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                                    <span className="font-semibold">#{order.id}</span>
+                                    <span className="text-muted-foreground">{order.customer_name}</span>
+                                    <span className={`px-1.5 py-0.5 rounded-full font-medium ${ORDER_STATUS_CLASS[order.status]}`}>
+                                        {ORDER_STATUS_LABEL[order.status] ?? order.status}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 ml-auto text-muted-foreground">
+                                    <span>{order.items_count} ítem{order.items_count !== 1 ? 's' : ''} · {order.created_at}</span>
+                                    {isExpanded
+                                        ? <ChevronUp className="h-3 w-3" />
+                                        : <ChevronDown className="h-3 w-3" />
+                                    }
+                                </div>
+                            </button>
+
+                            {isExpanded && (
+                                <div className="border-t border-border/40 px-3 pb-2 pt-1.5 space-y-1">
+                                    {order.items.map((item, i) => (
+                                        <div key={i} className="flex justify-between text-muted-foreground">
+                                            <span>{item.quantity}× {item.dish ?? '—'}</span>
+                                        </div>
+                                    ))}
+                                    <div className="flex justify-between font-semibold pt-1 border-t border-border/40 mt-1">
+                                        <span>Total</span>
+                                        <span>{fmt(order.total)}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {order.status === 'pending' && (
+                                <div className="border-t border-orange-500/20 px-3 py-2">
+                                    <div className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-orange-500/20 bg-orange-500/5 py-1.5 text-xs text-orange-400 font-medium">
+                                        <Clock className="h-3 w-3" /> Pendiente · En espera de cocina
+                                    </div>
+                                </div>
+                            )}
+
+                            {isReady && (
+                                <div className="border-t border-accent/20 px-3 py-2">
+                                    <button
+                                        onClick={() => router.post(`/cocina/${order.id}/entregado`, { redirect_to: 'tables' })}
+                                        className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-accent py-1.5 text-xs font-semibold text-accent-foreground hover:bg-accent/90 transition-colors"
+                                    >
+                                        <CheckCircle2 className="h-3.5 w-3.5" /> Marcar entregado
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 // ── Historial del día agrupado por mesa ────────────────────────────────────────
-function HistorySection({ tables }: { tables: TableRow[] }) {
-    const tablesWithHistory = tables.filter(t => t.orders.some(o => o.status === 'delivered'));
-    if (tablesWithHistory.length === 0) return null;
+function HistorySection({ tables, tablelessOrders }: { tables: TableRow[]; tablelessOrders: TablelessOrder[] }) {
+    const tablesWithHistory    = tables.filter(t => t.orders.some(o => o.status === 'delivered'));
+    const tablelessDelivered   = tablelessOrders.filter(o => o.status === 'delivered');
+    if (tablesWithHistory.length === 0 && tablelessDelivered.length === 0) return null;
 
     return (
         <div className="mt-10 border-t border-border/50 pt-8">
@@ -253,12 +349,42 @@ function HistorySection({ tables }: { tables: TableRow[] }) {
                         </div>
                     );
                 })}
+
+                {tablelessDelivered.length > 0 && (
+                    <div className="rounded-2xl border border-border bg-card p-4">
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="font-display text-lg font-bold text-muted-foreground">Sin mesa</span>
+                            <span className="text-xs text-muted-foreground">
+                                {tablelessDelivered.length} pedido{tablelessDelivered.length !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">
+                            Acumulado: <span className="font-semibold text-foreground">
+                                {fmt(tablelessDelivered.reduce((s, o) => s + o.total, 0))}
+                            </span>
+                        </p>
+                        <div className="space-y-2">
+                            {tablelessDelivered.map(order => (
+                                <div key={order.id} className="rounded-xl border border-green-500/20 bg-green-500/5 text-xs px-3 py-2">
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span className="font-semibold text-foreground">#{order.id} · {order.customer_name}</span>
+                                        <span>{order.created_at}</span>
+                                    </div>
+                                    <div className="flex justify-between mt-1">
+                                        <span>{order.items_count} ítem{order.items_count !== 1 ? 's' : ''}</span>
+                                        <span className="font-semibold">{fmt(order.total)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
-export default function Tables({ tables, recentCancellations, flash }: Props) {
+export default function Tables({ tables, recentCancellations, tablelessOrders, flash }: Props) {
     const { auth } = usePage<PageProps>().props;
     const canManageStatus = ['gerente', 'administrador'].includes(auth.user?.role ?? '');
 
@@ -280,9 +406,9 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
 
     // Detectar pedidos nuevos en "ready" en cada recarga y alertar
     useEffect(() => {
-        const currentIds = new Set(
-            tables.flatMap(t => t.orders.filter(o => o.status === 'ready').map(o => o.id))
-        );
+        const tableReadyIds     = tables.flatMap(t => t.orders.filter(o => o.status === 'ready').map(o => o.id));
+        const tablelessReadyIds = tablelessOrders.filter(o => o.status === 'ready').map(o => o.id);
+        const currentIds        = new Set([...tableReadyIds, ...tablelessReadyIds]);
 
         const addedIds = [...currentIds].filter(id => !prevReadyIds.current.has(id));
 
@@ -302,7 +428,7 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
         }
 
         prevReadyIds.current = currentIds;
-    }, [tables]);
+    }, [tables, tablelessOrders]);
 
     // Detectar nuevas cancelaciones desde cocina y mostrar alerta
     useEffect(() => {
@@ -422,6 +548,9 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
                 </div>
             )}
 
+            {/* Panel de pedidos de mesa sin número asignado */}
+            <TablelessOrdersPanel orders={tablelessOrders} />
+
             <div className="flex justify-between items-center mb-6">
                 <p className="text-sm text-muted-foreground">{tables.length} {tables.length === 1 ? 'mesa' : 'mesas'}</p>
                 <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
@@ -517,7 +646,7 @@ export default function Tables({ tables, recentCancellations, flash }: Props) {
             )}
 
             {/* ── Historial de pedidos entregados del día ── */}
-            <HistorySection tables={tables} />
+            <HistorySection tables={tables} tablelessOrders={tablelessOrders} />
 
             {/* Modal QR de mesa */}
             {qrTable && (

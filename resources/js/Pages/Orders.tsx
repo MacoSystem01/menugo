@@ -1,5 +1,6 @@
 import AppShell from '@/Layouts/AppShell';
 import { PageProps } from '@/types';
+import { tipoDetalle } from '@/utils/order-tipo';
 import { Head, router, usePage } from '@inertiajs/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -29,6 +30,7 @@ interface OrderRow {
     customer_phone: string;
     tipo: string;
     mesa: number | null;
+    turn_number: number | null;
     delivery_address: string | null;
     delivery_phone: string | null;
     status: string;
@@ -191,26 +193,19 @@ function PrintTicket({ order }: { order: OrderRow }) {
                 )}
             </div>
 
-            {/* ══ MESA / DOMICILIO ══════════════════════════════════════════════ */}
+            {/* ══ TIPO DE PEDIDO ════════════════════════════════════════════════ */}
             <div style={{ padding: '8px 0', borderBottom: '1px dashed #bbb' }}>
-                {order.tipo === 'mesa' ? (
-                    <div style={{
-                        display: 'inline-block',
-                        background: '#1a1a1a', color: '#fff',
-                        padding: '4px 14px', borderRadius: '20px',
-                        fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px',
-                    }}>
-                        Mesa {order.mesa ?? '—'}
-                    </div>
-                ) : (
-                    <div>
-                        <div style={{
-                            display: 'inline-block', background: '#1a1a1a', color: '#fff',
-                            padding: '4px 12px', borderRadius: '20px',
-                            fontSize: '12px', fontWeight: '700', marginBottom: '5px',
-                        }}>
-                            Domicilio
-                        </div>
+                <div style={{
+                    display: 'inline-block',
+                    background: '#1a1a1a', color: '#fff',
+                    padding: '4px 14px', borderRadius: '20px',
+                    fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px',
+                    marginBottom: order.tipo === 'domicilio' ? '5px' : undefined,
+                }}>
+                    {tipoDetalle(order.tipo, order.mesa, order.turn_number)}
+                </div>
+                {order.tipo === 'domicilio' && (
+                    <>
                         {order.delivery_address && (
                             <div style={{ fontSize: '12px', color: '#444', lineHeight: '1.4' }}>
                                 {order.delivery_address}
@@ -221,7 +216,7 @@ function PrintTicket({ order }: { order: OrderRow }) {
                                 Tel. contacto: {order.delivery_phone}
                             </div>
                         )}
-                    </div>
+                    </>
                 )}
             </div>
 
@@ -652,7 +647,7 @@ export default function Orders({ orders, tables, filters, delivery_zones, flash 
                                             )}
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell text-muted-foreground">
-                                            {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'}
+                                            {tipoDetalle(o.tipo, o.mesa, o.turn_number)}
                                         </td>
                                         <td className="px-6 py-4">
                                             {(() => {

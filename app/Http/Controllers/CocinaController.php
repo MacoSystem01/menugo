@@ -34,6 +34,7 @@ class CocinaController extends Controller
                     'id'             => $o->id,
                     'customer_name'  => $o->customer_name,
                     'tipo'           => $o->type,
+                    'turno'          => $o->turn_number,
                     'mesa'           => $o->table?->number,
                     'status'         => $o->status,
                     'notas'          => $o->notes,
@@ -106,28 +107,33 @@ class CocinaController extends Controller
         return back();
     }
 
-    // ── Marcar listo: cooking → ready ─────────────────────────────────────────
+    // ── Marcar listo: cooking → ready (restaurante) | pending → ready (mostrador) ─
 
     public function markReady(Order $order)
     {
-        if ($order->status !== 'cooking') {
+        $isMostrador = $order->type === 'mostrador';
+        $validFrom   = $isMostrador ? ['pending'] : ['cooking'];
+
+        if (!in_array($order->status, $validFrom)) {
             return back()->withErrors(['error' => 'Estado incorrecto.']);
         }
 
-        $pendingItems = $order->items()
-            ->where('is_prepared', false)
-            ->count();
+        // Para restaurante: todos los ítems deben estar marcados como preparados
+        if (!$isMostrador) {
+            $pendingItems = $order->items()->where('is_prepared', false)->count();
 
-        if ($pendingItems > 0) {
-            return back()->withErrors([
-                'error' => "Faltan {$pendingItems} ítem(s) por marcar como preparado(s).",
-            ]);
+            if ($pendingItems > 0) {
+                return back()->withErrors([
+                    'error' => "Faltan {$pendingItems} ítem(s) por marcar como preparado(s).",
+                ]);
+            }
         }
 
+        $fromStatus = $order->status;
         $order->update(['status' => 'ready', 'ready_at' => now()]);
 
         AuditLog::registrar('status', 'Pedido', $order->id, "Pedido #{$order->id} listo para entregar", [
-            'from' => 'cooking', 'to' => 'ready',
+            'from' => $fromStatus, 'to' => 'ready',
         ]);
 
         return back();
@@ -158,7 +164,19 @@ class CocinaController extends Controller
         $to = in_array($request->input('redirect_to'), ['tables', 'cocina'])
             ? $request->input('redirect_to') : 'cocina';
 
-        // Solo se marcan cocinados los ítems que el cocinero confirmó explícitamente como preparados.
+        // Para mostrador (puesto): cerrar directamente — no hay paso de preparación por ítem
+        if ($order->type === 'mostrador') {
+            $order->items()->update(['is_cooked' => true, 'is_prepared' => true]);
+            $order->update(['status' => 'delivered', 'delivered_at' => now()]);
+
+            AuditLog::registrar('status', 'Pedido', $order->id, "Pedido #{$order->id} entregado", [
+                'from' => 'ready', 'to' => 'delivered',
+            ]);
+
+            return redirect('/' . $to);
+        }
+
+        // Flujo restaurante: solo se marcan cocinados los ítems que el cocinero confirmó.
         $order->items()->where('is_cooked', false)->where('is_prepared', true)->update(['is_cooked' => true]);
 
         // Si quedaron ítems sin preparar, reabrir el pedido para que vuelvan a cocina.

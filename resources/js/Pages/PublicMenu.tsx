@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
+import { useBusinessType } from '@/hooks/use-business-type';
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock, MapPin, AlertTriangle, ZoomIn } from 'lucide-react';
+import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock, MapPin, AlertTriangle, ZoomIn, Package } from 'lucide-react';
 
 // ── Google Maps helpers ───────────────────────────────────────────────────────
 
@@ -214,6 +215,8 @@ type Screen = 'menu' | 'cart' | 'checkout';
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id, orders_enabled, is_open_now }: Props) {
+    const { isPuesto } = useBusinessType();
+
     const s = {
         primary: settings?.primary_color ?? '#e85d04',
         bg: settings?.bg_color ?? '#ffffff',
@@ -240,7 +243,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const [screen, setScreen] = useState<Screen>('menu');
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string } | null>(null);
+    const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string; turnNumber?: number } | null>(null);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
     // ── Session timer (10 min) ─────────────────────────────────────────────────
@@ -286,7 +289,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const [form, setForm] = useState({
         customer_name: '',
         customer_phone: '',
-        type: 'mesa' as 'mesa' | 'domicilio',
+        type: (isPuesto ? 'mostrador' : 'mesa') as 'mesa' | 'domicilio' | 'mostrador',
         table_id: initial_table_id ? String(initial_table_id) : '',
         delivery_address: '',
         delivery_zone_idx: null as number | null,
@@ -397,13 +400,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             items: cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
         }, {
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
-            onSuccess: () => {
-                setSuccess({ name: snapshotName, total: snapshotTotal, paymentMethod: snapshotMethod });
+            onSuccess: (page: any) => {
+                const turnNumber: number | undefined = page?.props?.flash?.turn_number;
+                setSuccess({ name: snapshotName, total: snapshotTotal, paymentMethod: snapshotMethod, turnNumber });
                 setCart([]);
                 setScreen('menu');
                 setOccupiedConfirmed(false);
                 setForm({
-                    customer_name: '', customer_phone: '', type: 'mesa',
+                    customer_name: '', customer_phone: '', type: isPuesto ? 'mostrador' : 'mesa',
                     table_id: '', delivery_address: '', delivery_zone_idx: null,
                     payment_method: payMethods[0], notes: '',
                 });
@@ -1033,7 +1037,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de servicio</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {([
-                                        { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
+                                        ...(!isPuesto ? [{ val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' }] : []),
+                                        ...(isPuesto  ? [{ val: 'mostrador' as const, Icon: Package, label: 'Mostrador' }] : []),
                                         { val: 'domicilio' as const, Icon: Bike, label: 'Domicilio' },
                                     ]).map(({ val, Icon, label }) => (
                                         <button
@@ -1472,6 +1477,24 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         <p className="font-display text-3xl font-bold mb-5" style={{ color: s.primary }}>
                             {fmt(success.total)}
                         </p>
+
+                        {/* Número de turno — solo para pedidos de mostrador */}
+                        {success.turnNumber && (
+                            <div
+                                className="w-full mb-5 rounded-2xl py-5 text-center"
+                                style={{ backgroundColor: `${s.primary}12`, border: `2px solid ${s.primary}30` }}
+                            >
+                                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: s.primary, opacity: 0.7 }}>
+                                    Tu número de turno
+                                </p>
+                                <p className="font-display text-6xl font-black leading-none" style={{ color: s.primary }}>
+                                    #{success.turnNumber}
+                                </p>
+                                <p className="text-xs mt-2" style={{ color: s.text, opacity: 0.55 }}>
+                                    Te llamamos cuando esté listo
+                                </p>
+                            </div>
+                        )}
 
                         {/* Bloque de pago Nequi */}
                         {success.paymentMethod === 'nequi' && (() => {

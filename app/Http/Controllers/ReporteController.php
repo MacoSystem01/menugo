@@ -148,6 +148,26 @@ class ReporteController extends Controller
         return '$ ' . number_format($n, 0, ',', '.');
     }
 
+    private function tipoLabel(string $type): string
+    {
+        return match ($type) {
+            'mesa'      => 'Mesa',
+            'domicilio' => 'Domicilio',
+            'mostrador' => 'Mostrador',
+            default     => ucfirst($type),
+        };
+    }
+
+    private function tipoDetalle(Order $o): string
+    {
+        return match ($o->type) {
+            'mesa'      => 'Mesa ' . ($o->table?->number ?? '—'),
+            'domicilio' => $o->delivery_address ?? '—',
+            'mostrador' => $o->turn_number ? 'Turno #' . $o->turn_number : 'Mostrador',
+            default     => ucfirst($o->type),
+        };
+    }
+
     // ── 1. Caja ───────────────────────────────────────────────────────────────
 
     private function reporteCaja(string $desde, string $hasta): array
@@ -173,8 +193,8 @@ class ReporteController extends Controller
         $rows = $orders->map(fn($o) => [
             '#' . $o->id,
             $o->customer_name,
-            $o->type === 'mesa' ? 'Mesa' : 'Domicilio',
-            $o->table?->number ?? '—',
+            $this->tipoLabel($o->type),
+            $o->type === 'mostrador' ? ('Turno #' . ($o->turn_number ?? '—')) : ($o->table?->number ?? '—'),
             $o->payment_method ?? '—',
             $this->fmt((float) $o->total),
             $this->fmt((float) $o->amount_paid),
@@ -226,8 +246,8 @@ class ReporteController extends Controller
             '#' . $o->id,
             $o->customer_name,
             $o->customer_phone,
-            $o->type === 'mesa' ? 'Mesa' : 'Domicilio',
-            $o->type === 'mesa' ? ('Mesa ' . ($o->table?->number ?? '—')) : ($o->delivery_address ?? '—'),
+            $this->tipoLabel($o->type),
+            $this->tipoDetalle($o),
             $statusLabel[$o->status] ?? $o->status,
             $this->fmt((float) $o->total),
             $this->fmt((float) $o->amount_paid),
@@ -273,7 +293,7 @@ class ReporteController extends Controller
 
         $rows = $orders->map(fn($o) => [
             '#' . $o->id,
-            $o->type === 'mesa' ? ('Mesa ' . ($o->table?->number ?? '—')) : 'Domicilio',
+            $this->tipoDetalle($o),
             $o->items->map(fn($i) => "{$i->quantity}x {$i->dish?->name}")->implode(', '),
             $statusLabel[$o->status] ?? $o->status,
             $o->created_at->format('d/m/Y H:i'),

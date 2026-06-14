@@ -20,6 +20,8 @@ export interface User {
     permissions: string[];
 }
 
+export type BusinessType = 'restaurante' | 'puesto';
+
 export interface PageProps {
     auth: {
         user: User;
@@ -32,12 +34,14 @@ export interface PageProps {
     tenant_expires_at?: string | null;
     tenant_days_left?: number | null;
     tenant_is_trial?: boolean;
+    tenant_type?: BusinessType;
     support_whatsapp?: string;
     flash?: {
         success?: string;
         error?: string;
         warning?: string;
         tenant_status?: string;
+        turn_number?: number;
     };
     [key: string]: unknown;
 }
@@ -75,7 +79,7 @@ export type OrderStatus =
     | 'delivered'
     | 'cancelled';
 
-export type OrderType = 'mesa' | 'domicilio';
+export type OrderType = 'mesa' | 'domicilio' | 'mostrador';
 
 export interface OrderItem {
     dish: string | null;
@@ -107,6 +111,16 @@ export interface TableOrder {
     status: OrderStatus;
     total: number;
     items_count: number;
+    items: Array<{ dish: string | null; quantity: number }>;
+    created_at: string;
+}
+
+export interface TablelessOrder {
+    id: number;
+    status: OrderStatus;
+    total: number;
+    items_count: number;
+    customer_name: string;
     items: Array<{ dish: string | null; quantity: number }>;
     created_at: string;
 }

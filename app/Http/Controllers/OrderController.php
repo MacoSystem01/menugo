@@ -39,6 +39,7 @@ class OrderController extends Controller
             'customer_phone'   => $o->customer_phone,
             'tipo'             => $o->type,
             'mesa'             => $o->table?->number,
+            'turn_number'      => $o->turn_number,
             'delivery_address' => $o->delivery_address,
             'delivery_phone'   => $o->delivery_phone,
             'status'           => $o->status,
@@ -79,6 +80,7 @@ class OrderController extends Controller
             'tipo'             => $o->type,
             'table_id'         => $o->table_id,
             'mesa'             => $o->table?->number,
+            'turn_number'      => $o->turn_number,
             'delivery_address' => $o->delivery_address,
             'delivery_phone'   => $o->delivery_phone,
             'status'           => $o->status,
@@ -249,11 +251,18 @@ class OrderController extends Controller
 
     public function cobrar(Request $request, Order $order)
     {
-        $order->update([
-            'status'      => 'in_kitchen',
+        $update = [
             'cashier_id'  => auth()->user()?->id,
             'amount_paid' => $order->total,
-        ]);
+        ];
+
+        // Solo avanzar a in_kitchen si aún no ha pasado por cocina; evita
+        // regresar el estado cuando el pedido ya está en cooking, ready, etc.
+        if ($order->status === 'pending') {
+            $update['status'] = 'in_kitchen';
+        }
+
+        $order->update($update);
 
         AuditLog::registrar('payment', 'Pedido', $order->id, "Pedido #{$order->id} en Mesa #" . ($order->table?->number ?? '—') . " cobrado (total: \${$order->total})", [
             'amount'   => (float) $order->total,
@@ -261,7 +270,7 @@ class OrderController extends Controller
             'table_id' => $order->table_id,
         ]);
 
-        return redirect('/caja')->with('success', "Pedido #{$order->id} cobrado y enviado a cocina.");
+        return redirect('/caja')->with('success', "Pedido #{$order->id} cobrado.");
     }
 
     // ── Registrar Pago: registra monto parcial o completo ────────────────────

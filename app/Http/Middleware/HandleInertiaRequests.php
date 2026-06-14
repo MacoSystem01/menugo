@@ -72,6 +72,7 @@ class HandleInertiaRequests extends Middleware
         $tenantExpiresAt = null;
         $tenantDaysLeft  = null;
         $tenantIsTrial   = false;
+        $tenantType      = 'restaurante';
         try {
             if (function_exists('tenant') && tenant()) {
                 $tenantName      = tenant('name')    ?? '';
@@ -81,6 +82,7 @@ class HandleInertiaRequests extends Middleware
                 $tenantExpiresAt = tenant()?->expires_at;
                 $tenantDaysLeft  = \App\Services\PlanService::daysUntilExpiry();
                 $tenantIsTrial   = (tenant()?->payment_status ?? '') === 'trial';
+                $tenantType      = tenant('type') ?? 'restaurante';
                 $settings        = CartaSetting::first();
                 $tenantLogoUrl   = $settings?->logo_url;
             }
@@ -98,12 +100,14 @@ class HandleInertiaRequests extends Middleware
             'tenant_expires_at' => $tenantExpiresAt,
             'tenant_days_left'  => $tenantDaysLeft,
             'tenant_is_trial'   => $tenantIsTrial,
+            'tenant_type'       => $tenantType,
             'support_whatsapp'  => config('app.support_whatsapp', env('SUPPORT_WHATSAPP', '573172623919')),
             'flash'       => [
                 'success'       => $request->session()->get('success'),
                 'error'         => $request->session()->get('error'),
                 'warning'       => $request->session()->get('warning'),
                 'tenant_status' => $request->session()->get('tenant_status'),
+                'turn_number'   => $request->session()->get('turn_number'),
             ],
         ];
     }

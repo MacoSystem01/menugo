@@ -1,12 +1,13 @@
 import AppShell from '@/Layouts/AppShell';
 import { PageProps } from '@/types';
+import { tipoBadgeCls, tipoDetalle } from '@/utils/order-tipo';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import {
     ShoppingBag, CheckCircle2, XCircle,
     ChevronDown, ChevronUp, DollarSign,
     Clock, CreditCard, AlertCircle, History,
-    Unlock, Power, AlertTriangle,
+    Unlock, Power, AlertTriangle, Info,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -31,6 +32,7 @@ interface ActiveOrder {
     tipo: string;
     table_id: number | null;
     mesa: number | null;
+    turn_number: number | null;
     delivery_address: string | null;
     delivery_phone: string | null;
     status: string;
@@ -256,6 +258,15 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                 </div>
             )}
 
+            {/* Aviso informativo */}
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+                <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-300/80 leading-relaxed">
+                    <span className="font-semibold text-blue-300">Solo registro de caja.</span>{' '}
+                    Todo pedido activo debe ser cancelado antes de realizar el cierre de jornada. Aquí únicamente aparece el historial de cobros del día.
+                </p>
+            </div>
+
             {/* Banner cierre de jornada */}
             {needs_eod && (
                 <div className="mb-5 rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
@@ -356,8 +367,8 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                             </span>
 
                                             {/* Mesa / Domicilio */}
-                                            <span className={`text-sm px-3 py-1 rounded-full font-semibold border ${order.tipo === 'mesa' ? 'bg-accent/15 text-accent border-accent/30' : 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'}`}>
-                                                {order.tipo === 'mesa' ? `Mesa ${order.mesa ?? '—'}` : 'Domicilio'}
+                                            <span className={`text-sm px-3 py-1 rounded-full font-semibold border ${tipoBadgeCls(order.tipo)}`}>
+                                                {tipoDetalle(order.tipo, order.mesa)}
                                             </span>
 
                                             {/* Método de pago */}
@@ -684,7 +695,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                                         {o.customer_name}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground">
-                                                        {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'}
+                                                        {tipoDetalle(o.tipo, o.mesa, o.turn_number)}
                                                     </div>
                                                 </td>
                                                 {/* Método / Estado */}
@@ -916,7 +927,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                             <div>
                                 <h3 className="font-display font-bold text-base">¿Cancelar pedido #{cancelOrder.id}?</h3>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    {cancelOrder.customer_name} · {cancelOrder.tipo === 'mesa' ? `Mesa ${cancelOrder.mesa ?? '—'}` : 'Domicilio'}
+                                    {cancelOrder.customer_name} · {tipoDetalle(cancelOrder.tipo, cancelOrder.mesa)}
                                 </p>
                             </div>
                         </div>

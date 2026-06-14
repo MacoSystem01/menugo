@@ -61,7 +61,28 @@ class TableController extends Controller
                 'total' => (float) $o->total,
             ]);
 
-        return Inertia::render('Tables', compact('tables', 'recentCancellations'));
+        // Pedidos tipo mesa sin mesa asignada (hoy, no cancelados)
+        $tablelessOrders = \App\Models\Order::with('items.dish')
+            ->where('type', 'mesa')
+            ->whereNull('table_id')
+            ->whereDate('created_at', today())
+            ->where('status', '!=', 'cancelled')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn($o) => [
+                'id'            => $o->id,
+                'status'        => $o->status,
+                'total'         => (float) $o->total,
+                'items_count'   => $o->items->count(),
+                'customer_name' => $o->customer_name,
+                'items'         => $o->items->map(fn($i) => [
+                    'dish'     => $i->dish?->name,
+                    'quantity' => $i->quantity,
+                ]),
+                'created_at'    => $o->created_at->format('H:i'),
+            ]);
+
+        return Inertia::render('Tables', compact('tables', 'recentCancellations', 'tablelessOrders'));
     }
 
     public function store(Request $request)

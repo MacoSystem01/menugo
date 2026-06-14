@@ -162,7 +162,7 @@ class CartaController extends Controller
         $data = $request->validate([
             'customer_name'     => 'required|string|max:150',
             'customer_phone'    => 'required|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
-            'type'              => 'required|in:mesa,domicilio',
+            'type'              => 'required|in:mesa,domicilio,mostrador',
             'table_id'          => 'nullable|integer|exists:restaurant_tables,id',
             'delivery_address'  => 'required_if:type,domicilio|nullable|string|max:300',
             'delivery_phone'    => 'nullable|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
@@ -176,6 +176,11 @@ class CartaController extends Controller
             'items.*.dish_id'   => 'required|integer|exists:dishes,id',
             'items.*.quantity'  => 'required|integer|min:1|max:99',
         ]);
+
+        // Rechazar tipo 'mesa' para puestos de comida rápida
+        if ($data['type'] === 'mesa' && tenant('type') === 'puesto') {
+            return redirect('/carta')->withErrors(['type' => 'Los pedidos de mesa no están disponibles en este establecimiento.']);
+        }
 
         // Block orders on occupied tables unless the customer explicitly confirmed
         if ($data['type'] === 'mesa' && ! empty($data['table_id']) && empty($data['confirmed'])) {
@@ -244,6 +249,20 @@ class CartaController extends Controller
         ]);
 
         $order->items()->createMany($orderItems);
+
+        // Para pedidos de mostrador (puesto): cobrar al instante y asignar número de turno
+        if ($data['type'] === 'mostrador') {
+            $lastTurn = \App\Models\Order::where('type', 'mostrador')
+                ->whereDate('created_at', today())
+                ->max('turn_number') ?? 0;
+
+            $order->update([
+                'amount_paid' => $total,
+                'turn_number' => $lastTurn + 1,
+            ]);
+
+            session()->flash('turn_number', $lastTurn + 1);
+        }
 
         // Marcar la mesa como ocupada automáticamente al recibir el pedido
         if ($data['type'] === 'mesa' && !empty($data['table_id'])) {

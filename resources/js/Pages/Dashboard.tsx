@@ -1,6 +1,7 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, Link } from '@inertiajs/react';
 import { usePlan } from '@/hooks/use-plan';
+import { tipoDetalle } from '@/utils/order-tipo';
 import { useSupportWhatsapp } from '@/hooks/use-support-whatsapp';
 import {
     TrendingUp, ShoppingBag, Users, DollarSign, ArrowUpRight,
@@ -165,7 +166,7 @@ function FullDashboard(props: FullDashboardProps) {
                                             #{o.id} · <span className="text-muted-foreground font-normal">{o.resumen}</span>
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-0.5">
-                                            {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'} · {o.tiempo}
+                                            {tipoDetalle(o.tipo, o.mesa)} · {o.tiempo}
                                         </div>
                                     </div>
                                     <div className="font-semibold text-sm shrink-0">{fmt(o.total)}</div>
@@ -240,7 +241,7 @@ function CajaDashboard({ stats, transacciones }: CajaDashboardProps) {
                             <div key={t.id} className="py-3 flex items-center justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium">
-                                        #{t.id} · {t.tipo === 'mesa' ? `Mesa ${t.mesa ?? '—'}` : 'Domicilio'}
+                                        #{t.id} · {tipoDetalle(t.tipo, t.mesa)}
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-0.5">{t.tiempo}</div>
                                 </div>
@@ -299,7 +300,7 @@ function CocinaDashboard({ stats, cola }: CocinaDashboardProps) {
                                 className={`rounded-xl border p-4 ${COCINA_STATUS_CLASS[o.status] ?? 'bg-muted/10 border-border'}`}>
                                 <div className="flex justify-between items-start mb-2">
                                     <span className="font-semibold text-sm">
-                                        #{o.id} · {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'}
+                                        #{o.id} · {tipoDetalle(o.tipo, o.mesa)}
                                     </span>
                                     <span className={`text-xs font-medium flex items-center gap-1 ${o.mins >= 15 ? 'text-red-400' : 'text-muted-foreground'}`}>
                                         <Clock className="h-3 w-3" />{o.mins}m

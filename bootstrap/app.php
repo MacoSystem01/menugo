@@ -25,10 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\RedirectIfAuthenticated::class,
         );
         $middleware->alias([
-            'guest'      => \App\Http\Middleware\RedirectIfAuthenticated::class,
-            'role'       => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'perm'       => \App\Http\Middleware\RoleMiddleware::class,
+            'guest'           => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'role'            => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'      => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'perm'            => \App\Http\Middleware\RoleMiddleware::class,
+            'restaurante.only' => \App\Http\Middleware\EnsureIsRestaurante::class,
         ]);
         // Redirigir a /login en tenant, o al path de admin configurado en el dominio central
         $middleware->redirectGuestsTo(function (Request $request) {

@@ -1,7 +1,8 @@
 import AppShell from '@/Layouts/AppShell';
 import { Head, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import { Flame, Clock, CheckCircle2, ChevronRight, Bell, UtensilsCrossed, Bike, PlusCircle, Check, XCircle } from 'lucide-react';
+import { Flame, Clock, CheckCircle2, ChevronRight, Bell, UtensilsCrossed, Bike, PlusCircle, Check, XCircle, Package } from 'lucide-react';
+import { useBusinessType } from '@/hooks/use-business-type';
 
 interface OrderItem {
     id: number;
@@ -16,6 +17,7 @@ interface KitchenOrder {
     id: number;
     customer_name: string;
     tipo: string;
+    turno: number | null;
     mesa: number | null;
     status: string;
     notas: string | null;
@@ -169,6 +171,16 @@ function ActionButton({ order, hasPendingItems }: { order: KitchenOrder; hasPend
         );
     }
     if (order.status === 'ready') {
+        if (order.tipo === 'mostrador') {
+            return (
+                <button
+                    onClick={() => router.post(`/cocina/${order.id}/entregado`, { redirect_to: 'cocina' })}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
+                >
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Entregar
+                </button>
+            );
+        }
         return (
             <div className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-accent/10 border border-accent/20 py-2 text-xs text-accent font-medium">
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -202,12 +214,29 @@ function KdsCard({
 
     return (
         <div className={`rounded-xl border bg-card p-4 ${order.es_adicion ? 'border-cyan-500/30' : 'border-border'}`}>
+            {/* Número de turno para mostrador — prominente cuando está listo */}
+            {order.tipo === 'mostrador' && order.turno && order.status === 'ready' && (
+                <div className="text-center mb-3 py-3 rounded-xl bg-green-500/10 border border-green-500/30">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-green-400 mb-0.5">¡Listo! Llamar turno</p>
+                    <p className="font-display text-4xl font-black text-green-400">#{order.turno}</p>
+                </div>
+            )}
+
             {/* Cabecera */}
             <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-display text-base font-bold">#{order.id}</span>
+                    {order.tipo === 'mostrador' && order.turno && order.status !== 'ready' && (
+                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
+                            Turno #{order.turno}
+                        </span>
+                    )}
                     <span className="text-xs text-muted-foreground">
-                        {order.tipo === 'mesa' ? `Mesa ${order.mesa ?? '—'}` : 'Domicilio'}
+                        {order.tipo === 'mesa'
+                            ? `Mesa ${order.mesa ?? '—'}`
+                            : order.tipo === 'mostrador'
+                                ? 'Mostrador'
+                                : 'Domicilio'}
                     </span>
                     {order.es_adicion && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 uppercase tracking-wide">
@@ -259,6 +288,8 @@ function KdsCard({
 
 // ── Página principal ───────────────────────────────────────────────────────────
 export default function Cocina({ orders, recientes }: Props) {
+    const { isPuesto } = useBusinessType();
+
     // Estado de checkboxes keyed por item.id — inicializado desde is_prepared de BD
     const [checked, setChecked] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
@@ -308,6 +339,10 @@ export default function Cocina({ orders, recientes }: Props) {
     const pendingFresh    = byStatus('pending').filter(o => !o.es_adicion);
     const pendingAdiccion = byStatus('pending').filter(o => o.es_adicion);
 
+    const visibleColumns = isPuesto
+        ? COLUMNS.filter(c => c.key === 'ready')
+        : COLUMNS;
+
     return (
         <AppShell title="Cocina" subtitle="Panel de preparación de pedidos">
             <Head title="Cocina" />
@@ -332,7 +367,9 @@ export default function Cocina({ orders, recientes }: Props) {
                                         <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                                             {order.tipo === 'mesa'
                                                 ? <><UtensilsCrossed className="h-3 w-3" /> Mesa {order.mesa ?? '—'}</>
-                                                : <><Bike className="h-3 w-3" /> Domicilio</>
+                                                : order.tipo === 'mostrador'
+                                                    ? <><Package className="h-3 w-3" /> Mostrador</>
+                                                    : <><Bike className="h-3 w-3" /> Domicilio</>
                                             }
                                         </span>
                                         <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 uppercase tracking-wide">
@@ -363,10 +400,15 @@ export default function Cocina({ orders, recientes }: Props) {
                                     <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-2 py-1.5 mb-3">{order.notas}</p>
                                 )}
                                 <button
-                                    onClick={() => router.post(`/cocina/${order.id}/aceptar`)}
+                                    onClick={() => router.post(
+                                        order.tipo === 'mostrador'
+                                            ? `/cocina/${order.id}/listo`
+                                            : `/cocina/${order.id}/aceptar`
+                                    )}
                                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-cyan-500 py-2 text-xs font-semibold text-white hover:bg-cyan-600 transition-colors"
                                 >
-                                    <CheckCircle2 className="h-3.5 w-3.5" /> Preparar adición
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    {order.tipo === 'mostrador' ? 'Marcar listo' : 'Preparar adición'}
                                 </button>
                                 <div className="mt-2 pt-2 border-t border-border/20">
                                     <button
@@ -401,10 +443,15 @@ export default function Cocina({ orders, recientes }: Props) {
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
                                         <span className="font-display text-base font-bold">#{order.id}</span>
+                                        {order.tipo === 'mostrador' && order.turno && (
+                                            <span className="ml-1.5 text-sm font-bold text-primary">· Turno #{order.turno}</span>
+                                        )}
                                         <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                                             {order.tipo === 'mesa'
                                                 ? <><UtensilsCrossed className="h-3 w-3" /> Mesa {order.mesa ?? '—'}</>
-                                                : <><Bike className="h-3 w-3" /> Domicilio</>
+                                                : order.tipo === 'mostrador'
+                                                    ? <><Package className="h-3 w-3" /> Mostrador</>
+                                                    : <><Bike className="h-3 w-3" /> Domicilio</>
                                             }
                                         </span>
                                     </div>
@@ -432,10 +479,15 @@ export default function Cocina({ orders, recientes }: Props) {
                                     <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-2 py-1.5 mb-3">{order.notas}</p>
                                 )}
                                 <button
-                                    onClick={() => router.post(`/cocina/${order.id}/aceptar`)}
+                                    onClick={() => router.post(
+                                        order.tipo === 'mostrador'
+                                            ? `/cocina/${order.id}/listo`
+                                            : `/cocina/${order.id}/aceptar`
+                                    )}
                                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-orange-500 py-2 text-xs font-semibold text-white hover:bg-orange-600 transition-colors"
                                 >
-                                    <CheckCircle2 className="h-3.5 w-3.5" /> Aceptar pedido
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    {order.tipo === 'mostrador' ? 'Marcar listo' : 'Aceptar pedido'}
                                 </button>
                                 <div className="mt-2 pt-2 border-t border-border/20">
                                     <button
@@ -454,9 +506,9 @@ export default function Cocina({ orders, recientes }: Props) {
                 </div>
             )}
 
-            {/* ── KDS Board: En espera / Cocinando / Listo ── */}
-            <div className="grid gap-6 lg:grid-cols-3">
-                {COLUMNS.map(col => {
+            {/* ── KDS Board: En espera / Cocinando / Listo (puesto: solo Listo) ── */}
+            <div className={`grid gap-6 ${visibleColumns.length === 1 ? '' : 'lg:grid-cols-3'}`}>
+                {visibleColumns.map(col => {
                     const colOrders = byStatus(col.key);
                     return (
                         <div key={col.key} className={`rounded-2xl border-2 ${col.color} p-4`}>
@@ -497,7 +549,11 @@ export default function Cocina({ orders, recientes }: Props) {
                             <div key={o.id} className="rounded-xl border border-border bg-muted/20 px-4 py-2.5 text-sm">
                                 <span className="font-semibold">#{o.id}</span>
                                 <span className="text-muted-foreground ml-2">
-                                    {o.tipo === 'mesa' ? `Mesa ${o.mesa ?? '—'}` : 'Domicilio'} · {o.entregado}
+                                    {o.tipo === 'mesa'
+                                        ? `Mesa ${o.mesa ?? '—'}`
+                                        : o.tipo === 'mostrador'
+                                            ? 'Mostrador'
+                                            : 'Domicilio'} · {o.entregado}
                                 </span>
                             </div>
                         ))}

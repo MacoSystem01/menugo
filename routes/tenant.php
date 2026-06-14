@@ -229,35 +229,36 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
             ->middleware('perm:novedades.gestionar')
             ->name('cocina.novedades.verificar');
 
-        // ── Mesas ─────────────────────────────────────────────────────────────
-        Route::get('/tables',           [TableController::class, 'index'])
-            ->middleware('perm:mesa.ver')
-            ->name('tables');
+        // ── Mesas y Adiciones (solo tipo 'restaurante') ───────────────────────
+        Route::middleware('restaurante.only')->group(function () {
+            Route::get('/tables',           [TableController::class, 'index'])
+                ->middleware('perm:mesa.ver')
+                ->name('tables');
 
-        Route::post('/tables',          [TableController::class, 'store'])
-            ->middleware('perm:mesa.gestionar')
-            ->name('tables.store');
+            Route::post('/tables',          [TableController::class, 'store'])
+                ->middleware('perm:mesa.gestionar')
+                ->name('tables.store');
 
-        Route::put('/tables/{table}',   [TableController::class, 'update'])
-            ->middleware('perm:mesa.gestionar')
-            ->name('tables.update');
+            Route::put('/tables/{table}',   [TableController::class, 'update'])
+                ->middleware('perm:mesa.gestionar')
+                ->name('tables.update');
 
-        Route::delete('/tables/{table}', [TableController::class, 'destroy'])
-            ->middleware('perm:mesa.gestionar')
-            ->name('tables.destroy');
+            Route::delete('/tables/{table}', [TableController::class, 'destroy'])
+                ->middleware('perm:mesa.gestionar')
+                ->name('tables.destroy');
 
-        Route::post('/tables/{table}/liberar', [TableController::class, 'liberar'])
-            ->middleware('perm:mesa.gestionar|caja.gestionar')
-            ->name('tables.liberar');
+            Route::post('/tables/{table}/liberar', [TableController::class, 'liberar'])
+                ->middleware('perm:mesa.gestionar|caja.gestionar')
+                ->name('tables.liberar');
 
-        // ── Adiciones ─────────────────────────────────────────────────────────
-        Route::get('/adiciones', [AdicionesController::class, 'index'])
-            ->middleware('perm:mesa.ver')
-            ->name('adiciones');
+            Route::get('/adiciones', [AdicionesController::class, 'index'])
+                ->middleware('perm:mesa.ver')
+                ->name('adiciones');
 
-        Route::post('/adiciones/{order}/agregar', [AdicionesController::class, 'agregar'])
-            ->middleware('perm:mesa.gestionar')
-            ->name('adiciones.agregar');
+            Route::post('/adiciones/{order}/agregar', [AdicionesController::class, 'agregar'])
+                ->middleware('perm:mesa.gestionar')
+                ->name('adiciones.agregar');
+        });
 
         // ── Domicilio ─────────────────────────────────────────────────────────
         Route::get('/domicilio',                     [DomicilioController::class, 'index'])

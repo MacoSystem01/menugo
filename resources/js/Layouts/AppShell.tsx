@@ -3,6 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { PageProps, Role } from '@/types';
 import SystemAlertBanner from '@/components/SystemAlertBanner';
 import { usePlan } from '@/hooks/use-plan';
+import { useBusinessType } from '@/hooks/use-business-type';
 import { useSupportWhatsapp } from '@/hooks/use-support-whatsapp';
 
 // ── Iconos SVG inline ──────────────────────────────────────────────────────────
@@ -528,12 +529,13 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
     const flash = props.flash;
 
     const { can } = usePlan();
+    const { isPuesto } = useBusinessType();
 
     const rawNav = variant === 'admin'
         ? NAV_BY_ROLE['superadmin']
         : (NAV_BY_ROLE[role] ?? NAV_BY_ROLE['gerente']);
 
-    const nav = (variant === 'restaurant' && ['gerente', 'administrador'].includes(role))
+    let nav = (variant === 'restaurant' && ['gerente', 'administrador'].includes(role))
         ? rawNav.filter(item => {
             const href     = 'href' in item ? item.href : undefined;
             const children = 'children' in item ? item.children : undefined;
@@ -547,6 +549,15 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
             return true;
         })
         : rawNav;
+
+    if (variant === 'restaurant' && isPuesto) {
+        const mesaHrefs = new Set(['/tables', '/adiciones']);
+        nav = nav.filter(item => {
+            if ('href' in item && mesaHrefs.has(item.href ?? '')) return false;
+            const children = 'children' in item ? item.children : undefined;
+            return !children?.some(c => mesaHrefs.has(c.href));
+        });
+    }
 
     const badge = ROLE_BADGE[role] ?? ROLE_BADGE['gerente'];
 
