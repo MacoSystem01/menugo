@@ -355,6 +355,14 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
             ->middleware('perm:carta.editar')
             ->name('configuracion.horario.guardar');
 
+        Route::get('/configuracion/flujo',     [ConfiguracionController::class, 'flujo'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.flujo');
+
+        Route::post('/configuracion/flujo',    [ConfiguracionController::class, 'guardarFlujo'])
+            ->middleware('perm:carta.editar')
+            ->name('configuracion.flujo.guardar');
+
         Route::post('/configuracion/cierre-jornada', [ConfiguracionController::class, 'cierreJornada'])
             ->middleware('perm:carta.editar')
             ->name('configuracion.cierre-jornada');

@@ -16,9 +16,21 @@ class CocinaController extends Controller
 
     public function index()
     {
-        // Pedidos activos en cocina (pending = recién llegados, in_kitchen, cooking, ready)
+        // Para Restaurante la cocina siempre ve todos los estados (incluido pending).
+        // Para Puesto de Comidas Rápidas el flujo es configurable:
+        //   pago_primero  → cocina solo ve in_kitchen+ (pending queda en /caja hasta cobrar)
+        //   cocina_primero → cocina ve pending desde que llega el pedido; pago al final
+        $isPuesto  = tenant('type') === 'puesto';
+        $orderFlow = $isPuesto
+            ? (\App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero')
+            : 'cocina_primero';
+
+        $statuses = ($isPuesto && $orderFlow === 'pago_primero')
+            ? ['in_kitchen', 'cooking', 'ready']
+            : ['pending', 'in_kitchen', 'cooking', 'ready'];
+
         $orders = Order::with(['items.dish', 'table'])
-            ->whereIn('status', ['pending', 'in_kitchen', 'cooking', 'ready'])
+            ->whereIn('status', $statuses)
             ->oldest()
             ->get()
             ->map(function ($o) {

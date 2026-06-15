@@ -108,7 +108,7 @@ class OrderController extends Controller
                     ->orWhere(fn($q) => $q->where('status', 'delivered')
                         ->whereColumn('amount_paid', '<', 'total'));
             })
-            ->oldest()
+            ->latest()
             ->get()
             ->map($mapOrder);
 
@@ -151,6 +151,9 @@ class OrderController extends Controller
             'delivery_zones'  => $cfg->delivery_zones   ?? [],
             'needs_eod'       => $needsEod,
             'closing_time'    => $todaySchedule['cierre'] ?? null,
+            'order_flow'      => tenant('type') === 'puesto'
+                ? ($cfg->order_flow ?? 'pago_primero')
+                : 'cocina_primero',
         ]);
     }
 
@@ -247,19 +250,32 @@ class OrderController extends Controller
         ]);
     }
 
-    // ── Cobrar: registra pago completo y envía a cocina ───────────────────────
+    // ── Cobrar: registra pago completo y avanza estado según flujo ───────────
 
     public function cobrar(Request $request, Order $order)
     {
+        $isPuesto  = tenant('type') === 'puesto';
+        $orderFlow = $isPuesto
+            ? (\App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero')
+            : 'cocina_primero'; // Restaurante: cocina primero siempre
+
+        // Guardia: en cocina_primero el cobro solo es válido cuando el pedido está listo o entregado
+        if ($orderFlow === 'cocina_primero' && !in_array($order->status, ['ready', 'delivered'])) {
+            return back()->withErrors(['error' => 'El pedido aún no está listo. El cobro se habilita cuando cocina lo marque como listo.']);
+        }
+
         $update = [
             'cashier_id'  => auth()->user()?->id,
             'amount_paid' => $order->total,
         ];
 
-        // Solo avanzar a in_kitchen si aún no ha pasado por cocina; evita
-        // regresar el estado cuando el pedido ya está en cooking, ready, etc.
-        if ($order->status === 'pending') {
+        if ($orderFlow === 'pago_primero' && $order->status === 'pending') {
+            // Pago primero (solo Puesto): cobrar envía automáticamente a cocina
             $update['status'] = 'in_kitchen';
+        } elseif ($orderFlow === 'cocina_primero' && $order->status === 'ready') {
+            // Cocina primero: cobrar cuando el pedido ya está listo → entregar
+            $update['status']       = 'delivered';
+            $update['delivered_at'] = now();
         }
 
         $order->update($update);
@@ -293,13 +309,36 @@ class OrderController extends Controller
             return back()->withErrors(['error' => 'No se puede registrar pago en un pedido cancelado.']);
         }
 
+        $isPuesto  = tenant('type') === 'puesto';
+        $orderFlow = $isPuesto
+            ? (\App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero')
+            : 'cocina_primero'; // Restaurante: cocina primero siempre
+
+        // Guardia: en cocina_primero el cobro solo es válido cuando el pedido está listo o entregado
+        if ($orderFlow === 'cocina_primero' && !in_array($order->status, ['ready', 'delivered'])) {
+            return back()->withErrors(['error' => 'El pedido aún no está listo. El cobro se habilita cuando cocina lo marque como listo.']);
+        }
+
         $newAmount = round((float) $order->amount_paid + (float) $request->amount_paid, 2);
 
-        $order->update([
+        $statusUpdate = [];
+
+        if ($newAmount >= $order->total) {
+            if ($orderFlow === 'pago_primero' && $order->status === 'pending') {
+                // Pago primero (Puesto): pago completo en pending → enviar a cocina
+                $statusUpdate['status'] = 'in_kitchen';
+            } elseif ($orderFlow === 'cocina_primero' && $order->status === 'ready') {
+                // Cocina primero: pago completo en ready → entregar
+                $statusUpdate['status']       = 'delivered';
+                $statusUpdate['delivered_at'] = now();
+            }
+        }
+
+        $order->update(array_merge([
             'amount_paid'    => $newAmount,
             'payment_method' => $request->payment_method ?? $order->payment_method,
             'cashier_id'     => auth()->user()?->id,
-        ]);
+        ], $statusUpdate));
 
         $paid    = $newAmount >= $order->total;
         $message = $paid

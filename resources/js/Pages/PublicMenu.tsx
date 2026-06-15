@@ -120,6 +120,8 @@ interface DeliveryZone {
 interface PaymentDetail {
     titular?: string;
     numero?: string;
+    banco?: string;
+    tipo_cuenta?: string;
     link?: string;
     banco?: string;
     tipo_cuenta?: string;
@@ -961,13 +963,20 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                     {fmt(totalPrice)}
                                 </span>
                             </div>
-                            <button
-                                onClick={() => setScreen('checkout')}
-                                className="w-full py-3.5 rounded-2xl text-sm font-semibold"
-                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
-                            >
-                                Hacer pedido
-                            </button>
+                            {is_open_now === false ? (
+                                <div className="w-full py-3 rounded-2xl text-sm font-semibold text-center opacity-60 border"
+                                    style={{ borderColor: `${s.text}25`, color: s.text }}>
+                                    Estamos cerrados — no se pueden realizar pedidos
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setScreen('checkout')}
+                                    className="w-full py-3.5 rounded-2xl text-sm font-semibold"
+                                    style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                >
+                                    Hacer pedido
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1341,18 +1350,25 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                     </p>
                                 </div>
                             )}
-                            <button
-                                onClick={submitOrder}
-                                disabled={!orders_enabled || submitting}
-                                className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
-                            >
-                                {submitting
-                                    ? 'Enviando pedido...'
-                                    : tableIsOccupied && !occupiedConfirmed
-                                        ? 'Confirma el pedido nuevo arriba ↑'
-                                        : `Confirmar pedido · ${fmt(grandTotal)}`}
-                            </button>
+                            {is_open_now === false ? (
+                                <div className="w-full py-3.5 rounded-2xl text-sm font-semibold text-center border"
+                                    style={{ borderColor: `${s.text}25`, color: s.text, opacity: 0.55 }}>
+                                    Estamos cerrados — pedidos no disponibles
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={submitOrder}
+                                    disabled={!orders_enabled || submitting}
+                                    className="w-full py-3.5 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                >
+                                    {submitting
+                                        ? 'Enviando pedido...'
+                                        : tableIsOccupied && !occupiedConfirmed
+                                            ? 'Confirma el pedido nuevo arriba ↑'
+                                            : `Confirmar pedido · ${fmt(grandTotal)}`}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1603,13 +1619,121 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             );
                         })()}
 
+                        {/* Bloque de pago PSE */}
+                        {success.paymentMethod === 'pse' && (() => {
+                            const detail = settings.payment_details?.pse;
+                            return (
+                                <div
+                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
+                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
+                                >
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
+                                        Paga por PSE
+                                    </p>
+                                    {detail?.banco && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Banco: </span>
+                                            <strong>{detail.banco}</strong>
+                                        </p>
+                                    )}
+                                    {detail?.titular && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Titular: </span>
+                                            <strong>{detail.titular}</strong>
+                                        </p>
+                                    )}
+                                    {detail?.numero && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Cuenta: </span>
+                                            <strong className="font-mono tracking-wider">{detail.numero}</strong>
+                                            {detail.tipo_cuenta && (
+                                                <span className="ml-1 opacity-60 text-xs">({detail.tipo_cuenta})</span>
+                                            )}
+                                        </p>
+                                    )}
+                                    <p className="text-sm" style={{ color: s.text }}>
+                                        <span className="opacity-60">Monto a pagar: </span>
+                                        <strong>{fmt(success.total)}</strong>
+                                    </p>
+                                    <p className="text-xs opacity-60" style={{ color: s.text }}>
+                                        Realiza la transferencia PSE e indica tu nombre al negocio para confirmar el pago.
+                                    </p>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Bloque de pago Transferencia bancaria */}
+                        {success.paymentMethod === 'transferencia' && (() => {
+                            const detail = settings.payment_details?.transferencia;
+                            return (
+                                <div
+                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
+                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
+                                >
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
+                                        Transferencia bancaria
+                                    </p>
+                                    {detail?.banco && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Banco: </span>
+                                            <strong>{detail.banco}</strong>
+                                        </p>
+                                    )}
+                                    {detail?.titular && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Titular: </span>
+                                            <strong>{detail.titular}</strong>
+                                        </p>
+                                    )}
+                                    {detail?.numero && (
+                                        <p className="text-sm" style={{ color: s.text }}>
+                                            <span className="opacity-60">Cuenta: </span>
+                                            <strong className="font-mono tracking-wider">{detail.numero}</strong>
+                                            {detail.tipo_cuenta && (
+                                                <span className="ml-1 opacity-60 text-xs">({detail.tipo_cuenta})</span>
+                                            )}
+                                        </p>
+                                    )}
+                                    <p className="text-sm" style={{ color: s.text }}>
+                                        <span className="opacity-60">Monto a pagar: </span>
+                                        <strong>{fmt(success.total)}</strong>
+                                    </p>
+                                    {detail?.nota && (
+                                        <p className="text-xs opacity-60" style={{ color: s.text }}>{detail.nota}</p>
+                                    )}
+                                    {!detail?.banco && !detail?.numero && (
+                                        <p className="text-xs opacity-60" style={{ color: s.text }}>
+                                            Consulta los datos de transferencia directamente con el negocio.
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* Bloque de pago Tarjeta */}
+                        {success.paymentMethod === 'tarjeta' && (() => {
+                            const detail = settings.payment_details?.tarjeta;
+                            if (!detail?.nota) return null;
+                            return (
+                                <div
+                                    className="w-full mb-5 rounded-2xl border p-4 space-y-2 text-left"
+                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
+                                >
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
+                                        Pago con tarjeta
+                                    </p>
+                                    <p className="text-sm" style={{ color: s.text, opacity: 0.75 }}>{detail.nota}</p>
+                                </div>
+                            );
+                        })()}
+
                         <button
                             onClick={() => setSuccess(null)}
                             className="w-full py-3 rounded-2xl text-sm font-semibold"
                             style={{
-                                backgroundColor: ['nequi', 'daviplata'].includes(success.paymentMethod) ? 'transparent' : s.primary,
-                                color: ['nequi', 'daviplata'].includes(success.paymentMethod) ? s.primary : '#ffffff',
-                                border: ['nequi', 'daviplata'].includes(success.paymentMethod) ? `1.5px solid ${s.primary}` : 'none',
+                                backgroundColor: ['nequi', 'daviplata', 'pse', 'transferencia'].includes(success.paymentMethod) ? 'transparent' : s.primary,
+                                color: ['nequi', 'daviplata', 'pse', 'transferencia'].includes(success.paymentMethod) ? s.primary : '#ffffff',
+                                border: ['nequi', 'daviplata', 'pse', 'transferencia'].includes(success.paymentMethod) ? `1.5px solid ${s.primary}` : 'none',
                             }}
                         >
                             Ver la carta

@@ -96,6 +96,7 @@ const configuracionGroup: NavItem = {
     label: 'Configuraciones', icon: 'settings', children: [
         { href: '/mi-plan',                  label: 'Mi Plan' },
         { href: '/configuracion/pagos',      label: 'Métodos de pago' },
+        { href: '/configuracion/flujo',      label: 'Flujo de pedido' },
         { href: '/configuracion/domicilio',  label: 'Tarifas domicilio' },
         { href: '/configuracion/horario',    label: 'Horario trabajo' },
     ]
@@ -246,7 +247,7 @@ function PlanBadge() {
 
 // ── Sidebar content (reutilizado en desktop y mobile) ─────────────────────────
 function SidebarContent({
-    nav, currentPath, openIndex, setOpenIndex, user, badge, logoUrl, onNavigate,
+    nav, currentPath, openIndex, setOpenIndex, user, badge, logoUrl, centralUrl, onNavigate,
 }: {
     nav: NavItem[];
     currentPath: string;
@@ -255,6 +256,7 @@ function SidebarContent({
     user: { name: string; role: string };
     badge: { label: string; className: string };
     logoUrl: string;
+    centralUrl?: string;
     onNavigate?: () => void;
 }) {
     return (
@@ -328,9 +330,9 @@ function SidebarContent({
                             },
                             credentials: 'same-origin',
                         }).then(() => {
-                            window.location.href = '/';
+                            window.location.href = centralUrl ?? '/';
                         }).catch(() => {
-                            window.location.href = '/';
+                            window.location.href = centralUrl ?? '/';
                         });
                     }}
                     className="w-full flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground
@@ -559,6 +561,14 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
         });
     }
 
+    // Flujo de pedido solo disponible para Puesto de Comidas Rápidas
+    if (variant === 'restaurant' && !isPuesto) {
+        nav = nav.map(item => {
+            if (!('children' in item) || !item.children) return item;
+            return { ...item, children: item.children.filter(c => c.href !== '/configuracion/flujo') };
+        });
+    }
+
     const badge = ROLE_BADGE[role] ?? ROLE_BADGE['gerente'];
 
     const [openIndex, setOpenIndex] = useState<number | null>(() =>
@@ -575,6 +585,7 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
         user: { name: user?.name ?? '', role },
         badge,
         logoUrl,
+        centralUrl: props.central_url,
     };
 
     return (

@@ -35,6 +35,7 @@ export interface PageProps {
     tenant_days_left?: number | null;
     tenant_is_trial?: boolean;
     tenant_type?: BusinessType;
+    central_url?: string;
     support_whatsapp?: string;
     flash?: {
         success?: string;

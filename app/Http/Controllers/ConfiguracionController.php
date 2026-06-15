@@ -146,7 +146,7 @@ class ConfiguracionController extends Controller
         foreach ($days as $day) {
             $d = $request->input($day, []);
             $schedule[$day] = [
-                'activo'   => (bool) ($d['activo']   ?? false),
+                'activo'   => filter_var($d['activo'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'apertura' => $d['apertura'] ?? '08:00',
                 'cierre'   => $d['cierre']   ?? '22:00',
             ];
@@ -157,6 +157,42 @@ class ConfiguracionController extends Controller
         AuditLog::registrar('update', 'Configuracion', null, 'Horario de trabajo actualizado');
 
         return back()->with('success', 'Horario de trabajo guardado correctamente.');
+    }
+
+    // ── Flujo de pedido (solo Puesto de Comidas Rápidas) ─────────────────────
+
+    public function flujo()
+    {
+        if (tenant('type') !== 'puesto') {
+            return redirect('/dashboard')
+                ->with('warning', 'La configuración de flujo de pedido solo está disponible para Puestos de Comidas Rápidas.');
+        }
+
+        $settings = $this->settings();
+
+        return Inertia::render('Configuraciones/Flujo', [
+            'order_flow' => $settings->order_flow ?? 'pago_primero',
+        ]);
+    }
+
+    public function guardarFlujo(Request $request)
+    {
+        if (tenant('type') !== 'puesto') {
+            return redirect('/dashboard')
+                ->with('warning', 'La configuración de flujo de pedido solo está disponible para Puestos de Comidas Rápidas.');
+        }
+
+        $request->validate([
+            'order_flow' => 'required|in:pago_primero,cocina_primero',
+        ]);
+
+        $this->settings()->update(['order_flow' => $request->order_flow]);
+
+        AuditLog::registrar('update', 'Configuracion', null, 'Flujo de pedido actualizado', [
+            'order_flow' => $request->order_flow,
+        ]);
+
+        return back()->with('success', 'Flujo de pedido actualizado correctamente.');
     }
 
     public function cierreJornada()

@@ -101,6 +101,7 @@ class HandleInertiaRequests extends Middleware
             'tenant_days_left'  => $tenantDaysLeft,
             'tenant_is_trial'   => $tenantIsTrial,
             'tenant_type'       => $tenantType,
+            'central_url'       => config('app.url'),
             'support_whatsapp'  => config('app.support_whatsapp', env('SUPPORT_WHATSAPP', '573172623919')),
             'flash'       => [
                 'success'       => $request->session()->get('success'),

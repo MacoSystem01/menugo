@@ -28,6 +28,7 @@ class CartaSetting extends Model
         'restaurant_lat',
         'restaurant_lng',
         'restaurant_address',
+        'order_flow',
     ];
 
     protected $casts = [
@@ -56,6 +57,7 @@ class CartaSetting extends Model
         'name_size'       => '2xl',
         'slogan_size'     => 'sm',
         'payment_methods' => '["efectivo"]',
+        'order_flow'      => 'pago_primero',
     ];
 
     public function getBannerUrlAttribute(): ?string
@@ -90,7 +92,7 @@ class CartaSetting extends Model
         $todayKey = $dayMap[$now->format('D')] ?? null;
         $today = $todayKey ? ($schedule[$todayKey] ?? null) : null;
 
-        if (!$today || empty($today['activo'])) {
+        if (!$today || !filter_var($today['activo'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
 

@@ -250,17 +250,22 @@ class CartaController extends Controller
 
         $order->items()->createMany($orderItems);
 
-        // Para pedidos de mostrador (puesto): cobrar al instante y asignar número de turno
+        // Para pedidos de mostrador (puesto): asignar número de turno
+        // pago_primero → cobrar al instante (KDS lo muestra como pending, cocina marca listo)
+        // cocina_primero → solo asignar turno; el cobro queda pendiente hasta que cocina lo
+        //                   marque listo y el cajero lo cobre en /caja
         if ($data['type'] === 'mostrador') {
-            $lastTurn = \App\Models\Order::where('type', 'mostrador')
+            $lastTurn  = \App\Models\Order::where('type', 'mostrador')
                 ->whereDate('created_at', today())
                 ->max('turn_number') ?? 0;
+            $orderFlow = \App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero';
 
-            $order->update([
-                'amount_paid' => $total,
-                'turn_number' => $lastTurn + 1,
-            ]);
+            $mostradorUpdate = ['turn_number' => $lastTurn + 1];
+            if ($orderFlow === 'pago_primero') {
+                $mostradorUpdate['amount_paid'] = $total;
+            }
 
+            $order->update($mostradorUpdate);
             session()->flash('turn_number', $lastTurn + 1);
         }
 
