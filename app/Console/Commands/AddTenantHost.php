@@ -21,6 +21,10 @@ class AddTenantHost extends Command
 
     public function handle(): void
     {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return;
+        }
+
         $subdomain = $this->argument('subdomain');
         $write     = $this->option('write');
 
