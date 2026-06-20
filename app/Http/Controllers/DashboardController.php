@@ -51,6 +51,8 @@ class DashboardController extends Controller
         $ticketPromedio = $pedidosHoy > 0 ? round($ventasHoy / $pedidosHoy, 2) : 0;
 
         $pedidosRecientes = Order::with(['items.dish', 'table'])
+            ->whereDate('created_at', $today)
+            ->whereNull('closed_at_eod')
             ->latest()->take(10)->get()
             ->map(fn($o) => [
                 'id'          => $o->id,
@@ -105,6 +107,7 @@ class DashboardController extends Controller
 
         $transacciones = Order::with(['table'])
             ->whereDate('created_at', $today)
+            ->whereNull('closed_at_eod')
             ->where('amount_paid', '>', 0)
             ->latest()->take(15)->get()
             ->map(fn($o) => [

@@ -48,6 +48,10 @@ class CierreDiario extends Command
             'closed_at_eod' => $now,
         ]);
 
+        // Archivar también los pedidos ya finalizados (entregados/cancelados) de la jornada,
+        // para que no sigan apareciendo como "recientes" en el dashboard de la jornada siguiente.
+        Order::whereNull('closed_at_eod')->update(['closed_at_eod' => $now]);
+
         $tablesFreed = RestaurantTable::whereIn('status', ['occupied', 'reserved'])->count();
 
         RestaurantTable::whereIn('status', ['occupied', 'reserved'])->update([

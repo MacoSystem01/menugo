@@ -200,7 +200,6 @@ class ConfiguracionController extends Controller
         $now = now();
 
         $activeOrders = Order::whereNull('closed_at_eod')
-            ->whereNotIn('status', ['cancelled'])
             ->with('table')
             ->get();
 
