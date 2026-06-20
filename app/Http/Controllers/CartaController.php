@@ -324,6 +324,15 @@ class CartaController extends Controller
 
     public function saveSettings(Request $request)
     {
+        if ($request->filled('social_links.whatsapp')) {
+            $request->merge([
+                'social_links' => array_merge(
+                    $request->input('social_links', []),
+                    ['whatsapp' => $this->normalizeWhatsapp($request->input('social_links.whatsapp'))],
+                ),
+            ]);
+        }
+
         $data = $request->validate([
             'primary_color'            => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
             'bg_color'                 => 'required|regex:/^#[0-9A-Fa-f]{6}$/',
@@ -495,6 +504,17 @@ class CartaController extends Controller
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
+
+    private function normalizeWhatsapp(string $value): string
+    {
+        // Permite pegar el link completo (wa.me/, api.whatsapp.com/send?phone=)
+        // y se queda solo con el número, igual que si se hubiera escrito directo.
+        if (preg_match('/(?:wa\.me\/|phone=)\+?(\d{7,15})/i', $value, $m)) {
+            return $m[1];
+        }
+
+        return preg_replace('/[^0-9+]/', '', $value);
+    }
 
     private function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
