@@ -25,9 +25,8 @@ class OrderController extends Controller
             $query->where('type', $request->tipo);
         }
 
-        if ($request->filled('fecha')) {
-            $query->whereDate('created_at', $request->fecha);
-        }
+        $fecha = $request->filled('fecha') ? $request->fecha : today()->toDateString();
+        $query->whereDate('created_at', $fecha);
 
         if ($request->filled('mesa_id')) {
             $query->where('table_id', $request->mesa_id);
@@ -64,7 +63,7 @@ class OrderController extends Controller
         return Inertia::render('Orders', [
             'orders'         => $orders,
             'tables'         => $tables,
-            'filters'        => $request->only(['status', 'tipo', 'fecha', 'mesa_id']),
+            'filters'        => array_merge($request->only(['status', 'tipo', 'mesa_id']), ['fecha' => $fecha]),
             'delivery_zones' => $deliveryZones,
         ]);
     }
