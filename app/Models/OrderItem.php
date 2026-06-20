@@ -18,7 +18,7 @@ class OrderItem extends Model
 
     public function dish(): BelongsTo
     {
-        return $this->belongsTo(Dish::class);
+        return $this->belongsTo(Dish::class)->withTrashed();
     }
 
     public function subtotal(): float

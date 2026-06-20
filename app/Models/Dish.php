@@ -6,10 +6,11 @@ use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Dish extends Model
 {
-    use Auditable;
+    use Auditable, SoftDeletes;
 
     protected static function auditLabel(): string { return 'Plato'; }
     protected $fillable = ['category_id', 'name', 'description', 'price', 'image', 'available', 'sort_order'];

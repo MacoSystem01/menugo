@@ -6,7 +6,6 @@ use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Dish;
 use App\Services\PlanService;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -112,16 +111,7 @@ class DishController extends Controller
     {
         $name = $dish->name;
         $id   = $dish->id;
-
-        try {
-            $dish->delete();
-        } catch (QueryException $e) {
-            if ($e->getCode() === '23000') {
-                return back()->with('error', "No se puede eliminar '{$name}' porque tiene pedidos registrados. Desactívalo en su lugar.");
-            }
-
-            throw $e;
-        }
+        $dish->delete();
 
         AuditLog::registrar('delete', 'Plato', $id, "Plato '{$name}' eliminado");
 
