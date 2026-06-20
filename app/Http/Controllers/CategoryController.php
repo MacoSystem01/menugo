@@ -122,8 +122,8 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
-        if ($category->dishes()->exists()) {
-            return back()->withErrors(['error' => 'No se puede eliminar: tiene platos asociados.']);
+        if ($category->dishes()->withTrashed()->exists()) {
+            return back()->withErrors(['error' => 'No se puede eliminar: tiene platos asociados (incluye platos eliminados con historial de pedidos).']);
         }
 
         $name = $category->name;
