@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useBusinessType } from '@/hooks/use-business-type';
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Minus, X, ChevronLeft, Check, UtensilsCrossed, Bike, Clock, MapPin, AlertTriangle, ZoomIn, Package } from 'lucide-react';
+import PaymentDetailBlock from '@/components/carta/PaymentDetailBlock';
 
 // ── Google Maps helpers ───────────────────────────────────────────────────────
 
@@ -123,8 +124,6 @@ interface PaymentDetail {
     banco?: string;
     tipo_cuenta?: string;
     link?: string;
-    banco?: string;
-    tipo_cuenta?: string;
     nota?: string;
 }
 
@@ -245,7 +244,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const [screen, setScreen] = useState<Screen>('menu');
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string; turnNumber?: number } | null>(null);
+    const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string; turnNumber?: number; trackingToken?: string } | null>(null);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
     // ── Session timer (10 min) ─────────────────────────────────────────────────
@@ -404,7 +403,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
             onSuccess: (page: any) => {
                 const turnNumber: number | undefined = page?.props?.flash?.turn_number;
-                setSuccess({ name: snapshotName, total: snapshotTotal, paymentMethod: snapshotMethod, turnNumber });
+                const trackingToken: string | undefined = page?.props?.flash?.tracking_token;
+                setSuccess({ name: snapshotName, total: snapshotTotal, paymentMethod: snapshotMethod, turnNumber, trackingToken });
                 setCart([]);
                 setScreen('menu');
                 setOccupiedConfirmed(false);
@@ -507,18 +507,18 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                 className="sticky top-0 z-10 backdrop-blur-md border-b shadow-md"
                 style={{ backgroundColor: `${s.bg}f5`, borderColor: `${s.text}15` }}
             >
-                <div className="max-w-5xl mx-auto px-4 sm:px-8 py-4 flex items-center gap-5">
+                <div className="max-w-5xl mx-auto px-4 sm:px-8 py-3 sm:py-4 flex items-center gap-3 sm:gap-5">
                     {/* Logo */}
                     <img
                         src={settings?.logo_url ?? '/logo-trans.png'}
                         alt={tenant_name}
-                        className="h-28 w-auto shrink-0 object-contain drop-shadow-md"
+                        className={`${logoClass} w-auto max-w-[30%] shrink-0 object-contain drop-shadow-md`}
                     />
 
                     {/* Textos */}
                     <div className="min-w-0 flex-1 space-y-1">
                         <h1
-                            className="font-display font-extrabold leading-none tracking-tight text-4xl sm:text-5xl line-clamp-1"
+                            className={`font-display font-extrabold leading-tight tracking-tight ${nameClass} line-clamp-2`}
                             style={{ color: s.text }}
                         >
                             {tenant_name}
@@ -526,7 +526,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         {settings?.slogan && (
                             <p
-                                className="text-2xl sm:text-3xl font-medium leading-snug line-clamp-1 opacity-75"
+                                className={`${sloganClass} font-medium leading-snug line-clamp-2 opacity-75`}
                                 style={{ color: s.text }}
                             >
                                 {settings.slogan}
@@ -898,7 +898,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             <button onClick={() => setScreen('menu')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
                                 <ChevronLeft className="h-6 w-6" />
                             </button>
-                            <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Tu pedido</h2>
+                            <div className="flex flex-col items-center">
+                                <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Tu pedido</h2>
+                                {timeLeft !== null && (
+                                    <span className="flex items-center gap-1 text-[11px] font-semibold mt-0.5" style={{ color: timerColor(timeLeft, s.primary) }}>
+                                        <Clock className="h-3 w-3" /> {fmtTimer(timeLeft)}
+                                    </span>
+                                )}
+                            </div>
                             <div className="w-9" />
                         </div>
 
@@ -996,7 +1003,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             <button onClick={() => setScreen('cart')} className="p-2 -ml-2 rounded-xl" style={{ color: s.text }}>
                                 <ChevronLeft className="h-6 w-6" />
                             </button>
-                            <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Datos del pedido</h2>
+                            <div className="flex flex-col items-center">
+                                <h2 className="font-display font-bold text-base" style={{ color: s.text }}>Datos del pedido</h2>
+                                {timeLeft !== null && (
+                                    <span className="flex items-center gap-1 text-[11px] font-semibold mt-0.5" style={{ color: timerColor(timeLeft, s.primary) }}>
+                                        <Clock className="h-3 w-3" /> {fmtTimer(timeLeft)}
+                                    </span>
+                                )}
+                            </div>
                             <div className="w-9" />
                         </div>
 
@@ -1456,8 +1470,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                 </div>
             )}
 
-            {/* ── Temporizador fijo esquina inferior izquierda ── */}
-            {timeLeft !== null && (
+            {/* ── Temporizador fijo esquina inferior izquierda — solo en la carta, las hojas de carrito/checkout lo muestran en su cabecera ── */}
+            {timeLeft !== null && screen === 'menu' && (
                 <div
                     className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full px-4 py-2 shadow-lg"
                     style={{ backgroundColor: timerColor(timeLeft, s.primary), color: '#ffffff' }}
@@ -1512,220 +1526,26 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             </div>
                         )}
 
-                        {/* Bloque de pago Nequi */}
-                        {success.paymentMethod === 'nequi' && (() => {
-                            const detail = settings.payment_details?.nequi;
-                            const phone = detail?.numero?.replace(/\D/g, '');
-                            const amount = Math.round(success.total);
-                            const nequiUrl = detail?.link
-                                ? detail.link
-                                : phone
-                                    ? `https://www.nequi.com.co/cobrar?cuenta=${phone}&monto=${amount}`
-                                    : null;
-                            return (
-                                <div
-                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
-                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
-                                >
-                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
-                                        Paga con Nequi
-                                    </p>
-                                    {detail?.titular && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Titular: </span>
-                                            <strong>{detail.titular}</strong>
-                                        </p>
-                                    )}
-                                    {phone && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Número: </span>
-                                            <strong className="font-mono tracking-wider">{detail?.numero}</strong>
-                                        </p>
-                                    )}
-                                    <p className="text-sm" style={{ color: s.text }}>
-                                        <span className="opacity-60">Monto a pagar: </span>
-                                        <strong>{fmt(success.total)}</strong>
-                                    </p>
-                                    {detail?.nota && (
-                                        <p className="text-xs opacity-60" style={{ color: s.text }}>{detail.nota}</p>
-                                    )}
-                                    {nequiUrl ? (
-                                        <a
-                                            href={nequiUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mt-1"
-                                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
-                                        >
-                                            Abrir Nequi para pagar →
-                                        </a>
-                                    ) : (
-                                        <p className="text-xs opacity-60" style={{ color: s.text }}>
-                                            Realiza la transferencia al número indicado y menciona tu pedido.
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })()}
+                        {/* Bloque de pago según el método elegido */}
+                        <PaymentDetailBlock
+                            method={success.paymentMethod}
+                            detail={settings.payment_details?.[success.paymentMethod]}
+                            total={success.total}
+                            primary={s.primary}
+                            text={s.text}
+                            fmt={fmt}
+                        />
 
-                        {/* Bloque de pago Daviplata */}
-                        {success.paymentMethod === 'daviplata' && (() => {
-                            const detail = settings.payment_details?.daviplata;
-                            const phone = detail?.numero?.replace(/\D/g, '');
-                            const daviplataUrl = detail?.link ?? null;
-                            return (
-                                <div
-                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
-                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
-                                >
-                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
-                                        Paga con Daviplata
-                                    </p>
-                                    {detail?.titular && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Titular: </span>
-                                            <strong>{detail.titular}</strong>
-                                        </p>
-                                    )}
-                                    {phone && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Número: </span>
-                                            <strong className="font-mono tracking-wider">{detail?.numero}</strong>
-                                        </p>
-                                    )}
-                                    <p className="text-sm" style={{ color: s.text }}>
-                                        <span className="opacity-60">Monto a pagar: </span>
-                                        <strong>{fmt(success.total)}</strong>
-                                    </p>
-                                    {detail?.nota && (
-                                        <p className="text-xs opacity-60" style={{ color: s.text }}>{detail.nota}</p>
-                                    )}
-                                    {daviplataUrl ? (
-                                        <a
-                                            href={daviplataUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mt-1"
-                                            style={{ backgroundColor: s.primary, color: '#ffffff' }}
-                                        >
-                                            Abrir Daviplata para pagar →
-                                        </a>
-                                    ) : (
-                                        <p className="text-xs opacity-60" style={{ color: s.text }}>
-                                            Realiza la transferencia al número indicado y menciona tu pedido.
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })()}
-
-                        {/* Bloque de pago PSE */}
-                        {success.paymentMethod === 'pse' && (() => {
-                            const detail = settings.payment_details?.pse;
-                            return (
-                                <div
-                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
-                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
-                                >
-                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
-                                        Paga por PSE
-                                    </p>
-                                    {detail?.banco && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Banco: </span>
-                                            <strong>{detail.banco}</strong>
-                                        </p>
-                                    )}
-                                    {detail?.titular && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Titular: </span>
-                                            <strong>{detail.titular}</strong>
-                                        </p>
-                                    )}
-                                    {detail?.numero && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Cuenta: </span>
-                                            <strong className="font-mono tracking-wider">{detail.numero}</strong>
-                                            {detail.tipo_cuenta && (
-                                                <span className="ml-1 opacity-60 text-xs">({detail.tipo_cuenta})</span>
-                                            )}
-                                        </p>
-                                    )}
-                                    <p className="text-sm" style={{ color: s.text }}>
-                                        <span className="opacity-60">Monto a pagar: </span>
-                                        <strong>{fmt(success.total)}</strong>
-                                    </p>
-                                    <p className="text-xs opacity-60" style={{ color: s.text }}>
-                                        Realiza la transferencia PSE e indica tu nombre al negocio para confirmar el pago.
-                                    </p>
-                                </div>
-                            );
-                        })()}
-
-                        {/* Bloque de pago Transferencia bancaria */}
-                        {success.paymentMethod === 'transferencia' && (() => {
-                            const detail = settings.payment_details?.transferencia;
-                            return (
-                                <div
-                                    className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left"
-                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
-                                >
-                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
-                                        Transferencia bancaria
-                                    </p>
-                                    {detail?.banco && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Banco: </span>
-                                            <strong>{detail.banco}</strong>
-                                        </p>
-                                    )}
-                                    {detail?.titular && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Titular: </span>
-                                            <strong>{detail.titular}</strong>
-                                        </p>
-                                    )}
-                                    {detail?.numero && (
-                                        <p className="text-sm" style={{ color: s.text }}>
-                                            <span className="opacity-60">Cuenta: </span>
-                                            <strong className="font-mono tracking-wider">{detail.numero}</strong>
-                                            {detail.tipo_cuenta && (
-                                                <span className="ml-1 opacity-60 text-xs">({detail.tipo_cuenta})</span>
-                                            )}
-                                        </p>
-                                    )}
-                                    <p className="text-sm" style={{ color: s.text }}>
-                                        <span className="opacity-60">Monto a pagar: </span>
-                                        <strong>{fmt(success.total)}</strong>
-                                    </p>
-                                    {detail?.nota && (
-                                        <p className="text-xs opacity-60" style={{ color: s.text }}>{detail.nota}</p>
-                                    )}
-                                    {!detail?.banco && !detail?.numero && (
-                                        <p className="text-xs opacity-60" style={{ color: s.text }}>
-                                            Consulta los datos de transferencia directamente con el negocio.
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })()}
-
-                        {/* Bloque de pago Tarjeta */}
-                        {success.paymentMethod === 'tarjeta' && (() => {
-                            const detail = settings.payment_details?.tarjeta;
-                            if (!detail?.nota) return null;
-                            return (
-                                <div
-                                    className="w-full mb-5 rounded-2xl border p-4 space-y-2 text-left"
-                                    style={{ borderColor: `${s.primary}40`, backgroundColor: `${s.primary}08` }}
-                                >
-                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: s.primary }}>
-                                        Pago con tarjeta
-                                    </p>
-                                    <p className="text-sm" style={{ color: s.text, opacity: 0.75 }}>{detail.nota}</p>
-                                </div>
-                            );
-                        })()}
+                        {/* Link de seguimiento del pedido */}
+                        {success.trackingToken && (
+                            <a
+                                href={`/carta/pedido/${success.trackingToken}`}
+                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mb-3"
+                                style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                            >
+                                Seguir mi pedido →
+                            </a>
+                        )}
 
                         <button
                             onClick={() => setSuccess(null)}

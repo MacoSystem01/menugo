@@ -97,13 +97,18 @@ class TenantController extends Controller
 
         $owner->assignRole('gerente');
 
+        // Crear siempre la configuración inicial de la carta — antes solo se creaba si
+        // se indicaba dirección, dejando sin CartaSetting (y sin order_flow) a cualquier
+        // tenant que no la llenara. Restaurante siempre fuerza cocina_primero; puesto
+        // queda en el flujo por defecto y lo puede cambiar luego en /configuracion/flujo.
+        $setting = \App\Models\CartaSetting::first() ?? new \App\Models\CartaSetting();
+        $setting->order_flow = $data['type'] === 'restaurante' ? 'cocina_primero' : 'pago_primero';
         if (!empty($data['restaurant_address'])) {
-            $setting = \App\Models\CartaSetting::first() ?? new \App\Models\CartaSetting();
             $setting->restaurant_address = $data['restaurant_address'];
             $setting->restaurant_lat     = isset($data['restaurant_lat']) ? (float) $data['restaurant_lat'] : null;
             $setting->restaurant_lng     = isset($data['restaurant_lng']) ? (float) $data['restaurant_lng'] : null;
-            $setting->save();
         }
+        $setting->save();
 
         tenancy()->end();
 
@@ -259,13 +264,16 @@ class TenantController extends Controller
 
         $owner->assignRole('gerente');
 
+        // Mismo criterio que en publicRegister(): siempre crear CartaSetting y forzar
+        // order_flow según el tipo de negocio, no solo cuando hay dirección.
+        $setting = \App\Models\CartaSetting::first() ?? new \App\Models\CartaSetting();
+        $setting->order_flow = $data['type'] === 'restaurante' ? 'cocina_primero' : 'pago_primero';
         if (!empty($data['restaurant_address'])) {
-            $setting = \App\Models\CartaSetting::first() ?? new \App\Models\CartaSetting();
             $setting->restaurant_address = $data['restaurant_address'];
             $setting->restaurant_lat     = isset($data['restaurant_lat']) ? (float) $data['restaurant_lat'] : null;
             $setting->restaurant_lng     = isset($data['restaurant_lng']) ? (float) $data['restaurant_lng'] : null;
-            $setting->save();
         }
+        $setting->save();
 
         tenancy()->end();
 

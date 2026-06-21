@@ -41,6 +41,7 @@ interface ActiveOrder {
     delivery_fee: number;
     amount_paid: number;
     payment_method: string | null;
+    payment_reported_at: string | null;
     notes: string | null;
     items: OrderItem[];
     created_at: string;
@@ -384,6 +385,16 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                                 <span className={`text-sm px-3 py-1 rounded-full font-semibold border inline-flex items-center gap-1.5 ${PAYMENT_METHOD_COLORS[order.payment_method] ?? 'bg-muted text-muted-foreground border-border'}`}>
                                                     <CreditCard className="h-3.5 w-3.5" />
                                                     {PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method}
+                                                </span>
+                                            )}
+
+                                            {/* Cliente reportó pago desde su seguimiento */}
+                                            {order.payment_reported_at && ps !== 'paid' && (
+                                                <span
+                                                    className="text-sm px-3 py-1 rounded-full font-semibold border bg-amber-500/15 text-amber-400 border-amber-500/40 inline-flex items-center gap-1.5"
+                                                    title={`Reportado: ${order.payment_reported_at}`}
+                                                >
+                                                    🔔 Cliente reportó pago
                                                 </span>
                                             )}
                                         </div>

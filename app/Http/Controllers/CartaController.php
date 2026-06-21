@@ -234,11 +234,14 @@ class CartaController extends Controller
         }
         $total += $deliveryFee;
 
+        $trackingToken = (string) Str::uuid();
+
         $order = Order::create([
             'customer_name'     => $data['customer_name'],
             'customer_phone'    => $data['customer_phone'],
             'type'              => $data['type'],
             'table_id'          => $data['table_id'] ?? null,
+            'tracking_token'    => $trackingToken,
             'delivery_address'  => $data['delivery_address'] ?? null,
             'delivery_phone'    => $data['delivery_phone'] ?? null,
             'delivery_fee'      => $deliveryFee,
@@ -247,6 +250,8 @@ class CartaController extends Controller
             'status'            => 'pending',
             'total'             => $total,
         ]);
+
+        session()->flash('tracking_token', $trackingToken);
 
         $order->items()->createMany($orderItems);
 
@@ -279,6 +284,69 @@ class CartaController extends Controller
             'id'    => $order->id,
             'total' => (float) $total,
         ]);
+    }
+
+    // ── Seguimiento público del pedido (vía token, sin login) ────────────────
+
+    /** Métodos de pago que el cliente paga por su cuenta (no en caja/mostrador). */
+    private const DIGITAL_PAYMENT_METHODS = ['nequi', 'daviplata', 'pse', 'transferencia'];
+
+    public function tracking(string $token)
+    {
+        abort_unless(Str::isUuid($token), 404);
+
+        $order = Order::where('tracking_token', $token)
+            ->with(['items.dish', 'table'])
+            ->firstOrFail();
+
+        $cfg = CartaSetting::firstOrCreate([]);
+
+        return Inertia::render('OrderTracking', [
+            'token'       => $token,
+            'tenant_name' => tenancy()->tenant?->name ?? config('app.name'),
+            'settings'    => [
+                'primary_color' => $cfg->primary_color,
+                'bg_color'      => $cfg->bg_color,
+                'text_color'    => $cfg->text_color,
+                'logo_url'      => $cfg->logo_url,
+                'payment_details' => $cfg->payment_details ?? [],
+            ],
+            'order' => [
+                'id'                   => $order->id,
+                'status'               => $order->status,
+                'type'                 => $order->type,
+                'turn_number'          => $order->turn_number,
+                'customer_name'        => $order->customer_name,
+                'total'                => (float) $order->total,
+                'amount_paid'          => (float) $order->amount_paid,
+                'payment_method'       => $order->payment_method,
+                'payment_reported_at'  => $order->payment_reported_at?->toIso8601String(),
+                'mesa'                 => $order->table?->number,
+                'created_at'           => $order->created_at->toIso8601String(),
+                'items'                => $order->items->map(fn($i) => [
+                    'dish'       => $i->dish?->name,
+                    'quantity'   => $i->quantity,
+                    'unit_price' => (float) $i->unit_price,
+                ]),
+            ],
+        ]);
+    }
+
+    public function reportPayment(string $token)
+    {
+        abort_unless(Str::isUuid($token), 404);
+
+        $order = Order::where('tracking_token', $token)->firstOrFail();
+
+        abort_if($order->status === 'cancelled', 422, 'El pedido fue cancelado.');
+        abort_if((float) $order->amount_paid >= (float) $order->total, 422, 'El pedido ya está pagado.');
+        abort_unless(in_array($order->payment_method, self::DIGITAL_PAYMENT_METHODS, true), 422, 'Este método de pago se confirma en caja.');
+
+        if ($order->payment_reported_at === null) {
+            $order->update(['payment_reported_at' => now()]);
+        }
+
+        return back();
     }
 
     // ── Vista admin: carta builder + QR ──────────────────────────────────────

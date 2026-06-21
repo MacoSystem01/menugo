@@ -85,8 +85,9 @@ class OrderController extends Controller
             'status'           => $o->status,
             'total'            => (float) $o->total,
             'delivery_fee'     => (float) ($o->delivery_fee ?? 0),
-            'amount_paid'      => (float) $o->amount_paid,
-            'payment_method'   => $o->payment_method,
+            'amount_paid'         => (float) $o->amount_paid,
+            'payment_method'      => $o->payment_method,
+            'payment_reported_at' => $o->payment_reported_at?->toIso8601String(),
             'notes'            => $o->notes,
             'items'            => $o->items->map(fn($i) => [
                 'dish'        => $i->dish?->name,

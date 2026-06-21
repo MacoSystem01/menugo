@@ -46,6 +46,12 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     Route::post('/carta/pedido', [CartaController::class, 'placeOrder'])
     ->middleware('throttle:60,1')
         ->name('carta.pedido');
+    Route::get('/carta/pedido/{token}', [CartaController::class, 'tracking'])
+        ->middleware('throttle:60,1')
+        ->name('carta.tracking');
+    Route::post('/carta/pedido/{token}/ya-pague', [CartaController::class, 'reportPayment'])
+        ->middleware('throttle:10,1')
+        ->name('carta.tracking.reportPayment');
 
     // ── Raíz del tenant: invitado → login, autenticado → dashboard ───────────
     Route::get('/', fn() => auth()->check()

@@ -107,8 +107,9 @@ class HandleInertiaRequests extends Middleware
                 'success'       => $request->session()->get('success'),
                 'error'         => $request->session()->get('error'),
                 'warning'       => $request->session()->get('warning'),
-                'tenant_status' => $request->session()->get('tenant_status'),
-                'turn_number'   => $request->session()->get('turn_number'),
+                'tenant_status'  => $request->session()->get('tenant_status'),
+                'turn_number'    => $request->session()->get('turn_number'),
+                'tracking_token' => $request->session()->get('tracking_token'),
             ],
         ];
     }

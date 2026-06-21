@@ -19,20 +19,21 @@ class Order extends Model
 
     protected $fillable = [
         'customer_name', 'customer_phone',
-        'type', 'turn_number', 'table_id',
+        'type', 'turn_number', 'table_id', 'tracking_token',
         'delivery_address', 'delivery_phone', 'delivery_fee',
         'payment_method',
-        'status', 'total', 'amount_paid', 'notes',
+        'status', 'total', 'amount_paid', 'payment_reported_at', 'notes',
         'cashier_id', 'cook_id', 'delivery_user_id',
         'ready_at', 'delivered_at', 'closed_at_eod',
     ];
 
     protected $casts = [
-        'total'          => 'decimal:2',
-        'amount_paid'    => 'decimal:2',
-        'ready_at'       => 'datetime',
-        'delivered_at'   => 'datetime',
-        'closed_at_eod'  => 'datetime',
+        'total'               => 'decimal:2',
+        'amount_paid'         => 'decimal:2',
+        'ready_at'            => 'datetime',
+        'delivered_at'        => 'datetime',
+        'closed_at_eod'       => 'datetime',
+        'payment_reported_at' => 'datetime',
     ];
 
     // ── Relaciones ─────────────────────────────────────────────────────────────
