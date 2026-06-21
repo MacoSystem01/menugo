@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import { Check, Clock, ChefHat, Package, Bike, X, AlertTriangle } from 'lucide-react';
+import { Check, Clock, ChefHat, Package, Bike, X, AlertTriangle, ChevronLeft } from 'lucide-react';
 import PaymentDetailBlock from '@/components/carta/PaymentDetailBlock';
 
 interface OrderItem {
@@ -95,6 +95,14 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
             <Head title={`Tu pedido — ${tenant_name}`} />
 
             <div className="max-w-md mx-auto px-4 py-8 space-y-6">
+                <a
+                    href="/carta"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium opacity-70 hover:opacity-100 transition-opacity"
+                    style={{ color: s.text }}
+                >
+                    <ChevronLeft className="h-4 w-4" /> Volver a la carta
+                </a>
+
                 <div className="text-center space-y-1">
                     {settings?.logo_url && (
                         <img src={settings.logo_url} alt={tenant_name} className="h-12 w-auto mx-auto object-contain mb-3" />
@@ -203,6 +211,14 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                         )}
                     </div>
                 )}
+
+                <a
+                    href="/carta"
+                    className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border"
+                    style={{ borderColor: `${s.primary}50`, color: s.primary }}
+                >
+                    Hacer otro pedido
+                </a>
             </div>
         </div>
     );
