@@ -250,7 +250,21 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     // ── Link de seguimiento del último pedido (persistido en este navegador) ──
     const [trackingLink, setTrackingLink] = useState<string | null>(null);
     useEffect(() => {
-        setTrackingLink(localStorage.getItem('menugo_tracking_token'));
+        const token = localStorage.getItem('menugo_tracking_token');
+        if (!token) return;
+        // Verificar que el pedido siga activo antes de mostrar el aviso —
+        // si ya fue entregado/cancelado, limpiar el storage en vez de mostrar un aviso obsoleto.
+        fetch(`/carta/pedido/${token}/estado`)
+            .then(r => r.json())
+            .then((data: { status: string | null; is_active?: boolean }) => {
+                if (data.status === null || data.is_active === false) {
+                    localStorage.removeItem('menugo_tracking_token');
+                    setTrackingLink(null);
+                } else {
+                    setTrackingLink(token);
+                }
+            })
+            .catch(() => setTrackingLink(token));
     }, []);
     function dismissTrackingLink() {
         localStorage.removeItem('menugo_tracking_token');

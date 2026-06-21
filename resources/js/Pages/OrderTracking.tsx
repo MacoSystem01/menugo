@@ -78,6 +78,15 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
         return () => clearInterval(id);
     }, [order.status]);
 
+    // Al llegar a un estado final, limpiar el aviso "Tienes un pedido en curso" de /carta
+    // de inmediato — no esperar a que el cliente vuelva a esa pantalla para que se note.
+    useEffect(() => {
+        if (order.status !== 'delivered' && order.status !== 'cancelled') return;
+        if (localStorage.getItem('menugo_tracking_token') === token) {
+            localStorage.removeItem('menugo_tracking_token');
+        }
+    }, [order.status, token]);
+
     const stepIndex = STEPS.findIndex(st => st.key === order.status);
     const isPaid = order.amount_paid >= order.total;
     const isDigital = order.payment_method ? DIGITAL_METHODS.includes(order.payment_method) : false;

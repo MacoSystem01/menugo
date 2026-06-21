@@ -49,6 +49,9 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     Route::get('/carta/pedido/{token}', [CartaController::class, 'tracking'])
         ->middleware('throttle:60,1')
         ->name('carta.tracking');
+    Route::get('/carta/pedido/{token}/estado', [CartaController::class, 'trackingStatus'])
+        ->middleware('throttle:60,1')
+        ->name('carta.tracking.status');
     Route::post('/carta/pedido/{token}/ya-pague', [CartaController::class, 'reportPayment'])
         ->middleware('throttle:10,1')
         ->name('carta.tracking.reportPayment');

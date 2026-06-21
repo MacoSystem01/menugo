@@ -334,6 +334,24 @@ class CartaController extends Controller
         ]);
     }
 
+    // ── Estado liviano del pedido (para decidir si el aviso de /carta debe seguir visible) ──
+
+    public function trackingStatus(string $token)
+    {
+        abort_unless(Str::isUuid($token), 404);
+
+        $order = Order::where('tracking_token', $token)->first();
+
+        if (! $order) {
+            return response()->json(['status' => null]);
+        }
+
+        return response()->json([
+            'status'     => $order->status,
+            'is_active'  => ! in_array($order->status, ['delivered', 'cancelled'], true),
+        ]);
+    }
+
     public function reportPayment(string $token)
     {
         abort_unless(Str::isUuid($token), 404);
