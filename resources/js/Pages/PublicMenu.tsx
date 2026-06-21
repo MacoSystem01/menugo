@@ -1471,16 +1471,22 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             )}
 
             {/* ── Temporizador fijo esquina inferior izquierda — solo en la carta, las hojas de carrito/checkout lo muestran en su cabecera ── */}
-            {timeLeft !== null && screen === 'menu' && (
-                <div
-                    className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full px-4 py-2 shadow-lg"
-                    style={{ backgroundColor: timerColor(timeLeft, s.primary), color: '#ffffff' }}
-                >
-                    <Clock className="h-4 w-4 shrink-0" />
-                    <span className="text-xs font-semibold leading-none">Vigencia Toma Pedido:</span>
-                    <span className="font-mono text-sm font-bold leading-none">{fmtTimer(timeLeft)}</span>
-                </div>
-            )}
+            {timeLeft !== null && screen === 'menu' && (() => {
+                const cartBarVisible = orders_enabled && cart.length > 0;
+                return (
+                    <div
+                        className="fixed left-4 z-50 flex items-center gap-2 rounded-full px-4 py-2 shadow-lg"
+                        style={{
+                            backgroundColor: timerColor(timeLeft, s.primary), color: '#ffffff',
+                            bottom: cartBarVisible ? '88px' : '16px',
+                        }}
+                    >
+                        <Clock className="h-4 w-4 shrink-0" />
+                        <span className="text-xs font-semibold leading-none">Vigencia Toma Pedido:</span>
+                        <span className="font-mono text-sm font-bold leading-none">{fmtTimer(timeLeft)}</span>
+                    </div>
+                );
+            })()}
 
             {/* ── Modal de éxito ── */}
             {success && (
