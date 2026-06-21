@@ -9,6 +9,7 @@ interface Note {
     type: string;
     description: string;
     order_id: number | null;
+    order_turn_number: number | null;
     dish: string | null;
     author: string | null;
     created_at: string;
@@ -23,6 +24,7 @@ interface DishOption {
 
 interface OrderOption {
     id: number;
+    turn_number: number | null;
     customer_name: string;
 }
 
@@ -106,7 +108,7 @@ export default function KitchenNotes({ notes, dishes, orders, flash }: Props) {
                                     <p className="text-sm">{note.description}</p>
                                     <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-muted-foreground">
                                         {note.dish    && <span>Plato: {note.dish}</span>}
-                                        {note.order_id && <span>Pedido #{note.order_id}</span>}
+                                        {note.order_id && <span>Pedido #{note.order_turn_number ?? note.order_id}</span>}
                                         {note.author   && <span>Por: {note.author}</span>}
                                         <span>{note.created_at}</span>
                                     </div>
@@ -173,7 +175,7 @@ export default function KitchenNotes({ notes, dishes, orders, flash }: Props) {
                                         onChange={e => form.setData('order_id', e.target.value)}
                                     >
                                         <option value="">Ninguno</option>
-                                        {orders.map(o => <option key={o.id} value={o.id}>#{o.id} {o.customer_name}</option>)}
+                                        {orders.map(o => <option key={o.id} value={o.id}>#{o.turn_number ?? o.id} {o.customer_name}</option>)}
                                     </select>
                                 </div>
                                 <div>

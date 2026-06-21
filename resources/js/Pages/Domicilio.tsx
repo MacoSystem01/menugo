@@ -7,6 +7,7 @@ import { PlanGate } from '@/components/PlanGate';
 
 interface DeliveryOrder {
     id: number;
+    turn_number: number | null;
     customer_name: string;
     customer_phone: string;
     delivery_address: string | null;
@@ -156,7 +157,7 @@ export default function Domicilio({ active, repartidores, delivery_zones, flash 
                             
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="font-display text-lg font-bold">#{order.id}</span>
+                                    <span className="font-display text-lg font-bold">#{order.turn_number ?? order.id}</span>
                                     {order.delivery_user ? (
                                         <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/50 text-xs font-bold animate-pulse">
                                             En transporte
@@ -273,7 +274,7 @@ export default function Domicilio({ active, repartidores, delivery_zones, flash 
                             <tbody className="divide-y divide-border">
                                 {delivered.map(o => (
                                     <tr key={o.id} className="hover:bg-muted/20 transition-colors">
-                                        <td className="px-6 py-3 font-semibold">#{o.id}</td>
+                                        <td className="px-6 py-3 font-semibold">#{o.turn_number ?? o.id}</td>
                                         <td className="px-6 py-3">
                                             <span className="px-2 py-1 rounded-md bg-green-500/20 text-green-400 border border-green-500/50 text-xs font-bold">
                                                 Entregado

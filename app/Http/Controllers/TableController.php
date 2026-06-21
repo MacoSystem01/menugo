@@ -37,6 +37,7 @@ class TableController extends Controller
                     ->count(),
                 'orders'              => $t->orders->map(fn($o) => [
                     'id'          => $o->id,
+                    'turn_number' => $o->turn_number,
                     'status'      => $o->status,
                     'total'       => (float) $o->total,
                     'items_count' => $o->items->count(),
@@ -56,9 +57,10 @@ class TableController extends Controller
             ->orderByDesc('updated_at')
             ->get()
             ->map(fn($o) => [
-                'id'    => $o->id,
-                'mesa'  => $o->table?->number,
-                'total' => (float) $o->total,
+                'id'          => $o->id,
+                'turn_number' => $o->turn_number,
+                'mesa'        => $o->table?->number,
+                'total'       => (float) $o->total,
             ]);
 
         // Pedidos tipo mesa sin mesa asignada (hoy, no cancelados)
@@ -71,6 +73,7 @@ class TableController extends Controller
             ->get()
             ->map(fn($o) => [
                 'id'            => $o->id,
+                'turn_number'   => $o->turn_number,
                 'status'        => $o->status,
                 'total'         => (float) $o->total,
                 'items_count'   => $o->items->count(),

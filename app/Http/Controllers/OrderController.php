@@ -233,6 +233,7 @@ class OrderController extends Controller
                 'total'         => (float) $g->sum(fn($o) => min((float) $o->amount_paid, (float) $o->total)),
                 'transacciones' => $g->map(fn($o) => [
                     'id'             => $o->id,
+                    'turn_number'    => $o->turn_number,
                     'customer_name'  => $o->customer_name,
                     'payment_method' => $o->payment_method,
                     'amount_paid'    => (float) min((float) $o->amount_paid, (float) $o->total),

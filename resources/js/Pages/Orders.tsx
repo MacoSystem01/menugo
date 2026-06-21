@@ -176,7 +176,7 @@ function PrintTicket({ order }: { order: OrderRow }) {
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' }}>Orden</div>
                         <div style={{ fontSize: '22px', fontWeight: '800', lineHeight: 1.1, color: '#1a1a1a' }}>
-                            #{String(order.id).padStart(4, '0')}
+                            #{String(order.turn_number ?? order.id).padStart(4, '0')}
                         </div>
                     </div>
                 </div>
@@ -635,7 +635,7 @@ export default function Orders({ orders, tables, filters, delivery_zones, flash 
                             {orders.data.map(o => (
                                 <React.Fragment key={o.id}>
                                     <tr className="hover:bg-muted/20 transition-colors">
-                                        <td className="px-6 py-4 font-semibold text-primary">#{o.id}</td>
+                                        <td className="px-6 py-4 font-semibold text-primary">#{o.turn_number ?? o.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="font-medium">{o.customer_name}</div>
                                             <div className="text-xs text-muted-foreground">{o.customer_phone}</div>

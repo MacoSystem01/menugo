@@ -26,6 +26,7 @@ class DomicilioController extends Controller
             ->get()
             ->map(fn($o) => [
                 'id'               => $o->id,
+                'turn_number'      => $o->turn_number,
                 'customer_name'    => $o->customer_name,
                 'customer_phone'   => $o->customer_phone,
                 'delivery_address' => $o->delivery_address,

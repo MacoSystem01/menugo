@@ -363,7 +363,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                 <div className="flex items-start gap-4 px-6 py-4">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-display text-xl font-bold">#{order.id}</span>
+                                            <span className="font-display text-xl font-bold">#{order.turn_number ?? order.id}</span>
 
                                             {/* Estado del pedido */}
                                             <span className={`text-sm px-3 py-1 rounded-full font-semibold border ${STATUS_CLASS[order.status] ?? 'bg-muted text-muted-foreground border-border/60'}`}>
@@ -624,7 +624,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                                 {/* # Pedido */}
                                                 <td className="px-5 py-3">
                                                     <span className={`font-bold ${isCancelled ? 'text-muted-foreground' : 'text-primary'}`}>
-                                                        #{o.id}
+                                                        #{o.turn_number ?? o.id}
                                                     </span>
                                                 </td>
                                                 {/* Cliente */}
@@ -707,7 +707,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                             <div>
                                 <h3 className="font-display font-bold text-base">Otro Método de Pago</h3>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Pedido #{altOrder.id} · {altOrder.customer_name} ·{' '}
+                                    Pedido #{altOrder.turn_number ?? altOrder.id} · {altOrder.customer_name} ·{' '}
                                     <span className="font-semibold text-primary">{fmt(altTarget)}</span>
                                     {altWithTip && (
                                         <span className="text-yellow-400 ml-1">(incl. {tipLabel.toLowerCase()})</span>
@@ -899,7 +899,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                 <XCircle className="h-5 w-5 text-red-400" />
                             </div>
                             <div>
-                                <h3 className="font-display font-bold text-base">¿Cancelar pedido #{cancelOrder.id}?</h3>
+                                <h3 className="font-display font-bold text-base">¿Cancelar pedido #{cancelOrder.turn_number ?? cancelOrder.id}?</h3>
                                 <p className="text-xs text-muted-foreground mt-1">
                                     {cancelOrder.customer_name} · {tipoDetalle(cancelOrder.tipo, cancelOrder.mesa)}
                                 </p>
@@ -940,7 +940,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                             <div>
                                 <h3 className="font-display font-bold text-base">¿Cambiar estado de la mesa?</h3>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Mesa #{liberarOrder.mesa} · Pedido #{liberarOrder.id}
+                                    Mesa #{liberarOrder.mesa} · Pedido #{liberarOrder.turn_number ?? liberarOrder.id}
                                 </p>
                             </div>
                         </div>

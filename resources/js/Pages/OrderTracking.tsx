@@ -108,8 +108,8 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                         <img src={settings.logo_url} alt={tenant_name} className="h-12 w-auto mx-auto object-contain mb-3" />
                     )}
                     <p className="text-sm opacity-60">{tenant_name}</p>
-                    <h1 className="font-display text-2xl font-bold">Pedido #{order.id}</h1>
-                    {order.turn_number && (
+                    <h1 className="font-display text-2xl font-bold">Pedido #{order.turn_number ?? order.id}</h1>
+                    {order.type === 'mostrador' && order.turn_number && (
                         <p className="font-display text-5xl font-black mt-2" style={{ color: s.primary }}>
                             #{order.turn_number}
                         </p>

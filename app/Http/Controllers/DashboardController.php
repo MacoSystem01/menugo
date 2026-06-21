@@ -56,6 +56,7 @@ class DashboardController extends Controller
             ->latest()->take(10)->get()
             ->map(fn($o) => [
                 'id'          => $o->id,
+                'turn_number' => $o->turn_number,
                 'resumen'     => $o->items->map(fn($i) => "{$i->quantity}x {$i->dish?->name}")->implode(', ') ?: '—',
                 'total'       => (float) $o->total,
                 'amount_paid' => (float) $o->amount_paid,
@@ -112,6 +113,7 @@ class DashboardController extends Controller
             ->latest()->take(15)->get()
             ->map(fn($o) => [
                 'id'           => $o->id,
+                'turn_number'  => $o->turn_number,
                 'tipo'         => $o->type,
                 'mesa'         => $o->table?->number,
                 'total'        => $o->total,
@@ -140,6 +142,7 @@ class DashboardController extends Controller
             ->oldest()->get()
             ->map(fn($o) => [
                 'id'      => $o->id,
+                'turn_number' => $o->turn_number,
                 'tipo'    => $o->type,
                 'mesa'    => $o->table?->number,
                 'status'  => $o->status,
@@ -188,6 +191,7 @@ class DashboardController extends Controller
             ->latest()->get()
             ->map(fn($o) => [
                 'id'     => $o->id,
+                'turn_number' => $o->turn_number,
                 'mesa'   => $o->table?->number,
                 'status' => $o->status,
                 'total'  => $o->total,
@@ -215,6 +219,7 @@ class DashboardController extends Controller
             ->latest()->take(20)->get()
             ->map(fn($o) => [
                 'id'               => $o->id,
+                'turn_number'      => $o->turn_number,
                 'customer_name'    => $o->customer_name,
                 'customer_phone'   => $o->customer_phone,
                 'delivery_address' => $o->delivery_address,

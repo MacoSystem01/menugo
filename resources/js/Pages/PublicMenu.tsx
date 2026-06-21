@@ -257,6 +257,25 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         setTrackingLink(null);
     }
 
+    // ── Buscar pedido sin token (número de pedido del día + teléfono) ─────────
+    const [lookupOpen, setLookupOpen] = useState(false);
+    const [lookupForm, setLookupForm] = useState({ turn_number: '', customer_phone: '' });
+    const [lookupSubmitting, setLookupSubmitting] = useState(false);
+    const [lookupError, setLookupError] = useState<string | null>(null);
+
+    function submitLookup() {
+        if (lookupSubmitting || !lookupForm.turn_number || !lookupForm.customer_phone) return;
+        setLookupSubmitting(true);
+        setLookupError(null);
+        router.post('/carta/seguimiento', lookupForm, {
+            onError: (errs: any) => {
+                setLookupError(errs.lookup ?? errs.turn_number ?? errs.customer_phone ?? 'No se pudo buscar el pedido.');
+                setLookupSubmitting(false);
+            },
+            onFinish: () => setLookupSubmitting(false),
+        });
+    }
+
     // ── Session timer (10 min) ─────────────────────────────────────────────────
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -597,6 +616,69 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         >
                             <X className="h-4 w-4" />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Buscar mi pedido sin link guardado ── */}
+            {!trackingLink && (
+                <div className="w-full border-b px-4 sm:px-8 py-2.5" style={{ borderColor: `${s.text}10` }}>
+                    <div className="max-w-5xl mx-auto">
+                        {!lookupOpen ? (
+                            <button
+                                onClick={() => setLookupOpen(true)}
+                                className="text-sm font-medium opacity-60 hover:opacity-100 transition-opacity"
+                                style={{ color: s.text }}
+                            >
+                                ¿Ya hiciste un pedido hoy? Consulta su estado →
+                            </button>
+                        ) : (
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 py-1">
+                                <div className="flex-1 space-y-1">
+                                    <label className="text-xs font-medium opacity-60" style={{ color: s.text }}>
+                                        Número de pedido (de hoy)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
+                                        style={{ borderColor: `${s.text}25`, backgroundColor: `${s.text}06`, color: s.text }}
+                                        placeholder="Ej: 4"
+                                        value={lookupForm.turn_number}
+                                        onChange={e => setLookupForm(f => ({ ...f, turn_number: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <label className="text-xs font-medium opacity-60" style={{ color: s.text }}>
+                                        Teléfono usado al pedir
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
+                                        style={{ borderColor: `${s.text}25`, backgroundColor: `${s.text}06`, color: s.text }}
+                                        placeholder="3001234567"
+                                        value={lookupForm.customer_phone}
+                                        onChange={e => setLookupForm(f => ({ ...f, customer_phone: e.target.value }))}
+                                    />
+                                </div>
+                                <button
+                                    onClick={submitLookup}
+                                    disabled={lookupSubmitting}
+                                    className="shrink-0 px-5 py-2 rounded-xl text-sm font-semibold disabled:opacity-50"
+                                    style={{ backgroundColor: s.primary, color: '#ffffff' }}
+                                >
+                                    {lookupSubmitting ? 'Buscando...' : 'Buscar'}
+                                </button>
+                                <button
+                                    onClick={() => { setLookupOpen(false); setLookupError(null); }}
+                                    className="shrink-0 px-3 py-2 rounded-xl text-sm font-medium opacity-60 hover:opacity-100 transition-opacity"
+                                    style={{ color: s.text }}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        )}
+                        {lookupError && <p className="text-xs text-red-500 mt-1.5">{lookupError}</p>}
                     </div>
                 </div>
             )}

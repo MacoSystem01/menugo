@@ -25,6 +25,7 @@ interface OrderItem {
 
 interface TableOrder {
     id: number;
+    turn_number: number | null;
     status: string;
     customer_name: string;
     total: number;
@@ -43,6 +44,7 @@ interface TableRow {
 
 interface DomicilioOrder {
     id: number;
+    turn_number: number | null;
     status: string;
     customer_name: string;
     customer_phone: string;
@@ -56,6 +58,7 @@ interface DomicilioOrder {
 
 interface DetailOrder {
     id: number;
+    turn_number: number | null;
     status: string;
     kind: 'mesa' | 'domicilio';
     tableNumber?: number;
@@ -137,7 +140,7 @@ function OrderDetailModal({ order, onClose }: { order: DetailOrder; onClose: () 
                             {order.kind === 'domicilio'
                                 ? <Bike className="h-4 w-4 text-muted-foreground shrink-0" />
                                 : <UtensilsCrossed className="h-4 w-4 text-muted-foreground shrink-0" />}
-                            <span className="font-bold text-base">Pedido #{order.id}</span>
+                            <span className="font-bold text-base">Pedido #{order.turn_number ?? order.id}</span>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_CLASS[order.status] ?? 'bg-muted text-muted-foreground'}`}>
                                 {STATUS_LABEL[order.status] ?? order.status}
                             </span>
@@ -334,7 +337,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                         <div className="flex items-center gap-1.5 flex-wrap">
                             {!isMesa && <Bike className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                             <span className={`text-sm font-bold ${isSelected && !isClosed ? 'text-primary' : isClosed ? 'text-muted-foreground' : ''}`}>
-                                #{order.id}
+                                #{order.turn_number ?? order.id}
                             </span>
                             <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASS[order.status] ?? 'bg-muted text-muted-foreground'}`}>
                                 {STATUS_LABEL[order.status] ?? order.status}
@@ -439,7 +442,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                                                     isSelected={selectedOrderId === o.id}
                                                     onSelect={() => selectActiveOrder(o.id)}
                                                     onDetail={() => setDetailOrder({
-                                                        id: o.id, status: o.status, kind: 'mesa',
+                                                        id: o.id, turn_number: o.turn_number, status: o.status, kind: 'mesa',
                                                         tableNumber: t.number,
                                                         customer_name: o.customer_name,
                                                         total: o.total, items: o.items, created_at: o.created_at,
@@ -459,7 +462,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                                                     isSelected={selectedOrderId === o.id}
                                                     onSelect={() => selectActiveOrder(o.id)}
                                                     onDetail={() => setDetailOrder({
-                                                        id: o.id, status: o.status, kind: 'mesa',
+                                                        id: o.id, turn_number: o.turn_number, status: o.status, kind: 'mesa',
                                                         tableNumber: t.number,
                                                         customer_name: o.customer_name,
                                                         total: o.total, items: o.items, created_at: o.created_at,
@@ -487,7 +490,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                                             isSelected={selectedOrderId === o.id}
                                             onSelect={() => selectActiveOrder(o.id)}
                                             onDetail={() => setDetailOrder({
-                                                id: o.id, status: o.status, kind: 'domicilio',
+                                                id: o.id, turn_number: o.turn_number, status: o.status, kind: 'domicilio',
                                                 customer_name: o.customer_name,
                                                 customer_phone: o.customer_phone,
                                                 delivery_address: o.delivery_address,
@@ -503,7 +506,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                                             isSelected={selectedOrderId === o.id}
                                             onSelect={() => selectActiveOrder(o.id)}
                                             onDetail={() => setDetailOrder({
-                                                id: o.id, status: o.status, kind: 'domicilio',
+                                                id: o.id, turn_number: o.turn_number, status: o.status, kind: 'domicilio',
                                                 customer_name: o.customer_name,
                                                 customer_phone: o.customer_phone,
                                                 delivery_address: o.delivery_address,
@@ -532,7 +535,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                                 </button>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold leading-tight truncate">
-                                        Pedido #{selectedCtx.order.id}
+                                        Pedido #{selectedCtx.order.turn_number ?? selectedCtx.order.id}
                                         {selectedCtx.type === 'mesa'
                                             ? ` · Mesa ${selectedCtx.table.number}`
                                             : ` · ${selectedCtx.order.customer_name}`}
@@ -555,7 +558,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                             <div className="hidden lg:flex rounded-2xl border border-primary/40 bg-primary/5 px-5 py-4 flex-wrap items-center justify-between gap-2">
                                 <div>
                                     <p className="text-sm font-semibold text-primary">
-                                        Pedido #{selectedCtx.order.id} ·{' '}
+                                        Pedido #{selectedCtx.order.turn_number ?? selectedCtx.order.id} ·{' '}
                                         {selectedCtx.type === 'mesa'
                                             ? `Mesa ${selectedCtx.table.number}`
                                             : `Domicilio · ${selectedCtx.order.customer_name}`}
@@ -664,7 +667,7 @@ export default function Adiciones({ tables, domicilios, categories, flash }: Pro
                                     <div className="flex items-center gap-2">
                                         <ShoppingCart className="h-4 w-4 text-accent shrink-0" />
                                         <span className="text-sm font-semibold flex-1 truncate">
-                                            Adición · #{selectedCtx.order.id}
+                                            Adición · #{selectedCtx.order.turn_number ?? selectedCtx.order.id}
                                             {selectedCtx.type === 'mesa' ? ` · Mesa ${selectedCtx.table.number}` : ' · Domicilio'}
                                         </span>
                                         <span className="text-accent font-bold tabular-nums shrink-0">{fmt(cartTotal)}</span>

@@ -163,7 +163,7 @@ function FullDashboard(props: FullDashboardProps) {
                                 <div key={o.id} className="py-3 flex items-center justify-between gap-3">
                                     <div className="flex-1 min-w-0">
                                         <div className="text-sm font-medium">
-                                            #{o.id} · <span className="text-muted-foreground font-normal">{o.resumen}</span>
+                                            #{o.turn_number ?? o.id} · <span className="text-muted-foreground font-normal">{o.resumen}</span>
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-0.5">
                                             {tipoDetalle(o.tipo, o.mesa)} · {o.tiempo}
@@ -241,7 +241,7 @@ function CajaDashboard({ stats, transacciones }: CajaDashboardProps) {
                             <div key={t.id} className="py-3 flex items-center justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium">
-                                        #{t.id} · {tipoDetalle(t.tipo, t.mesa)}
+                                        #{t.turn_number ?? t.id} · {tipoDetalle(t.tipo, t.mesa)}
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-0.5">{t.tiempo}</div>
                                 </div>
@@ -300,7 +300,7 @@ function CocinaDashboard({ stats, cola }: CocinaDashboardProps) {
                                 className={`rounded-xl border p-4 ${COCINA_STATUS_CLASS[o.status] ?? 'bg-muted/10 border-border'}`}>
                                 <div className="flex justify-between items-start mb-2">
                                     <span className="font-semibold text-sm">
-                                        #{o.id} · {tipoDetalle(o.tipo, o.mesa)}
+                                        #{o.turn_number ?? o.id} · {tipoDetalle(o.tipo, o.mesa)}
                                     </span>
                                     <span className={`text-xs font-medium flex items-center gap-1 ${o.mins >= 15 ? 'text-red-400' : 'text-muted-foreground'}`}>
                                         <Clock className="h-3 w-3" />{o.mins}m
@@ -378,7 +378,7 @@ function MesaDashboard({ mesas, pedidos_activos }: MesaDashboardProps) {
                             <div key={o.id} className="py-3 flex items-center justify-between gap-4">
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium">
-                                        #{o.id} · Mesa {o.mesa ?? '—'}
+                                        #{o.turn_number ?? o.id} · Mesa {o.mesa ?? '—'}
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-0.5">
                                         {o.items} {o.items === 1 ? 'ítem' : 'ítems'} · {o.tiempo}
@@ -435,7 +435,7 @@ function DomicilioDashboard({ stats, asignados }: DomicilioDashboardProps) {
                             <div key={d.id} className="rounded-xl border border-border bg-muted/10 p-4">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-semibold">#{d.id} · {d.customer_name}</div>
+                                        <div className="text-sm font-semibold">#{d.turn_number ?? d.id} · {d.customer_name}</div>
                                         {d.delivery_address && (
                                             <div className="text-xs text-muted-foreground mt-0.5 truncate">{d.delivery_address}</div>
                                         )}
@@ -462,7 +462,7 @@ function DomicilioDashboard({ stats, asignados }: DomicilioDashboardProps) {
                         {entregados.map(d => (
                             <div key={d.id} className="py-2.5 flex items-center justify-between gap-4">
                                 <div className="text-sm text-muted-foreground">
-                                    #{d.id} · {d.customer_name}
+                                    #{d.turn_number ?? d.id} · {d.customer_name}
                                 </div>
                                 <div className="text-sm font-semibold text-muted-foreground">{fmt(d.total)}</div>
                             </div>

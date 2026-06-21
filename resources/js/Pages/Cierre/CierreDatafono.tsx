@@ -5,6 +5,7 @@ import { CreditCard, ChevronDown, ChevronUp, Printer, Building2 } from 'lucide-r
 
 interface Transaccion {
     id: number;
+    turn_number: number | null;
     customer_name: string;
     payment_method: string;
     amount_paid: number;
@@ -172,7 +173,7 @@ export default function CierreDatafono({ agrupados, totalGeneral, fecha }: Props
                                                     {grupo.transacciones.map(tx => (
                                                         <tr key={tx.id} className="hover:bg-muted/20 transition-colors">
                                                             <td className="px-5 py-3">
-                                                                <span className="font-bold text-primary">#{tx.id}</span>
+                                                                <span className="font-bold text-primary">#{tx.turn_number ?? tx.id}</span>
                                                             </td>
                                                             <td className="px-5 py-3 font-medium">{tx.customer_name}</td>
                                                             <td className="px-5 py-3 text-muted-foreground text-xs hidden sm:table-cell whitespace-nowrap">

@@ -31,6 +31,7 @@ interface KitchenOrder {
 interface RecentOrder {
     id: number;
     tipo: string;
+    turno: number | null;
     mesa: number | null;
     items_count: number;
     entregado: string;
@@ -225,7 +226,7 @@ function KdsCard({
             {/* Cabecera */}
             <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-display text-base font-bold">#{order.id}</span>
+                    <span className="font-display text-base font-bold">#{order.turno ?? order.id}</span>
                     {order.tipo === 'mostrador' && order.turno && order.status !== 'ready' && (
                         <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
                             Turno #{order.turno}
@@ -363,7 +364,7 @@ export default function Cocina({ orders, recientes }: Props) {
                             <div key={order.id} className="rounded-xl border border-cyan-500/30 bg-card p-4">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <span className="font-display text-base font-bold">#{order.id}</span>
+                                        <span className="font-display text-base font-bold">#{order.turno ?? order.id}</span>
                                         <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
                                             {order.tipo === 'mesa'
                                                 ? <><UtensilsCrossed className="h-3 w-3" /> Mesa {order.mesa ?? '—'}</>
@@ -442,7 +443,7 @@ export default function Cocina({ orders, recientes }: Props) {
                             <div key={order.id} className="rounded-xl border border-orange-500/20 bg-card p-4">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <span className="font-display text-base font-bold">#{order.id}</span>
+                                        <span className="font-display text-base font-bold">#{order.turno ?? order.id}</span>
                                         {order.tipo === 'mostrador' && order.turno && (
                                             <span className="ml-1.5 text-sm font-bold text-primary">· Turno #{order.turno}</span>
                                         )}
@@ -547,7 +548,7 @@ export default function Cocina({ orders, recientes }: Props) {
                     <div className="flex flex-wrap gap-3">
                         {recientes.map(o => (
                             <div key={o.id} className="rounded-xl border border-border bg-muted/20 px-4 py-2.5 text-sm">
-                                <span className="font-semibold">#{o.id}</span>
+                                <span className="font-semibold">#{o.turno ?? o.id}</span>
                                 <span className="text-muted-foreground ml-2">
                                     {o.tipo === 'mesa'
                                         ? `Mesa ${o.mesa ?? '—'}`

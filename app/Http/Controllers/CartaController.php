@@ -255,23 +255,25 @@ class CartaController extends Controller
 
         $order->items()->createMany($orderItems);
 
-        // Para pedidos de mostrador (puesto): asignar número de turno
+        // Número de pedido del día (jornada): un solo contador compartido por TODOS
+        // los tipos de pedido, reseteado cada día calendario. Para mostrador, este
+        // mismo número es el que se muestra como "Turno #X" — así "#1" siempre
+        // coincide con "Turno #1" cuando solo hay pedidos de mostrador en el día.
+        $lastNumber = \App\Models\Order::whereDate('created_at', today())->max('turn_number') ?? 0;
+        $order->update(['turn_number' => $lastNumber + 1]);
+
+        // Para pedidos de mostrador (puesto): cobro y aviso de turno
         // pago_primero → cobrar al instante (KDS lo muestra como pending, cocina marca listo)
-        // cocina_primero → solo asignar turno; el cobro queda pendiente hasta que cocina lo
-        //                   marque listo y el cajero lo cobre en /caja
+        // cocina_primero → el cobro queda pendiente hasta que cocina lo marque listo
+        //                   y el cajero lo cobre en /caja
         if ($data['type'] === 'mostrador') {
-            $lastTurn  = \App\Models\Order::where('type', 'mostrador')
-                ->whereDate('created_at', today())
-                ->max('turn_number') ?? 0;
             $orderFlow = \App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero';
 
-            $mostradorUpdate = ['turn_number' => $lastTurn + 1];
             if ($orderFlow === 'pago_primero') {
-                $mostradorUpdate['amount_paid'] = $total;
+                $order->update(['amount_paid' => $total]);
             }
 
-            $order->update($mostradorUpdate);
-            session()->flash('turn_number', $lastTurn + 1);
+            session()->flash('turn_number', $lastNumber + 1);
         }
 
         // Marcar la mesa como ocupada automáticamente al recibir el pedido
@@ -347,6 +349,38 @@ class CartaController extends Controller
         }
 
         return back();
+    }
+
+    // ── Buscar mi pedido (sin token) — número de pedido del día + teléfono ───
+    //
+    // Exigimos AMBOS datos (no solo el número) porque el número de pedido se
+    // reinicia cada jornada y es un valor pequeño y consecutivo: sin el teléfono
+    // como segundo factor, cualquiera podría probar 1, 2, 3... y ver pedidos de
+    // otros clientes (nombre, teléfono, ítems, estado de pago).
+
+    public function lookupTracking(Request $request)
+    {
+        $data = $request->validate([
+            'turn_number'    => 'required|integer|min:1',
+            'customer_phone' => 'required|string|max:20',
+        ]);
+
+        $order = Order::whereDate('created_at', today())
+            ->where('turn_number', $data['turn_number'])
+            ->where('customer_phone', $data['customer_phone'])
+            ->first();
+
+        if (! $order) {
+            return back()->withErrors([
+                'lookup' => 'No encontramos ningún pedido de hoy con ese número y teléfono.',
+            ]);
+        }
+
+        if (! $order->tracking_token) {
+            $order->update(['tracking_token' => (string) Str::uuid()]);
+        }
+
+        return redirect("/carta/pedido/{$order->tracking_token}");
     }
 
     // ── Vista admin: carta builder + QR ──────────────────────────────────────

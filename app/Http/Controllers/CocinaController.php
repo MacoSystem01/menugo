@@ -74,6 +74,7 @@ class CocinaController extends Controller
             ->map(fn($o) => [
                 'id'         => $o->id,
                 'tipo'       => $o->type,
+                'turno'      => $o->turn_number,
                 'mesa'       => $o->table?->number,
                 'items_count'=> $o->items->count(),
                 'entregado'  => $o->delivered_at?->diffForHumans(short: true),
@@ -237,7 +238,7 @@ class CocinaController extends Controller
             'table_id'    => $order->table_id,
         ]);
 
-        return back()->with('warning', "Pedido #{$order->id} cancelado. Registrado en novedades de cocina.");
+        return back()->with('warning', "Pedido #{$order->turn_number} cancelado. Registrado en novedades de cocina.");
     }
 
     // ── Novedades ─────────────────────────────────────────────────────────────
@@ -253,6 +254,7 @@ class CocinaController extends Controller
                 'type'        => $n->type,
                 'description' => $n->description,
                 'order_id'    => $n->order_id,
+                'order_turn_number' => $n->order?->turn_number,
                 'dish'        => $n->dish?->name,
                 'author'      => $n->author?->name,
                 'created_at'  => $n->created_at->format('d/m/Y H:i'),
@@ -267,7 +269,7 @@ class CocinaController extends Controller
         $orders = Order::whereIn('status', ['in_kitchen', 'cooking', 'ready'])
             ->orderByDesc('id')
             ->take(20)
-            ->get(['id', 'customer_name']);
+            ->get(['id', 'turn_number', 'customer_name']);
 
         return Inertia::render('KitchenNotes', compact('notes', 'dishes', 'orders'));
     }

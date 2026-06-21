@@ -109,6 +109,7 @@ export type TableStatus = 'available' | 'occupied' | 'reserved';
 
 export interface TableOrder {
     id: number;
+    turn_number: number | null;
     status: OrderStatus;
     total: number;
     items_count: number;
@@ -118,6 +119,7 @@ export interface TableOrder {
 
 export interface TablelessOrder {
     id: number;
+    turn_number: number | null;
     status: OrderStatus;
     total: number;
     items_count: number;
@@ -183,6 +185,7 @@ export interface TenantRow {
 
 interface DashboardPedidoReciente {
     id: number;
+    turn_number: number | null;
     resumen: string;
     total: number;
     amount_paid: number;
@@ -200,6 +203,7 @@ interface DashboardTopPlato {
 
 interface DashboardCola {
     id: number;
+    turn_number: number | null;
     tipo: string;
     mesa: number | null;
     status: string;
@@ -218,6 +222,7 @@ interface DashboardMesa {
 
 interface DashboardPedidoActivo {
     id: number;
+    turn_number: number | null;
     mesa: number | null;
     status: string;
     total: number;
@@ -227,6 +232,7 @@ interface DashboardPedidoActivo {
 
 interface DashboardTransaccion {
     id: number;
+    turn_number: number | null;
     tipo: string;
     mesa: number | null;
     total: number;
@@ -237,6 +243,7 @@ interface DashboardTransaccion {
 
 interface DashboardDomicilio {
     id: number;
+    turn_number: number | null;
     customer_name: string;
     customer_phone: string;
     delivery_address: string | null;

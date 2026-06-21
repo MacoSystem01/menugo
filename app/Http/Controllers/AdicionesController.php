@@ -28,6 +28,7 @@ class AdicionesController extends Controller
                 'status' => $t->status,
                 'orders' => $t->orders->map(fn($o) => [
                     'id'            => $o->id,
+                    'turn_number'   => $o->turn_number,
                     'status'        => $o->status,
                     'customer_name' => $o->customer_name,
                     'total'         => (float) $o->total,
@@ -51,6 +52,7 @@ class AdicionesController extends Controller
             ->get()
             ->map(fn($o) => [
                 'id'               => $o->id,
+                'turn_number'      => $o->turn_number,
                 'status'           => $o->status,
                 'customer_name'    => $o->customer_name,
                 'customer_phone'   => $o->customer_phone,

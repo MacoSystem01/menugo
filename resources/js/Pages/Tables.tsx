@@ -17,6 +17,7 @@ interface TableRow {
 
 interface CancelledOrder {
     id: number;
+    turn_number: number | null;
     mesa: number | null;
     total: number;
 }
@@ -103,7 +104,7 @@ function TableOrdersPanel({ orders }: { orders: TableOrder[] }) {
                             className="w-full flex flex-wrap items-center justify-between gap-y-1.5 gap-x-2 px-3 py-2 text-left"
                         >
                             <div className="flex items-center gap-2 shrink-0">
-                                <span className="font-semibold">#{order.id}</span>
+                                <span className="font-semibold">#{order.turn_number ?? order.id}</span>
                                 <span className={`px-1.5 py-0.5 rounded-full font-medium ${ORDER_STATUS_CLASS[order.status]}`}>
                                     {ORDER_STATUS_LABEL[order.status] ?? order.status}
                                 </span>
@@ -178,7 +179,7 @@ function DeliveredOrderRow({ order }: { order: TableOrder }) {
                 className="w-full flex flex-wrap items-center justify-between gap-y-1.5 gap-x-2 px-3 py-2 text-left"
             >
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-semibold">#{order.id}</span>
+                    <span className="font-semibold">#{order.turn_number ?? order.id}</span>
                     <span className="px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">
                         Entregado
                     </span>
@@ -257,7 +258,7 @@ function TablelessOrdersPanel({ orders }: { orders: TablelessOrder[] }) {
                                 className="w-full flex flex-wrap items-center justify-between gap-y-1.5 gap-x-2 px-3 py-2.5 text-left"
                             >
                                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                                    <span className="font-semibold">#{order.id}</span>
+                                    <span className="font-semibold">#{order.turn_number ?? order.id}</span>
                                     <span className="text-muted-foreground">{order.customer_name}</span>
                                     <span className={`px-1.5 py-0.5 rounded-full font-medium ${ORDER_STATUS_CLASS[order.status]}`}>
                                         {ORDER_STATUS_LABEL[order.status] ?? order.status}
@@ -367,7 +368,7 @@ function HistorySection({ tables, tablelessOrders }: { tables: TableRow[]; table
                             {tablelessDelivered.map(order => (
                                 <div key={order.id} className="rounded-xl border border-green-500/20 bg-green-500/5 text-xs px-3 py-2">
                                     <div className="flex justify-between text-muted-foreground">
-                                        <span className="font-semibold text-foreground">#{order.id} · {order.customer_name}</span>
+                                        <span className="font-semibold text-foreground">#{order.turn_number ?? order.id} · {order.customer_name}</span>
                                         <span>{order.created_at}</span>
                                     </div>
                                     <div className="flex justify-between mt-1">
