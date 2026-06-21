@@ -247,6 +247,16 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string; turnNumber?: number; trackingToken?: string } | null>(null);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
+    // ── Link de seguimiento del último pedido (persistido en este navegador) ──
+    const [trackingLink, setTrackingLink] = useState<string | null>(null);
+    useEffect(() => {
+        setTrackingLink(localStorage.getItem('menugo_tracking_token'));
+    }, []);
+    function dismissTrackingLink() {
+        localStorage.removeItem('menugo_tracking_token');
+        setTrackingLink(null);
+    }
+
     // ── Session timer (10 min) ─────────────────────────────────────────────────
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -405,6 +415,10 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                 const turnNumber: number | undefined = page?.props?.flash?.turn_number;
                 const trackingToken: string | undefined = page?.props?.flash?.tracking_token;
                 setSuccess({ name: snapshotName, total: snapshotTotal, paymentMethod: snapshotMethod, turnNumber, trackingToken });
+                if (trackingToken) {
+                    localStorage.setItem('menugo_tracking_token', trackingToken);
+                    setTrackingLink(trackingToken);
+                }
                 setCart([]);
                 setScreen('menu');
                 setOccupiedConfirmed(false);
@@ -559,6 +573,33 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     </div>
                 </div>
             </header>
+
+            {/* ── Aviso de pedido en seguimiento ── */}
+            {trackingLink && (
+                <div className="w-full border-b px-4 sm:px-8 py-3" style={{ backgroundColor: `${s.primary}10`, borderColor: `${s.primary}25` }}>
+                    <div className="max-w-5xl mx-auto flex items-center gap-3">
+                        <Clock className="h-4 w-4 shrink-0" style={{ color: s.primary }} />
+                        <span className="flex-1 text-sm font-medium" style={{ color: s.text }}>
+                            Tienes un pedido en curso
+                        </span>
+                        <a
+                            href={`/carta/pedido/${trackingLink}`}
+                            className="shrink-0 text-sm font-bold underline-offset-2 hover:underline"
+                            style={{ color: s.primary }}
+                        >
+                            Ver seguimiento →
+                        </a>
+                        <button
+                            onClick={dismissTrackingLink}
+                            aria-label="Ocultar aviso de seguimiento"
+                            className="shrink-0 p-1 rounded-lg opacity-50 hover:opacity-100 transition-opacity"
+                            style={{ color: s.text }}
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* ── Índice de categorías ── */}
             {categories.length > 1 && (
