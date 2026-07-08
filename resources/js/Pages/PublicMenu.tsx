@@ -405,15 +405,32 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     function submitOrder() {
         if (submitting) return;
 
-        // ── Validaciones con popup ──────────────────────────────────────────────
-        if (form.type === 'domicilio') {
-            const addr = form.delivery_address.trim();
+        // ── Validaciones por tipo de entrega ───────────────────────────────────────
 
-            if (!addr) {
-                setErrors(e => ({ ...e, delivery_address: 'Ingresa la dirección de entrega.' }));
+        if (form.type === 'mostrador') {
+            if (!form.customer_name.trim()) {
+                setErrors(e => ({ ...e, customer_name: 'Ingresa el nombre del cliente.' }));
                 return;
             }
+        }
 
+        if (form.type === 'mesa') {
+            if (!form.table_id) {
+                setErrors(e => ({ ...e, table_id: 'Selecciona una mesa.' }));
+                return;
+            }
+        }
+
+        if (form.type === 'domicilio') {
+            const newErrs: Record<string, string> = {};
+            if (!form.customer_name.trim()) newErrs.customer_name = 'Ingresa el nombre del cliente.';
+            const addr = form.delivery_address.trim();
+            if (!addr) newErrs.delivery_address = 'Ingresa la dirección de entrega.';
+            if (!form.customer_phone.trim()) newErrs.customer_phone = 'Ingresa el número de contacto.';
+            if (Object.keys(newErrs).length > 0) {
+                setErrors(e => ({ ...e, ...newErrs }));
+                return;
+            }
             if (belowMinOrder) {
                 setWarnModal({
                     title: 'Pedido mínimo no alcanzado',
@@ -427,11 +444,16 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         setSubmitting(true);
         setErrors({});
         const snapshotTotal = grandTotal;
-        const snapshotName = form.customer_name;
+        const selectedTableNum = form.type === 'mesa' && form.table_id
+            ? (tables.find(t => String(t.id) === form.table_id)?.number ?? form.table_id)
+            : null;
+        const snapshotName = form.type === 'mesa'
+            ? (selectedTableNum ? `Mesa #${selectedTableNum}` : 'Mesa')
+            : form.customer_name || 'Cliente';
         const snapshotMethod = form.payment_method;
         router.post('/carta/pedido', {
-            customer_name: form.customer_name,
-            customer_phone: form.customer_phone,
+            customer_name: form.customer_name || null,
+            customer_phone: form.type === 'domicilio' ? form.customer_phone || null : null,
             type: form.type,
             table_id: form.type === 'mesa' && form.table_id ? parseInt(form.table_id) : null,
             delivery_address: form.type === 'domicilio' ? form.delivery_address || null : null,
@@ -1153,52 +1175,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
 
-                            {/* Nombre */}
+                            {/* Tipo de servicio — va PRIMERO */}
                             <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>
-                                    Nombre completo <span style={{ color: s.primary }}>*</span>
-                                </label>
-                                <input
-                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                    style={{
-                                        borderColor: errors.customer_name ? '#ef4444' : `${s.text}25`,
-                                        backgroundColor: `${s.text}06`,
-                                        color: s.text,
-                                    }}
-                                    placeholder="Tu nombre completo"
-                                    value={form.customer_name}
-                                    onChange={e => setField('customer_name', e.target.value)}
-                                />
-                                {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
-                            </div>
-
-                            {/* Teléfono */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>
-                                    Teléfono de contacto <span style={{ color: s.primary }}>*</span>
-                                </label>
-                                <input
-                                    type="tel"
-                                    className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                    style={{
-                                        borderColor: errors.customer_phone ? '#ef4444' : `${s.text}25`,
-                                        backgroundColor: `${s.text}06`,
-                                        color: s.text,
-                                    }}
-                                    placeholder="3001234567"
-                                    value={form.customer_phone}
-                                    onChange={e => setField('customer_phone', e.target.value)}
-                                />
-                                {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
-                            </div>
-
-                            {/* Tipo de servicio */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de servicio</label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de entrega</label>
+                                <div className={`grid gap-2 ${isPuesto ? 'grid-cols-3' : 'grid-cols-2'}`}>
                                     {([
-                                        ...(!isPuesto ? [{ val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' }] : []),
                                         ...(isPuesto  ? [{ val: 'mostrador' as const, Icon: Package, label: 'Mostrador' }] : []),
+                                        { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
                                         { val: 'domicilio' as const, Icon: Bike, label: 'Domicilio' },
                                     ]).map(({ val, Icon, label }) => (
                                         <button
@@ -1213,14 +1196,15 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                                 }));
                                                 if (errors.type) setErrors(e => { const n = { ...e }; delete n.type; return n; });
                                             }}
-                                            className="flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors"
+                                            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border text-xs font-medium transition-colors"
                                             style={{
                                                 borderColor: form.type === val ? s.primary : `${s.text}20`,
                                                 backgroundColor: form.type === val ? `${s.primary}15` : 'transparent',
                                                 color: form.type === val ? s.primary : s.text,
                                             }}
                                         >
-                                            <Icon className="h-4 w-4" /> {label}
+                                            <Icon className="h-4 w-4" />
+                                            {label}
                                         </button>
                                     ))}
                                 </div>
@@ -1396,6 +1380,49 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                         ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
                                         : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
                                     }
+                                </div>
+                            )}
+
+                            {/* Nombre — solo para Mostrador y Domicilio */}
+                            {(form.type === 'mostrador' || form.type === 'domicilio') && (
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium" style={{ color: s.text }}>
+                                        Nombre del cliente <span style={{ color: s.primary }}>*</span>
+                                    </label>
+                                    <input
+                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                        style={{
+                                            borderColor: errors.customer_name ? '#ef4444' : `${s.text}25`,
+                                            backgroundColor: `${s.text}06`,
+                                            color: s.text,
+                                        }}
+                                        placeholder="Nombre del cliente"
+                                        value={form.customer_name}
+                                        onChange={e => setField('customer_name', e.target.value)}
+                                    />
+                                    {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
+                                </div>
+                            )}
+
+                            {/* Teléfono — solo para Domicilio */}
+                            {form.type === 'domicilio' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium" style={{ color: s.text }}>
+                                        Número de contacto <span style={{ color: s.primary }}>*</span>
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                        style={{
+                                            borderColor: errors.customer_phone ? '#ef4444' : `${s.text}25`,
+                                            backgroundColor: `${s.text}06`,
+                                            color: s.text,
+                                        }}
+                                        placeholder="3001234567"
+                                        value={form.customer_phone}
+                                        onChange={e => setField('customer_phone', e.target.value)}
+                                    />
+                                    {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
                                 </div>
                             )}
 

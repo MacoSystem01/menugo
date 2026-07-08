@@ -491,6 +491,29 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                                 <span>Total</span>
                                                 <span>{fmt(order.total)}</span>
                                             </div>
+
+                                            {/* ── Espacios para anotaciones manuales ── */}
+                                            <div className="pt-3 space-y-2">
+                                                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                                                    Adiciones / Notas
+                                                </p>
+                                                {[0,1,2,3,4].map(i => (
+                                                    <div
+                                                        key={i}
+                                                        className="flex items-end gap-2"
+                                                    >
+                                                        <span className="text-[10px] text-muted-foreground/40 w-3 shrink-0">{i + 1}.</span>
+                                                        <div
+                                                            className="flex-1 border-b border-dashed"
+                                                            style={{ borderColor: 'rgba(255,255,255,0.15)', height: '20px' }}
+                                                        />
+                                                        <div
+                                                            className="w-16 border-b border-dashed shrink-0"
+                                                            style={{ borderColor: 'rgba(255,255,255,0.15)', height: '20px' }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
