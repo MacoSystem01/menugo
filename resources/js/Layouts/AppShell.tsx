@@ -66,9 +66,9 @@ const ROLE_BADGE: Record<Role, { label: string; className: string }> = {
 // ── Navegación por rol ─────────────────────────────────────────────────────────
 const MenuGroup: NavItem = {
     label: 'Menú', icon: 'utensils', children: [
-        { href: '/menu/carta',      label: 'Carta' },
         { href: '/menu/categorias', label: 'Categorías' },
         { href: '/menu/platos',     label: 'Platos' },
+        { href: '/menu/carta',      label: 'Carta' },
     ]
 };
 

@@ -8,8 +8,9 @@ $restaurantNav = [
         'label'    => 'Menú',
         'icon'     => 'utensils',
         'children' => [
-            ['href' => '/menu/categorias', 'label' => 'Categoría'],
-            ['href' => '/menu/platos',     'label' => 'Plato'],
+            ['href' => '/menu/categorias', 'label' => 'Categorías'],
+            ['href' => '/menu/platos',     'label' => 'Platos'],
+            ['href' => '/menu/carta',      'label' => 'Carta'],
         ],
     ],
     ['href' => '/caja',        'label' => 'Caja',        'icon' => 'dollar-sign'],

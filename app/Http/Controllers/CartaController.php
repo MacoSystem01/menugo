@@ -123,20 +123,27 @@ class CartaController extends Controller
         }
 
         // ── Prevenir pedidos duplicados por doble clic ────────────────────────
-        // Si existe un pedido con el mismo teléfono y nombre en los últimos
-        // 5 segundos, lo consideramos un duplicado y lo ignoramos silenciosamente.
-        // Esto protege contra doble clic en el botón de envío o doble submit.
-        $pedidoReciente = Order::where('customer_phone', $request->input('customer_phone'))
-            ->where('customer_name',  $request->input('customer_name'))
-            ->where('created_at', '>=', now()->subSeconds(5))
-            ->exists();
+        // Si existe un pedido reciente idéntico en los últimos 5 segundos,
+        // lo consideramos un duplicado. Solo aplicamos el check cuando hay
+        // datos suficientes para identificar un duplicado real (nombre no vacío).
+        $reqName  = $request->input('customer_name');
+        $reqPhone = $request->input('customer_phone');
 
-        if ($pedidoReciente) {
-            // Redirigir como si fuera exitoso — el cliente ya tiene su pedido
-            return redirect('/carta')->with('order_placed', [
-                'id'    => null,
-                'total' => 0,
-            ]);
+        if (!empty($reqName)) {
+            $query = Order::where('customer_name', $reqName)
+                ->where('created_at', '>=', now()->subSeconds(5));
+
+            if (!empty($reqPhone)) {
+                $query->where('customer_phone', $reqPhone);
+            }
+
+            if ($query->exists()) {
+                // Redirigir como si fuera exitoso — el cliente ya tiene su pedido
+                return redirect('/carta')->with('order_placed', [
+                    'id'    => null,
+                    'total' => 0,
+                ]);
+            }
         }
 
         // ── Métodos de pago permitidos para este tenant ───────────────────────
@@ -159,11 +166,23 @@ class CartaController extends Controller
         }
         $allowedMethodsStr = implode(',', $allowedMethods);
 
+        // ── Tipo de pedido determina qué campos son requeridos ────────────────
+        // Mostrador: nombre obligatorio, teléfono opcional
+        // Mesa:      tabla obligatoria, nombre y teléfono opcionales
+        // Domicilio: nombre, teléfono y dirección obligatorios
+        $tipo = $request->input('type');
+
         $data = $request->validate([
-            'customer_name'     => 'required|string|max:150',
-            'customer_phone'    => 'required|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
+            'customer_name'     => $tipo === 'domicilio'
+                                        ? 'required|string|max:150'
+                                        : 'nullable|string|max:150',
+            'customer_phone'    => $tipo === 'domicilio'
+                                        ? ['required', 'string', 'max:20', 'regex:/^[\d\s\+\-\(\)]+$/']
+                                        : ['nullable', 'string', 'max:20', 'regex:/^[\d\s\+\-\(\)]+$/'],
             'type'              => 'required|in:mesa,domicilio,mostrador',
-            'table_id'          => 'nullable|integer|exists:restaurant_tables,id',
+            'table_id'          => $tipo === 'mesa'
+                                        ? 'required|integer|exists:restaurant_tables,id'
+                                        : 'nullable|integer|exists:restaurant_tables,id',
             'delivery_address'  => 'required_if:type,domicilio|nullable|string|max:300',
             'delivery_phone'    => 'nullable|string|max:20|regex:/^[\d\s\+\-\(\)]+$/',
             'delivery_zone_idx' => 'nullable|integer|min:0',
@@ -176,11 +195,6 @@ class CartaController extends Controller
             'items.*.dish_id'   => 'required|integer|exists:dishes,id',
             'items.*.quantity'  => 'required|integer|min:1|max:99',
         ]);
-
-        // Rechazar tipo 'mesa' para puestos de comida rápida
-        if ($data['type'] === 'mesa' && tenant('type') === 'puesto') {
-            return redirect('/carta')->withErrors(['type' => 'Los pedidos de mesa no están disponibles en este establecimiento.']);
-        }
 
         // Block orders on occupied tables unless the customer explicitly confirmed
         if ($data['type'] === 'mesa' && ! empty($data['table_id']) && empty($data['confirmed'])) {
@@ -236,11 +250,21 @@ class CartaController extends Controller
 
         $trackingToken = (string) Str::uuid();
 
+        // Calcular número de turno antes del INSERT para usarlo en fallback de nombre
+        $lastNumber = \App\Models\Order::whereDate('created_at', today())->max('turn_number') ?? 0;
+        $turnNumber = $lastNumber + 1;
+
+        // Nombre de fallback si no viene (solo aplica para tipo mesa)
+        $customerName = !empty($data['customer_name'])
+            ? $data['customer_name']
+            : ($data['type'] === 'mesa' ? 'Mesa' : 'Cliente');
+
         $order = Order::create([
-            'customer_name'     => $data['customer_name'],
-            'customer_phone'    => $data['customer_phone'],
+            'customer_name'     => $customerName,
+            'customer_phone'    => $data['customer_phone'] ?? null,
             'type'              => $data['type'],
             'table_id'          => $data['table_id'] ?? null,
+            'turn_number'       => $turnNumber,
             'tracking_token'    => $trackingToken,
             'delivery_address'  => $data['delivery_address'] ?? null,
             'delivery_phone'    => $data['delivery_phone'] ?? null,
@@ -255,17 +279,7 @@ class CartaController extends Controller
 
         $order->items()->createMany($orderItems);
 
-        // Número de pedido del día (jornada): un solo contador compartido por TODOS
-        // los tipos de pedido, reseteado cada día calendario. Para mostrador, este
-        // mismo número es el que se muestra como "Turno #X" — así "#1" siempre
-        // coincide con "Turno #1" cuando solo hay pedidos de mostrador en el día.
-        $lastNumber = \App\Models\Order::whereDate('created_at', today())->max('turn_number') ?? 0;
-        $order->update(['turn_number' => $lastNumber + 1]);
-
-        // Para pedidos de mostrador (puesto): cobro y aviso de turno
-        // pago_primero → cobrar al instante (KDS lo muestra como pending, cocina marca listo)
-        // cocina_primero → el cobro queda pendiente hasta que cocina lo marque listo
-        //                   y el cajero lo cobre en /caja
+        // Para pedidos de mostrador: cobro según flujo configurado + flash de turno
         if ($data['type'] === 'mostrador') {
             $orderFlow = \App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero';
 
@@ -273,7 +287,12 @@ class CartaController extends Controller
                 $order->update(['amount_paid' => $total]);
             }
 
-            session()->flash('turn_number', $lastNumber + 1);
+            session()->flash('turn_number', $turnNumber);
+        }
+
+        // Para Mesa: también flash de turno (para la pantalla de confirmación)
+        if ($data['type'] === 'mesa') {
+            session()->flash('turn_number', $turnNumber);
         }
 
         // Marcar la mesa como ocupada automáticamente al recibir el pedido

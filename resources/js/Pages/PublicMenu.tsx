@@ -407,13 +407,6 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
         // ── Validaciones por tipo de entrega ───────────────────────────────────────
 
-        if (form.type === 'mostrador') {
-            if (!form.customer_name.trim()) {
-                setErrors(e => ({ ...e, customer_name: 'Ingresa el nombre del cliente.' }));
-                return;
-            }
-        }
-
         if (form.type === 'mesa') {
             if (!form.table_id) {
                 setErrors(e => ({ ...e, table_id: 'Selecciona una mesa.' }));
@@ -1387,7 +1380,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             {(form.type === 'mostrador' || form.type === 'domicilio') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium" style={{ color: s.text }}>
-                                        Nombre del cliente <span style={{ color: s.primary }}>*</span>
+                                        Nombre del cliente {form.type === 'domicilio' && <span style={{ color: s.primary }}>*</span>}
                                     </label>
                                     <input
                                         className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
