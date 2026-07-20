@@ -259,25 +259,31 @@ class CartaController extends Controller
             ? $data['customer_name']
             : ($data['type'] === 'mesa' ? 'Mesa' : 'Cliente');
 
-        $order = Order::create([
-            'customer_name'     => $customerName,
-            'customer_phone'    => $data['customer_phone'] ?? null,
-            'type'              => $data['type'],
-            'table_id'          => $data['table_id'] ?? null,
-            'turn_number'       => $turnNumber,
-            'tracking_token'    => $trackingToken,
-            'delivery_address'  => $data['delivery_address'] ?? null,
-            'delivery_phone'    => $data['delivery_phone'] ?? null,
-            'delivery_fee'      => $deliveryFee,
-            'payment_method'    => $data['payment_method'],
-            'notes'             => $data['notes'] ?? null,
-            'status'            => 'pending',
-            'total'             => $total,
-        ]);
+        try {
+            $order = Order::create([
+                'customer_name'     => $customerName,
+                'customer_phone'    => $data['customer_phone'] ?? '',
+                'type'              => $data['type'],
+                'table_id'          => $data['table_id'] ?? null,
+                'turn_number'       => $turnNumber,
+                'tracking_token'    => $trackingToken,
+                'delivery_address'  => $data['delivery_address'] ?? null,
+                'delivery_phone'    => $data['delivery_phone'] ?? null,
+                'delivery_fee'      => $deliveryFee,
+                'payment_method'    => $data['payment_method'],
+                'notes'             => $data['notes'] ?? null,
+                'status'            => 'pending',
+                'total'             => $total,
+            ]);
 
-        session()->flash('tracking_token', $trackingToken);
+            session()->flash('tracking_token', $trackingToken);
 
-        $order->items()->createMany($orderItems);
+            $order->items()->createMany($orderItems);
+        } catch (\Exception $e) {
+            return redirect('/carta')->withErrors([
+                'server_error' => 'Error Interno: ' . $e->getMessage()
+            ]);
+        }
 
         // Para pedidos de mostrador: cobro según flujo configurado + flash de turno
         if ($data['type'] === 'mostrador') {

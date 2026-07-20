@@ -1503,6 +1503,14 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             {errors.items && (
                                 <p className="text-xs text-red-500 text-center">{errors.items}</p>
                             )}
+
+                            {errors.server_error && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-xl mt-4">
+                                    <p className="text-sm text-red-600 font-medium">
+                                        {errors.server_error}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="px-4 py-4 border-t shrink-0" style={{ borderColor: `${s.text}15` }}>
