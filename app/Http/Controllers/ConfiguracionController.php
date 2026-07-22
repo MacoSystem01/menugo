@@ -167,9 +167,17 @@ class ConfiguracionController extends Controller
         $defaultFlow = tenant('type') === 'puesto' ? 'pago_primero' : 'cocina_primero';
         $hasTables = RestaurantTable::count() > 0;
 
+        $types = $settings->delivery_types ?? ['mostrador', 'mesa', 'domicilio'];
+        if (!$hasTables) {
+            $types = array_values(array_diff($types, ['mesa']));
+            if (empty($types)) {
+                $types = ['mostrador'];
+            }
+        }
+
         return Inertia::render('Configuraciones/Flujo', [
             'order_flow'     => $settings->order_flow ?? $defaultFlow,
-            'delivery_types' => $settings->delivery_types ?? ['mostrador', 'mesa', 'domicilio'],
+            'delivery_types' => $types,
             'has_tables'     => $hasTables,
         ]);
     }
