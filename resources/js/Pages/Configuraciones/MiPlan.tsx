@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import AppShell from '@/Layouts/AppShell';
 import { Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
@@ -73,6 +74,23 @@ export default function MiPlan({
 }: Props) {
     const { url: waUrl } = useSupportWhatsapp();
     const currentIndex = PLAN_ORDER.indexOf(current_plan);
+    const [showModal, setShowModal] = useState(false);
+    const [targetPlan, setTargetPlan] = useState<string | null>(null);
+
+    const handleOpenModal = (e: React.MouseEvent, planKey: string) => {
+        e.preventDefault();
+        setTargetPlan(planKey);
+        setShowModal(true);
+    };
+
+    const targetFeature = targetPlan ? features[targetPlan] : null;
+
+    // Calcular diferencias
+    const targetIncludes = targetFeature?.includes || [];
+    const currentIncludes = current_feature.includes || [];
+    
+    const featuresToGain = targetIncludes.filter(f => !currentIncludes.includes(f));
+    const featuresToLose = currentIncludes.filter(f => !targetIncludes.includes(f));
 
     const formatDate = (date: string | null) => {
         if (!date) return '—';
@@ -159,14 +177,14 @@ export default function MiPlan({
                     </div>
                 </div>
 
-                {/* ── Planes disponibles para upgrade ── */}
-                {currentIndex < PLAN_ORDER.length - 1 && (
-                    <div>
+                {/* ── Planes disponibles para upgrade o downgrade ── */}
+                {PLAN_ORDER.filter(p => p !== current_plan).length > 0 && (
+                    <div className="mt-8">
                         <h3 className="font-display text-lg font-semibold text-foreground mb-4">
-                            Mejora tu plan
+                            Otras opciones disponibles
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {PLAN_ORDER.slice(currentIndex + 1).map(planKey => {
+                            {PLAN_ORDER.filter(p => p !== current_plan).map(planKey => {
                                 const feature = features[planKey];
                                 if (!feature) return null;
                                 const savings: Record<string, string> = {
@@ -210,14 +228,12 @@ export default function MiPlan({
                                             )}
                                         </div>
 
-                                        <a
-                                            href={waUrl(`Hola, quiero cambiar al plan ${feature.name} de MenúGO`)}
-                                            target="_blank"
-                                            rel="noreferrer"
+                                        <button
+                                            onClick={(e) => handleOpenModal(e, planKey)}
                                             className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground text-center hover:brightness-110 transition"
                                         >
                                             Cambiar a {feature.name} →
-                                        </a>
+                                        </button>
                                     </div>
                                 );
                             })}
@@ -225,16 +241,7 @@ export default function MiPlan({
                     </div>
                 )}
 
-                {/* Si ya tiene el plan máximo */}
-                {current_plan === 'anual' && (
-                    <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-2">
-                        <div className="text-4xl">🏆</div>
-                        <h3 className="font-semibold text-foreground">Tienes el mejor plan</h3>
-                        <p className="text-sm text-muted-foreground">
-                            El plan Escala incluye todas las funcionalidades de MenúGO.
-                        </p>
-                    </div>
-                )}
+
 
                 {/* Nota de soporte */}
                 <p className="text-xs text-muted-foreground text-center pb-4">
@@ -249,6 +256,80 @@ export default function MiPlan({
                     </a>
                 </p>
             </div>
+
+            {/* Modal de confirmación */}
+            {showModal && targetFeature && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-lg bg-card rounded-2xl shadow-xl border border-border overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-border/50">
+                            <h3 className="font-display text-xl font-bold">Cambio de Plan</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Estás a punto de solicitar el cambio de <strong className="text-foreground">{current_feature.name}</strong> a <strong className="text-primary">{targetFeature.name}</strong>.
+                            </p>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            {days_left !== null && days_left > 0 && (
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-sm text-amber-500 font-medium">
+                                    <AlertTriangle className="inline-block h-4 w-4 mr-1.5 -mt-0.5" />
+                                    Actualmente tienes <strong>{days_left} día(s)</strong> restantes en tu plan {current_feature.name}. 
+                                    Este tiempo será reevaluado o se perderá al confirmar tu cambio con soporte.
+                                </div>
+                            )}
+
+                            {featuresToGain.length > 0 && (
+                                <div>
+                                    <h4 className="text-sm font-bold text-emerald-500 mb-2">✨ Lo que ganarás:</h4>
+                                    <ul className="space-y-1.5 pl-1">
+                                        {featuresToGain.map(f => (
+                                            <li key={f} className="text-sm flex items-start gap-2">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {featuresToLose.length > 0 && (
+                                <div>
+                                    <h4 className="text-sm font-bold text-destructive mb-2">⚠️ Lo que perderás:</h4>
+                                    <ul className="space-y-1.5 pl-1">
+                                        {featuresToLose.map(f => (
+                                            <li key={f} className="text-sm flex items-start gap-2 opacity-80">
+                                                <XCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                                                <span>{f}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div className="bg-muted/50 rounded-xl p-4 text-xs text-muted-foreground">
+                                <p><strong>Términos y condiciones:</strong> Al hacer clic en confirmar, serás redirigido a WhatsApp para finalizar el trámite con un agente de soporte. Si pierdes funciones, los datos relacionados podrían ocultarse o deshabilitarse hasta reactivarlas.</p>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-border/50 bg-muted/20 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="px-5 py-2.5 text-sm font-medium hover:bg-muted rounded-xl transition"
+                            >
+                                Cancelar
+                            </button>
+                            <a
+                                href={waUrl(`Hola, quiero cambiar mi plan actual (${current_feature.name}) al plan ${targetFeature.name} en MenúGO. ¡Gracias!`)}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => setShowModal(false)}
+                                className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-bold rounded-xl hover:brightness-110 transition"
+                            >
+                                Sí, estoy seguro
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppShell>
     );
 }
