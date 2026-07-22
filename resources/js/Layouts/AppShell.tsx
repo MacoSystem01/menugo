@@ -94,11 +94,27 @@ const mesaGroup: NavItem = {
 
 const configuracionGroup: NavItem = {
     label: 'Configuraciones', icon: 'settings', children: [
-        { href: '/mi-plan',                  label: 'Mi Plan' },
-        { href: '/configuracion/pagos',      label: 'Métodos de pago' },
-        { href: '/configuracion/flujo',      label: 'Flujo de pedido' },
-        { href: '/configuracion/domicilio',  label: 'Tarifas domicilio' },
-        { href: '/configuracion/horario',    label: 'Horario trabajo' },
+        { href: '/mi-plan',                  label: 'Mejorar Mi Plan' },
+        { href: '/tables',                   label: 'Registro Mesas' },
+        { href: '/configuracion/pagos',      label: 'Métodos de Pago' },
+        { href: '/configuracion/domicilio',  label: 'Tarifas Domicilio' },
+        { href: '/configuracion/horario',    label: 'Horario Trabajo' },
+        { href: '/configuracion/flujo',      label: 'Tipo de entrega' },
+    ]
+};
+
+const reportesGroup: NavItem = {
+    label: 'Reportes', icon: 'file-bar-chart', children: [
+        { href: '/reporte', label: 'Reporte Caja' },
+        { href: '/caja/cierre/caja', label: 'Cierre de Caja' },
+        { href: '/caja/cierre/datafono', label: 'Cierre Datafono' },
+        { href: '/reporte/historia', label: 'Historia Pedidos' },
+        { href: '/reporte/cocina', label: 'Cocina' },
+        { href: '/reporte/novedades', label: 'Novedades' },
+        { href: '/reporte/domicilio', label: 'Domicilio' },
+        { href: '/reporte/gastos', label: 'Gastos' },
+        { href: '/reporte/inventario-producto', label: 'Inventario Por Producto' },
+        { href: '/reporte/inventario', label: 'Inventario Completo' },
     ]
 };
 
@@ -113,34 +129,26 @@ const cajaGroup: NavItem = {
 const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     gerente: [
         { href: '/dashboard', label: 'Inicio',     icon: 'home' },
-        { href: '/usuarios',  label: 'Usuarios',   icon: 'users' },
-        MenuGroup,
         cajaGroup,
+        MenuGroup,
         { href: '/pedidos',   label: 'Pedidos',    icon: 'shopping-bag' },
         cocinaGroup,
-        mesaGroup,
         { href: '/domicilio', label: 'Domicilio',  icon: 'map-pin' },
         { href: '/inventario',label: 'Inventario', icon: 'package' },
-        {
-            label: 'Reporte', icon: 'file-bar-chart', children: [
-                { href: '/reporte',   label: 'General' },
-                { href: '/auditoria', label: 'Auditoría' },
-            ]
-        },
-        { href: '/gastos', label: 'Gastos', icon: 'receipt' },
+        { href: '/gastos',    label: 'Gastos',     icon: 'receipt' },
+        reportesGroup,
         configuracionGroup,
     ],
     administrador: [
         { href: '/dashboard', label: 'Inicio',     icon: 'home' },
-        { href: '/usuarios',  label: 'Usuarios',   icon: 'users' },
-        MenuGroup,
         cajaGroup,
+        MenuGroup,
         { href: '/pedidos',   label: 'Pedidos',    icon: 'shopping-bag' },
         cocinaGroup,
-        mesaGroup,
         { href: '/domicilio', label: 'Domicilio',  icon: 'map-pin' },
         { href: '/inventario',label: 'Inventario', icon: 'package' },
         { href: '/gastos',    label: 'Gastos',     icon: 'receipt' },
+        reportesGroup,
         configuracionGroup,
     ],
     caja: [
@@ -554,11 +562,15 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
 
     if (variant === 'restaurant' && isPuesto) {
         const mesaHrefs = new Set(['/tables', '/adiciones']);
-        nav = nav.filter(item => {
-            if ('href' in item && mesaHrefs.has(item.href ?? '')) return false;
-            const children = 'children' in item ? item.children : undefined;
-            return !children?.some(c => mesaHrefs.has(c.href));
-        });
+        nav = nav.map(item => {
+            if ('href' in item) {
+                return mesaHrefs.has(item.href ?? '') ? null : item;
+            }
+            if ('children' in item && item.children) {
+                return { ...item, children: item.children.filter(c => !mesaHrefs.has(c.href)) };
+            }
+            return item;
+        }).filter(Boolean) as NavItem[];
     }
 
     // Flujo de pedido solo disponible para Puesto de Comidas Rápidas
