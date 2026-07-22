@@ -41,13 +41,29 @@ class ConfiguracionController extends Controller
             'detalles.*.tipo_cuenta'       => 'nullable|string|in:ahorros,corriente,',
             'detalles.*.banco'             => 'nullable|string|max:80',
             'detalles.*.nota'              => 'nullable|string|max:200',
+            'detalles.*.qr_image'          => 'nullable|image|max:2048',
         ]);
 
         $metodos = array_unique(array_merge(['efectivo'], $request->metodos));
+        $settings = $this->settings();
+        $detalles = $request->detalles ?? [];
 
-        $this->settings()->update([
+        foreach ($detalles as $metodo => &$detalle) {
+            if ($request->hasFile("detalles.{$metodo}.qr_image")) {
+                $path = $request->file("detalles.{$metodo}.qr_image")->store('qr_codes', 'public');
+                $detalle['qr_image_path'] = $path;
+                unset($detalle['qr_image']);
+            } else {
+                // Mantener el QR existente si no se sube uno nuevo
+                if (isset($settings->payment_details[$metodo]['qr_image_path'])) {
+                    $detalle['qr_image_path'] = $settings->payment_details[$metodo]['qr_image_path'];
+                }
+            }
+        }
+
+        $settings->update([
             'payment_methods' => array_values($metodos),
-            'payment_details' => $request->detalles ?? [],
+            'payment_details' => $detalles,
         ]);
 
         AuditLog::registrar('update', 'Configuracion', null, 'Métodos de pago actualizados', [

@@ -12,6 +12,8 @@ interface Detalle {
     tipo_cuenta?: 'ahorros' | 'corriente' | '';
     banco?:      string;
     nota?:       string;
+    qr_image_path?: string;
+    qr_image?:   File | null;
 }
 
 interface Props {
@@ -26,7 +28,7 @@ interface CampoConfig {
     campo:       keyof Detalle;
     label:       string;
     placeholder: string;
-    tipo:        'text' | 'tel' | 'select';
+    tipo:        'text' | 'tel' | 'select' | 'qr';
     opciones?:   { value: string; label: string }[];
 }
 
@@ -59,6 +61,7 @@ const METODOS = [
             { campo: 'titular' as const, label: 'Titular de la cuenta',  placeholder: 'Nombre del propietario', tipo: 'text' as const },
             { campo: 'numero'  as const, label: 'Número de Nequi',        placeholder: '3001234567',            tipo: 'tel'  as const },
             { campo: 'link'    as const, label: 'Link de pago Nequi',     placeholder: 'https://cobros.nequi.com.co/...', tipo: 'text' as const },
+            { campo: 'qr_image' as const, label: 'Código QR de Nequi', placeholder: 'Sube una imagen de tu código QR', tipo: 'qr' as const },
         ] as CampoConfig[],
     },
     {
@@ -220,7 +223,7 @@ export default function Pagos({ metodosActivos, detalles: initialDetalles, flash
                                         </p>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {m.campos.map(c => (
-                                                <div key={c.campo} className={(c.campo === 'nota' || c.campo === 'link') ? 'sm:col-span-2' : ''}>
+                                                <div key={c.campo} className={(c.campo === 'nota' || c.campo === 'link' || c.campo === 'qr_image') ? 'sm:col-span-2' : ''}>
                                                     <label className="block text-xs font-medium text-muted-foreground mb-1">
                                                         {c.label}
                                                     </label>
@@ -234,6 +237,28 @@ export default function Pagos({ metodosActivos, detalles: initialDetalles, flash
                                                                 <option key={o.value} value={o.value}>{o.label}</option>
                                                             ))}
                                                         </select>
+                                                    ) : c.tipo === 'qr' ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            {detalle.qr_image_path && !detalle.qr_image && (
+                                                                <div className="h-24 w-24 rounded-lg overflow-hidden border border-border">
+                                                                    <img src={`/storage/${detalle.qr_image_path}`} alt="QR" className="h-full w-full object-cover" />
+                                                                </div>
+                                                            )}
+                                                            {detalle.qr_image && (
+                                                                <div className="h-24 w-24 rounded-lg overflow-hidden border border-primary">
+                                                                    <img src={URL.createObjectURL(detalle.qr_image as File)} alt="QR Preview" className="h-full w-full object-cover" />
+                                                                </div>
+                                                            )}
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={e => {
+                                                                    const file = e.target.files?.[0] || null;
+                                                                    setDetalle(m.key, 'qr_image' as keyof Detalle, file as any);
+                                                                }}
+                                                                className="w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                                            />
+                                                        </div>
                                                     ) : c.campo === 'nota' ? (
                                                         <textarea
                                                             rows={2}
