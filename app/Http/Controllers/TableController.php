@@ -92,12 +92,12 @@ class TableController extends Controller
     {
         $data = $request->validate([
             'number'   => 'required|integer|min:1|unique:restaurant_tables,number',
-            'capacity' => 'required|integer|min:1',
+            'capacity' => 'nullable|integer|min:1',
         ]);
 
         $table = RestaurantTable::create([
             'number'   => $data['number'],
-            'capacity' => $data['capacity'],
+            'capacity' => $data['capacity'] ?? null,
             'status'   => 'available',
             'qr_code'  => Str::uuid(),
         ]);
@@ -116,7 +116,7 @@ class TableController extends Controller
 
         $data = $request->validate([
             'number'   => "required|integer|min:1|unique:restaurant_tables,number,{$table->id}",
-            'capacity' => 'required|integer|min:1',
+            'capacity' => 'nullable|integer|min:1',
             'status'   => $canChangeStatus ? 'nullable|in:available,occupied,reserved' : 'sometimes',
         ]);
 

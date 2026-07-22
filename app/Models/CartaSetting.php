@@ -29,6 +29,7 @@ class CartaSetting extends Model
         'restaurant_lng',
         'restaurant_address',
         'order_flow',
+        'delivery_types',
     ];
 
     protected $casts = [
@@ -43,6 +44,7 @@ class CartaSetting extends Model
         'delivery_ranges'  => 'array',
         'delivery_enabled' => 'boolean',
         'delivery_zones'   => 'array',
+        'delivery_types'   => 'array',
         'work_schedule'    => 'array',
         'restaurant_lat'   => 'float',
         'restaurant_lng'   => 'float',
@@ -58,6 +60,7 @@ class CartaSetting extends Model
         'slogan_size'     => 'sm',
         'payment_methods' => '["efectivo"]',
         'order_flow'      => 'pago_primero',
+        'delivery_types'  => '["mostrador", "mesa", "domicilio"]',
     ];
 
     public function getBannerUrlAttribute(): ?string

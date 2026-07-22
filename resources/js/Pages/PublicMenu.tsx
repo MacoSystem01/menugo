@@ -330,10 +330,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const addressInputRef = useRef<HTMLInputElement>(null);
     const [warnModal, setWarnModal] = useState<{ title: string; message: string } | null>(null);
 
+    const allowedDeliveryTypes = settings?.delivery_types || (isPuesto ? ['mostrador', 'mesa', 'domicilio'] : ['mesa', 'domicilio']);
+    const defaultType = allowedDeliveryTypes.length > 0 ? allowedDeliveryTypes[0] : (isPuesto ? 'mostrador' : 'mesa');
+
     const [form, setForm] = useState({
         customer_name: '',
         customer_phone: '',
-        type: (isPuesto ? 'mostrador' : 'mesa') as 'mesa' | 'domicilio' | 'mostrador',
+        type: defaultType as 'mesa' | 'domicilio' | 'mostrador',
         table_id: initial_table_id ? String(initial_table_id) : '',
         delivery_address: '',
         delivery_zone_idx: null as number | null,
@@ -471,7 +474,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                 setScreen('menu');
                 setOccupiedConfirmed(false);
                 setForm({
-                    customer_name: '', customer_phone: '', type: isPuesto ? 'mostrador' : 'mesa',
+                    customer_name: '', customer_phone: '', type: defaultType as 'mesa' | 'domicilio' | 'mostrador',
                     table_id: '', delivery_address: '', delivery_zone_idx: null,
                     payment_method: payMethods[0], notes: '',
                 });
@@ -1171,12 +1174,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             {/* Tipo de servicio — va PRIMERO */}
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de entrega</label>
-                                <div className={`grid gap-2 ${isPuesto ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                <div className={`grid gap-2 ${allowedDeliveryTypes.length === 3 ? 'grid-cols-3' : allowedDeliveryTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                                     {([
-                                        ...(isPuesto  ? [{ val: 'mostrador' as const, Icon: Package, label: 'Mostrador' }] : []),
+                                        { val: 'mostrador' as const, Icon: Package, label: 'Mostrador' },
                                         { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
                                         { val: 'domicilio' as const, Icon: Bike, label: 'Domicilio' },
-                                    ]).map(({ val, Icon, label }) => (
+                                    ]).filter(o => allowedDeliveryTypes.includes(o.val)).map(({ val, Icon, label }) => (
                                         <button
                                             key={val}
                                             type="button"

@@ -99,7 +99,7 @@ const configuracionGroup: NavItem = {
         { href: '/configuracion/pagos',      label: 'Métodos de Pago' },
         { href: '/configuracion/domicilio',  label: 'Tarifas Domicilio' },
         { href: '/configuracion/horario',    label: 'Horario Trabajo' },
-        { href: '/configuracion/flujo',      label: 'Tipo de entrega' },
+        { href: '/configuracion/flujo',      label: 'Flujo de Entrega' },
     ]
 };
 

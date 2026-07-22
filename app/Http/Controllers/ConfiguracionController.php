@@ -165,25 +165,40 @@ class ConfiguracionController extends Controller
     {
         $settings = $this->settings();
         $defaultFlow = tenant('type') === 'puesto' ? 'pago_primero' : 'cocina_primero';
+        $hasTables = RestaurantTable::count() > 0;
 
         return Inertia::render('Configuraciones/Flujo', [
-            'order_flow' => $settings->order_flow ?? $defaultFlow,
+            'order_flow'     => $settings->order_flow ?? $defaultFlow,
+            'delivery_types' => $settings->delivery_types ?? ['mostrador', 'mesa', 'domicilio'],
+            'has_tables'     => $hasTables,
         ]);
     }
 
     public function guardarFlujo(Request $request)
     {
         $request->validate([
-            'order_flow' => 'required|in:pago_primero,cocina_primero',
+            'order_flow'     => 'required|in:pago_primero,cocina_primero',
+            'delivery_types' => 'required|array|min:1',
+            'delivery_types.*' => 'in:mostrador,mesa,domicilio',
         ]);
 
-        $this->settings()->update(['order_flow' => $request->order_flow]);
+        $types = $request->delivery_types;
+        
+        if (in_array('mesa', $types) && RestaurantTable::count() === 0) {
+            return back()->withErrors(['delivery_types' => 'Para habilitar "Mesa" debes tener al menos una mesa registrada.']);
+        }
 
-        AuditLog::registrar('update', 'Configuracion', null, 'Flujo de pedido actualizado', [
-            'order_flow' => $request->order_flow,
+        $this->settings()->update([
+            'order_flow'     => $request->order_flow,
+            'delivery_types' => $types,
         ]);
 
-        return back()->with('success', 'Flujo de pedido actualizado correctamente.');
+        AuditLog::registrar('update', 'Configuracion', null, 'Flujo de pedido y tipos de entrega actualizados', [
+            'order_flow'     => $request->order_flow,
+            'delivery_types' => $types,
+        ]);
+
+        return back()->with('success', 'Configuración de entrega guardada correctamente.');
     }
 
     public function cierreJornada()
