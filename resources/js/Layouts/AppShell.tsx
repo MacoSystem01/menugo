@@ -115,6 +115,7 @@ const reportesGroup: NavItem = {
         { href: '/reporte/gastos', label: 'Gastos' },
         { href: '/reporte/inventario-producto', label: 'Inventario Por Producto' },
         { href: '/reporte/inventario', label: 'Inventario Completo' },
+        { href: '/auditoria', label: 'Auditoría' },
     ]
 };
 
