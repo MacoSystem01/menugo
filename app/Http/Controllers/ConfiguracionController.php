@@ -163,25 +163,16 @@ class ConfiguracionController extends Controller
 
     public function flujo()
     {
-        if (tenant('type') !== 'puesto') {
-            return redirect('/dashboard')
-                ->with('warning', 'La configuración de flujo de pedido solo está disponible para Puestos de Comidas Rápidas.');
-        }
-
         $settings = $this->settings();
+        $defaultFlow = tenant('type') === 'puesto' ? 'pago_primero' : 'cocina_primero';
 
         return Inertia::render('Configuraciones/Flujo', [
-            'order_flow' => $settings->order_flow ?? 'pago_primero',
+            'order_flow' => $settings->order_flow ?? $defaultFlow,
         ]);
     }
 
     public function guardarFlujo(Request $request)
     {
-        if (tenant('type') !== 'puesto') {
-            return redirect('/dashboard')
-                ->with('warning', 'La configuración de flujo de pedido solo está disponible para Puestos de Comidas Rápidas.');
-        }
-
         $request->validate([
             'order_flow' => 'required|in:pago_primero,cocina_primero',
         ]);

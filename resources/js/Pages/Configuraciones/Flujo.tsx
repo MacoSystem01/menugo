@@ -11,7 +11,7 @@ interface Props {
 const OPCIONES = [
     {
         value:       'pago_primero' as const,
-        label:       'Pago → Cocina',
+        label:       'Mostrador (Pago → Cocina)',
         descripcion: 'El cliente paga primero en caja y el pedido se envía automáticamente a cocina para su preparación.',
         pasos: ['Pedido recibido', 'Cajero cobra', 'Cocina prepara', 'Entrega al cliente'],
         iconA: DollarSign,
@@ -20,7 +20,7 @@ const OPCIONES = [
     },
     {
         value:       'cocina_primero' as const,
-        label:       'Cocina → Pago',
+        label:       'Mesa (Cocina → Pago)',
         descripcion: 'El pedido va directo a cocina para preparación. El cobro se realiza en caja cuando el pedido está listo para entregar.',
         pasos: ['Pedido recibido', 'Cocina prepara', 'Pedido listo', 'Cajero cobra y entrega'],
         iconA: ChefHat,
