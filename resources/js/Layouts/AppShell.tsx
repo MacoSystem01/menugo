@@ -560,26 +560,8 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
         })
         : rawNav;
 
-    if (variant === 'restaurant' && isPuesto) {
-        const mesaHrefs = new Set(['/tables', '/adiciones']);
-        nav = nav.map(item => {
-            if ('href' in item) {
-                return mesaHrefs.has(item.href ?? '') ? null : item;
-            }
-            if ('children' in item && item.children) {
-                return { ...item, children: item.children.filter(c => !mesaHrefs.has(c.href)) };
-            }
-            return item;
-        }).filter(Boolean) as NavItem[];
-    }
+    // Ambos módulos (Restaurante y Puesto de Comida Rápida) usarán exactamente la misma configuración de Sidebar.
 
-    // Flujo de pedido solo disponible para Puesto de Comidas Rápidas
-    if (variant === 'restaurant' && !isPuesto) {
-        nav = nav.map(item => {
-            if (!('children' in item) || !item.children) return item;
-            return { ...item, children: item.children.filter(c => c.href !== '/configuracion/flujo') };
-        });
-    }
 
     const badge = ROLE_BADGE[role] ?? ROLE_BADGE['gerente'];
 
