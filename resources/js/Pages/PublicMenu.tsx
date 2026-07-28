@@ -245,6 +245,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string; turnNumber?: number; trackingToken?: string } | null>(null);
+    const [includeServiceModal, setIncludeServiceModal] = useState(true);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
     // ── Adiciones (Modo adición) ───────────────────────────────────────────────
@@ -1737,9 +1738,22 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         <p className="text-sm opacity-65 mb-4" style={{ color: s.text }}>
                             Gracias, {success.name}. Tu pedido ha sido recibido.
                         </p>
-                        <p className="font-display text-3xl font-bold mb-5" style={{ color: s.primary }}>
-                            {fmt(success.total)}
-                        </p>
+                        
+                        <div className="flex flex-col items-center gap-1 mb-5">
+                            <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: s.text }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={includeServiceModal} 
+                                    onChange={(e) => setIncludeServiceModal(e.target.checked)}
+                                    className="rounded border-gray-300 focus:ring-2"
+                                    style={{ color: s.primary }}
+                                />
+                                <span className="opacity-80">Incluir Servicio (10%)</span>
+                            </label>
+                            <p className="font-display text-3xl font-bold" style={{ color: s.primary }}>
+                                {fmt(includeServiceModal ? success.total * 1.10 : success.total)}
+                            </p>
+                        </div>
 
                         {/* Número de turno — solo para pedidos de mostrador */}
                         {success.turnNumber && (
@@ -1759,15 +1773,32 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             </div>
                         )}
 
-                        {/* Bloque de pago según el método elegido */}
-                        <PaymentDetailBlock
-                            method={success.paymentMethod}
-                            detail={settings.payment_details?.[success.paymentMethod]}
-                            total={success.total}
-                            primary={s.primary}
-                            text={s.text}
-                            fmt={fmt}
-                        />
+                        {/* Bloque de pagos */}
+                        <div className="text-left mb-4 space-y-3">
+                            <div className="flex items-center gap-2 rounded-2xl border p-3" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
+                                <AlertTriangle className="h-5 w-5 opacity-50 shrink-0" style={{ color: s.text }} />
+                                <span className="text-xs opacity-70" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
+                            </div>
+                            {Object.keys(settings.payment_details || {}).length > 0 && (
+                                <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                    {Object.keys(settings.payment_details).map(method => (
+                                        <div key={method} className="rounded-xl border p-3" style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}03` }}>
+                                            <p className="text-xs font-bold uppercase mb-2" style={{ color: s.primary }}>
+                                                {PAYMENT_LABELS[method] ?? method}
+                                            </p>
+                                            <PaymentDetailBlock
+                                                method={method}
+                                                detail={settings.payment_details[method]}
+                                                total={includeServiceModal ? success.total * 1.10 : success.total}
+                                                primary={s.primary}
+                                                text={s.text}
+                                                fmt={fmt}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Link de seguimiento del pedido */}
                         {success.trackingToken && (
