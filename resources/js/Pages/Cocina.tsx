@@ -73,7 +73,7 @@ function ItemList({
                 // En modo no-interactivo (columna Listo): ítems originales siempre "done",
                 // adiciones según su is_prepared real.
                 const done = interactive
-                    ? (checked[key] ?? false)
+                    ? (checked[key] ?? item.is_prepared)
                     : (!item.is_addition || (checked[key] ?? item.is_prepared));
 
                 return (

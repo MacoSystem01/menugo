@@ -340,9 +340,10 @@ class CartaController extends Controller
 
             $totalAddition += $dish->price * $item['quantity'];
             $orderItems[] = [
-                'dish_id'    => $dish->id,
-                'quantity'   => $item['quantity'],
-                'unit_price' => (float) $dish->price,
+                'dish_id'     => $dish->id,
+                'quantity'    => $item['quantity'],
+                'unit_price'  => (float) $dish->price,
+                'is_addition' => true,
             ];
         }
 

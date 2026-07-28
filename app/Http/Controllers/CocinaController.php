@@ -39,8 +39,8 @@ class CocinaController extends Controller
                 // posteriores arrancan con is_cooked = false y nunca se repiten.
                 $itemsParaCocina = $o->items->where('is_cooked', false)->values();
 
-                // Es una adición si el pedido ya tiene ítems cocinados anteriormente.
-                $esAdicion = $o->items->where('is_cooked', true)->isNotEmpty();
+                // Es una adición si el pedido tiene ítems marcados explícitamente como adición.
+                $esAdicion = $o->items->where('is_addition', true)->isNotEmpty();
 
                 return [
                     'id'             => $o->id,
