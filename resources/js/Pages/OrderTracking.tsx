@@ -225,10 +225,10 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                     <div className="grid grid-cols-2 gap-3 mt-4">
                         <a
                             href={`/carta?add_to=${token}`}
-                            className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border transition hover:opacity-80"
-                            style={{ borderColor: `${s.primary}50`, color: s.primary, backgroundColor: `${s.primary}15` }}
+                            className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-bold shadow-sm transition hover:opacity-80"
+                            style={{ color: '#ffffff', backgroundColor: s.primary }}
                         >
-                            Adición
+                            ➕ Adición
                         </a>
                         <a
                             href="/carta"

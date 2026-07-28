@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 function decodePaginationLabel(label: string): string {
     return label.replace(/&laquo;/g, '«').replace(/&raquo;/g, '»').replace(/&amp;/g, '&');
 }
-import { ShoppingBag, ChevronDown, ChevronUp, Printer, X, Bell, Bike } from 'lucide-react';
+import { ShoppingBag, ChevronDown, ChevronUp, Printer, X, Bell, Bike, Plus } from 'lucide-react';
 
 interface OrderItem {
     dish: string | null;
@@ -753,9 +753,9 @@ export default function Orders({ orders, tables, filters, delivery_zones, flash 
                                                         <>
                                                             <a
                                                                 href={`/carta?add_to=${o.tracking_token}&waiter=true`}
-                                                                className="text-xs text-amber-500 hover:underline"
+                                                                className="inline-flex items-center gap-1 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-lg shadow-sm transition-colors"
                                                             >
-                                                                Adición
+                                                                <Plus className="h-3.5 w-3.5" /> Adición
                                                             </a>
                                                             <button
                                                                 onClick={() => cancelar(o.id)}
