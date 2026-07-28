@@ -146,6 +146,7 @@ export default function Pagos({ metodosActivos, detalles: initialDetalles, flash
             metodos:  [...activos],
             detalles: detallesActivos,
         }, {
+            forceFormData: true,
             onFinish: () => setSubmitting(false),
         });
     }
