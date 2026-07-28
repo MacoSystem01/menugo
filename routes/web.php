@@ -11,7 +11,11 @@ use Inertia\Inertia;
 
 // ── Públicas (dominio central Menugo.local) ───────────────────────────────────
 Route::middleware([\App\Http\Middleware\HandleInertiaRequests::class])->group(function () {
-    Route::get('/', function () {
+    Route::get('/debug-settings', function () {
+    return response()->json(\App\Models\CartaSetting::first()->payment_details ?? []);
+});
+
+Route::get('/', function () {
     try {
         // Usar el accessor image_url del modelo (Advertisement::getImageUrlAttribute)
         // evita duplicar la lógica de Storage::disk('public')->url() y resuelve el

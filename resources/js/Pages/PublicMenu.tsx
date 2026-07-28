@@ -1780,21 +1780,17 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 <span className="text-xs opacity-70" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
                             </div>
                             {Object.keys(settings.payment_details || {}).length > 0 && (
-                                <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
                                     {Object.keys(settings.payment_details).map(method => (
-                                        <div key={method} className="rounded-xl border p-3" style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}03` }}>
-                                            <p className="text-xs font-bold uppercase mb-2" style={{ color: s.primary }}>
-                                                {PAYMENT_LABELS[method] ?? method}
-                                            </p>
-                                            <PaymentDetailBlock
-                                                method={method}
-                                                detail={settings.payment_details[method]}
-                                                total={includeServiceModal ? success.total * 1.10 : success.total}
-                                                primary={s.primary}
-                                                text={s.text}
-                                                fmt={fmt}
-                                            />
-                                        </div>
+                                        <PaymentDetailBlock
+                                            key={method}
+                                            method={method}
+                                            detail={settings.payment_details[method]}
+                                            total={includeServiceModal ? success.total * 1.10 : success.total}
+                                            primary={s.primary}
+                                            text={s.text}
+                                            fmt={fmt}
+                                        />
                                     ))}
                                 </div>
                             )}

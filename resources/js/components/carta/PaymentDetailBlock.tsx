@@ -58,18 +58,8 @@ export default function PaymentDetailBlock({ method, detail, total, primary, tex
                             style={{ borderColor: `${primary}30` }}
                         />
                     </div>
-                ) : nequiUrl ? (
-                    <a
-                        href={nequiUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mt-1"
-                        style={{ backgroundColor: primary, color: '#ffffff' }}
-                    >
-                        Abrir Nequi para pagar →
-                    </a>
                 ) : (
-                    <p className="text-xs opacity-60" style={{ color: text }}>
+                    <p className="text-xs opacity-60 mt-1" style={{ color: text }}>
                         Realiza la transferencia al número indicado y menciona tu pedido.
                     </p>
                 )}
