@@ -231,12 +231,12 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                         className="mt-1 w-full max-w-xs rounded-full text-base font-semibold group"
                         onClick={() => selectPlan(selected)}
                     >
-                        Regístrate ahora — {chosenPlan.price}
+                        Regístrate ahora!!!
                         <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" />
                     </Button>
 
                     <p className="text-xs text-muted-foreground -mt-2">
-                        15 días de prueba gratis · Sin tarjeta requerida
+                        15 días de cortesía - Gratis!
                     </p>
                 </div>
             </div>
