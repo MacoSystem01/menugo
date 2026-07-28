@@ -1775,27 +1775,23 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         {/* Bloque de pagos */}
                         <div className="text-left mb-4 space-y-2">
-                            {['nequi', 'daviplata', 'pse', 'transferencia'].includes(success.paymentMethod) && settings.payment_details?.[success.paymentMethod] ? (
-                                <>
-                                    <div className="flex items-center gap-2 rounded-xl border p-2.5 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
-                                        <AlertTriangle className="h-4 w-4 opacity-50 shrink-0" style={{ color: s.text }} />
-                                        <span className="text-xs opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — transfiere a tu cuenta seleccionada:</span>
-                                    </div>
-                                    <div className="space-y-2">
+                            <div className="flex items-center gap-2 rounded-xl border p-2.5 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
+                                <AlertTriangle className="h-4 w-4 opacity-50 shrink-0" style={{ color: s.text }} />
+                                <span className="text-xs opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
+                            </div>
+                            {Object.keys(settings.payment_details || {}).length > 0 && (
+                                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                                    {Object.keys(settings.payment_details).map(method => (
                                         <PaymentDetailBlock
-                                            method={success.paymentMethod}
-                                            detail={settings.payment_details[success.paymentMethod]}
+                                            key={method}
+                                            method={method}
+                                            detail={settings.payment_details[method]}
                                             total={includeServiceModal ? success.total * 1.10 : success.total}
                                             primary={s.primary}
                                             text={s.text}
                                             fmt={fmt}
                                         />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex items-center gap-2 rounded-xl border p-2.5 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
-                                    <AlertTriangle className="h-4 w-4 opacity-50 shrink-0" style={{ color: s.text }} />
-                                    <span className="text-xs opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — por favor abona en caja.</span>
+                                    ))}
                                 </div>
                             )}
                         </div>
