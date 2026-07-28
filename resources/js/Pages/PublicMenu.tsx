@@ -1723,11 +1723,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
                 >
                     <div
-                        className="w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl"
+                        className="w-full max-w-md rounded-3xl p-6 md:p-8 text-center shadow-2xl"
                         style={{ backgroundColor: s.bg }}
                     >
                         <div
-                            className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full"
+                            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
                             style={{ backgroundColor: `${s.primary}20` }}
                         >
                             <Check className="h-8 w-8" style={{ color: s.primary }} />
@@ -1735,11 +1735,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         <h2 className="font-display text-2xl font-bold mb-1" style={{ color: s.text }}>
                             ¡Pedido enviado!
                         </h2>
-                        <p className="text-sm opacity-65 mb-4" style={{ color: s.text }}>
+                        <p className="text-sm opacity-65 mb-3" style={{ color: s.text }}>
                             Gracias, {success.name}. Tu pedido ha sido recibido.
                         </p>
                         
-                        <div className="flex flex-col items-center gap-1 mb-5">
+                        <div className="flex flex-col items-center gap-1 mb-4">
                             <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: s.text }}>
                                 <input 
                                     type="checkbox" 
@@ -1758,7 +1758,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         {/* Número de turno — solo para pedidos de mostrador */}
                         {success.turnNumber && (
                             <div
-                                className="w-full mb-5 rounded-2xl py-5 text-center"
+                                className="w-full mb-4 rounded-2xl py-4 text-center"
                                 style={{ backgroundColor: `${s.primary}12`, border: `2px solid ${s.primary}30` }}
                             >
                                 <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: s.primary, opacity: 0.7 }}>
@@ -1774,13 +1774,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         )}
 
                         {/* Bloque de pagos */}
-                        <div className="text-left mb-4 space-y-3">
-                            <div className="flex items-center gap-2 rounded-2xl border p-3" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
-                                <AlertTriangle className="h-5 w-5 opacity-50 shrink-0" style={{ color: s.text }} />
-                                <span className="text-xs opacity-70" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
+                        <div className="text-left mb-4 space-y-2">
+                            <div className="flex items-center gap-2 rounded-xl border p-2.5 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
+                                <AlertTriangle className="h-4 w-4 opacity-50 shrink-0" style={{ color: s.text }} />
+                                <span className="text-xs opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
                             </div>
                             {Object.keys(settings.payment_details || {}).length > 0 && (
-                                <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
+                                <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
                                     {Object.keys(settings.payment_details).map(method => (
                                         <PaymentDetailBlock
                                             key={method}

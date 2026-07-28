@@ -31,8 +31,8 @@ export default function PaymentDetailBlock({ method, detail, total, primary, tex
                 ? `https://www.nequi.com.co/cobrar?cuenta=${phone}&monto=${amount}`
                 : null;
         return (
-            <div className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left" style={boxStyle}>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={labelStyle}>Paga con Nequi</p>
+            <div className="w-full mb-3 rounded-2xl border p-3 space-y-1.5 text-left" style={boxStyle}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={labelStyle}>Paga con Nequi</p>
                 {detail?.titular && (
                     <p className="text-sm" style={{ color: text }}>
                         <span className="opacity-60">Titular: </span><strong>{detail.titular}</strong>
@@ -71,8 +71,8 @@ export default function PaymentDetailBlock({ method, detail, total, primary, tex
         const phone = detail?.numero?.replace(/\D/g, '');
         const daviplataUrl = detail?.link ?? null;
         return (
-            <div className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left" style={boxStyle}>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={labelStyle}>Paga con Daviplata</p>
+            <div className="w-full mb-3 rounded-2xl border p-3 space-y-1.5 text-left" style={boxStyle}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={labelStyle}>Paga con Daviplata</p>
                 {detail?.titular && (
                     <p className="text-sm" style={{ color: text }}>
                         <span className="opacity-60">Titular: </span><strong>{detail.titular}</strong>
@@ -109,8 +109,8 @@ export default function PaymentDetailBlock({ method, detail, total, primary, tex
 
     if (method === 'pse') {
         return (
-            <div className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left" style={boxStyle}>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={labelStyle}>Paga por PSE</p>
+            <div className="w-full mb-3 rounded-2xl border p-3 space-y-1.5 text-left" style={boxStyle}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={labelStyle}>Paga con PSE</p>
                 {detail?.banco && (
                     <p className="text-sm" style={{ color: text }}>
                         <span className="opacity-60">Banco: </span><strong>{detail.banco}</strong>
@@ -140,8 +140,8 @@ export default function PaymentDetailBlock({ method, detail, total, primary, tex
 
     if (method === 'transferencia') {
         return (
-            <div className="w-full mb-5 rounded-2xl border p-4 space-y-3 text-left" style={boxStyle}>
-                <p className="text-xs font-semibold uppercase tracking-wider" style={labelStyle}>Transferencia bancaria</p>
+            <div className="w-full mb-3 rounded-2xl border p-3 space-y-1.5 text-left" style={boxStyle}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={labelStyle}>Transferencia bancaria</p>
                 {detail?.banco && (
                     <p className="text-sm" style={{ color: text }}>
                         <span className="opacity-60">Banco: </span><strong>{detail.banco}</strong>
