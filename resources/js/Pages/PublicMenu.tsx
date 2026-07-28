@@ -284,12 +284,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
     // ── Buscar pedido sin token (número de pedido del día + teléfono) ─────────
     const [lookupOpen, setLookupOpen] = useState(false);
-    const [lookupForm, setLookupForm] = useState({ turn_number: '', customer_phone: '' });
+    const [lookupForm, setLookupForm] = useState({ turn_number: '', second_factor: '' });
     const [lookupSubmitting, setLookupSubmitting] = useState(false);
     const [lookupError, setLookupError] = useState<string | null>(null);
 
     function submitLookup() {
-        if (lookupSubmitting || !lookupForm.turn_number || !lookupForm.customer_phone) return;
+        if (lookupSubmitting || !lookupForm.turn_number || !lookupForm.second_factor) return;
         setLookupSubmitting(true);
         setLookupError(null);
         router.post('/carta/seguimiento', lookupForm, {
@@ -737,15 +737,15 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 </div>
                                 <div className="flex-1 space-y-1">
                                     <label className="text-xs font-medium opacity-60" style={{ color: s.text }}>
-                                        Teléfono usado al pedir
+                                        Nombre o Teléfono
                                     </label>
                                     <input
-                                        type="tel"
+                                        type="text"
                                         className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
                                         style={{ borderColor: `${s.text}25`, backgroundColor: `${s.text}06`, color: s.text }}
-                                        placeholder="3001234567"
-                                        value={lookupForm.customer_phone}
-                                        onChange={e => setLookupForm(f => ({ ...f, customer_phone: e.target.value }))}
+                                        placeholder="Tu nombre o teléfono"
+                                        value={lookupForm.second_factor}
+                                        onChange={e => setLookupForm(f => ({ ...f, second_factor: e.target.value }))}
                                     />
                                 </div>
                                 <button
@@ -1436,12 +1436,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 </div>
                             )}
 
-                            {/* Nombre — solo para Mostrador y Domicilio */}
-                            {(form.type === 'mostrador' || form.type === 'domicilio') && (
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium" style={{ color: s.text }}>
-                                        Nombre del cliente {form.type === 'domicilio' && <span style={{ color: s.primary }}>*</span>}
-                                    </label>
+                            {/* Nombre — para todos los pedidos */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium" style={{ color: s.text }}>
+                                    Nombre del cliente <span style={{ color: s.primary }}>*</span>
+                                </label>
                                     <input
                                         className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
                                         style={{
@@ -1455,7 +1454,6 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                     />
                                     {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
                                 </div>
-                            )}
 
                             {/* Teléfono — solo para Domicilio */}
                             {form.type === 'domicilio' && (

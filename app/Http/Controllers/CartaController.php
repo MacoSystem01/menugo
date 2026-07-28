@@ -173,9 +173,7 @@ class CartaController extends Controller
         $tipo = $request->input('type');
 
         $data = $request->validate([
-            'customer_name'     => $tipo === 'domicilio'
-                                        ? 'required|string|max:150'
-                                        : 'nullable|string|max:150',
+            'customer_name'     => 'required|string|max:150',
             'customer_phone'    => $tipo === 'domicilio'
                                         ? ['required', 'string', 'max:20', 'regex:/^[\d\s\+\-\(\)]+$/']
                                         : ['nullable', 'string', 'max:20', 'regex:/^[\d\s\+\-\(\)]+$/'],
@@ -463,17 +461,25 @@ class CartaController extends Controller
     {
         $data = $request->validate([
             'turn_number'    => 'required|integer|min:1',
-            'customer_phone' => 'required|string|max:20',
+            'second_factor'  => 'required|string|max:150',
         ]);
 
         $order = Order::whereDate('created_at', today())
-            ->where('turn_number', $data['turn_number'])
-            ->where('customer_phone', $data['customer_phone'])
+            ->where(function ($q) use ($data) {
+                // El turno/mesa coincide
+                $q->where('turn_number', $data['turn_number'])
+                  ->orWhereHas('table', fn($t) => $t->where('number', $data['turn_number']));
+            })
+            ->where(function ($q) use ($data) {
+                // El nombre o teléfono coincide
+                $q->where('customer_phone', $data['second_factor'])
+                  ->orWhere('customer_name', 'like', $data['second_factor']);
+            })
             ->first();
 
         if (! $order) {
             return back()->withErrors([
-                'lookup' => 'No encontramos ningún pedido de hoy con ese número y teléfono.',
+                'lookup' => 'No encontramos ningún pedido de hoy con ese número y nombre/teléfono.',
             ]);
         }
 
