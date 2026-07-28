@@ -109,20 +109,20 @@ class AdminDashboardController extends Controller
 
         $prices = [
             'starter'    => 0,
-            'basico'     => 34900,
-            'trimestral' => 83900,
-            'semestral'  => 146900,
-            'anual'      => 230900,
-            'mensual'    => 34900, // legacy
+            'basico'     => 20000,
+            'trimestral' => 50000,
+            'semestral'  => 110000,
+            'anual'      => 200000,
+            'mensual'    => 20000, // legacy
         ];
 
         $monthlyEquivalent = [
             'starter'    => 0,
-            'basico'     => 34900,
-            'trimestral' => 27967,  // 83900 / 3
-            'semestral'  => 24483,  // 146900 / 6
-            'anual'      => 19242,  // 230900 / 12
-            'mensual'    => 34900,  // legacy
+            'basico'     => 20000,
+            'trimestral' => 16667,  // 50000 / 3
+            'semestral'  => 18333,  // 110000 / 6
+            'anual'      => 16667,  // 200000 / 12
+            'mensual'    => 20000,  // legacy
         ];
 
         $paidTenants  = $tenants->where('payment_status', 'paid')->whereNull('deleted_at');

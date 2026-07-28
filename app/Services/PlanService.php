@@ -67,11 +67,11 @@ class PlanService
     public static function planDisplayName(string $planKey): string
     {
         return match ($planKey) {
-            'starter'    => 'Starter',
-            'basico'     => 'Básico',
-            'trimestral' => 'Trimestral',
-            'semestral'  => 'Pro',
-            'anual'      => 'Escala',
+            'starter'    => 'Starter', // Mantenido para retrocompatibilidad
+            'basico'     => '1 mes',
+            'trimestral' => '3 meses',
+            'semestral'  => '6 meses',
+            'anual'      => '12 meses',
             default      => ucfirst($planKey),
         };
     }

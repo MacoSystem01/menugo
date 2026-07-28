@@ -29,7 +29,7 @@ const COUNTRY_CODES = [
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type EstabType = 'restaurante' | 'puesto' | '';
-type PlanKey   = 'starter' | 'basico' | 'trimestral' | 'semestral' | 'anual' | '';
+type PlanKey   = 'basico' | 'trimestral' | 'semestral' | 'anual' | '';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 const ESTAB_TYPES = [
@@ -38,11 +38,10 @@ const ESTAB_TYPES = [
 ];
 
 const PLANS = [
-    { key: 'starter'    as const, emoji: '🎁', name: 'STARTER',    price: '$0',        period: 'gratis',   savings: null,          popular: false },
-    { key: 'basico'     as const, emoji: '💳', name: 'BÁSICO',     price: '$34.900',   period: '/mes',     savings: null,          popular: false },
-    { key: 'trimestral' as const, emoji: '📦', name: 'TRIMESTRAL', price: '$83.900',   period: '/3 meses', savings: 'Ahorras 20%', popular: false },
-    { key: 'semestral'  as const, emoji: '⭐', name: 'PRO',        price: '$146.900',  period: '/6 meses', savings: 'Ahorras 30%', popular: true  },
-    { key: 'anual'      as const, emoji: '🏆', name: 'ESCALA',     price: '$230.900',  period: '/año',     savings: 'Ahorras 45%', popular: false },
+    { key: 'basico'     as const, emoji: '💳', name: '1 MES',      price: '$20.000',   period: '/mes',     savings: null,          popular: false },
+    { key: 'trimestral' as const, emoji: '📦', name: '3 MESES',    price: '$50.000',   period: '/3 meses', savings: 'Ahorras 17%', popular: false },
+    { key: 'semestral'  as const, emoji: '⭐', name: '6 MESES',    price: '$110.000',  period: '/6 meses', savings: 'Ahorras 8%',  popular: false },
+    { key: 'anual'      as const, emoji: '🏆', name: '12 MESES',   price: '$200.000',  period: '/año',     savings: 'Mejor precio', popular: true  },
 ];
 
 const STEPS = ['Negocio', 'Plan', 'Establecimiento', 'Tu cuenta'];

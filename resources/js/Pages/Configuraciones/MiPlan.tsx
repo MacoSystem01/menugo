@@ -5,10 +5,9 @@ import { PageProps } from '@/types';
 import { CheckCircle2, XCircle, AlertTriangle, Clock } from 'lucide-react';
 import { useSupportWhatsapp } from '@/hooks/use-support-whatsapp';
 
-const PLAN_ORDER = ['starter', 'basico', 'trimestral', 'semestral', 'anual'];
+const PLAN_ORDER = ['basico', 'trimestral', 'semestral', 'anual'];
 
 const PLAN_COLORS: Record<string, string> = {
-    starter:    'border-emerald-500/30 bg-emerald-500/5 text-emerald-500',
     basico:     'border-zinc-500/30 bg-zinc-500/5 text-zinc-400',
     trimestral: 'border-blue-500/30 bg-blue-500/5 text-blue-400',
     semestral:  'border-purple-500/30 bg-purple-500/5 text-purple-400',

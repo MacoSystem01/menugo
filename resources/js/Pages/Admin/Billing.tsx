@@ -63,19 +63,19 @@ interface Props {
 
 const PLAN_PRICES: Record<string, number> = {
     starter: 0,
-    basico: 34900,
-    trimestral: 83900,
-    semestral: 146900,
-    anual: 230900,
-    mensual: 34900,
+    basico: 20000,
+    trimestral: 50000,
+    semestral: 110000,
+    anual: 200000,
+    mensual: 20000,
 };
 
 const PLAN_LABELS: Record<string, string> = {
-    starter: 'Starter',
-    basico: 'Básico',
-    trimestral: 'Trimestral',
-    semestral: 'Pro',
-    anual: 'Escala',
+    starter: 'Starter (legacy)',
+    basico: '1 mes',
+    trimestral: '3 meses',
+    semestral: '6 meses',
+    anual: '12 meses',
     mensual: 'Mensual (legacy)',
 };
 

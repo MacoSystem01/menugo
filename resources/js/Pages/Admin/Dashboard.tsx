@@ -59,7 +59,7 @@ const PLAN_CLASS: Record<string, string> = {
 };
 
 const PLAN_LABELS: Record<string, string> = {
-    mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
+    basico: '1 mes', trimestral: '3 meses', semestral: '6 meses', anual: '12 meses',
 };
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -283,10 +283,10 @@ export default function AdminDashboard({ stats, lista, crecimiento, pendingPayme
                             <StatProgress label="Restaurantes" value={stats.por_tipo.restaurante ?? 0} total={stats.total} color="bg-primary" />
                             <StatProgress label="Puestos / Food Trucks" value={stats.por_tipo.puesto ?? 0} total={stats.total} color="bg-accent" />
                             <div className="pt-4 border-t border-border">
-                                <StatProgress label="Plan Anual"      value={stats.por_plan.anual ?? 0}      total={stats.total} color="bg-accent" />
-                                <StatProgress label="Plan Semestral"  value={stats.por_plan.semestral ?? 0}  total={stats.total} color="bg-primary" />
-                                <StatProgress label="Plan Trimestral" value={stats.por_plan.trimestral ?? 0} total={stats.total} color="bg-blue-500" />
-                                <StatProgress label="Plan Mensual"    value={stats.por_plan.mensual ?? 0}    total={stats.total} color="bg-muted-foreground" />
+                                <StatProgress label="12 meses"      value={stats.por_plan.anual ?? 0}      total={stats.total} color="bg-accent" />
+                                <StatProgress label="6 meses"  value={stats.por_plan.semestral ?? 0}  total={stats.total} color="bg-primary" />
+                                <StatProgress label="3 meses" value={stats.por_plan.trimestral ?? 0} total={stats.total} color="bg-blue-500" />
+                                <StatProgress label="1 mes"    value={stats.por_plan.basico ?? (stats.por_plan.mensual ?? 0)}    total={stats.total} color="bg-zinc-500" />
                             </div>
                         </div>
                     </div>

@@ -31,11 +31,11 @@ function toSlug(str: string): string {
 }
 
 const PLAN_LABELS: Record<string, string> = {
-    starter:    'Starter',
-    basico:     'Básico',
-    trimestral: 'Trimestral',
-    semestral:  'Pro',
-    anual:      'Escala',
+    starter:    'Starter (legacy)',
+    basico:     '1 mes',
+    trimestral: '3 meses',
+    semestral:  '6 meses',
+    anual:      '12 meses',
     mensual:    'Mensual (legacy)', // compatibilidad con registros anteriores en DB
 };
 const PLAN_COLORS: Record<string, string> = {
@@ -123,11 +123,10 @@ function EditModal({ tenant, onClose }: EditModalProps) {
                                 onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}
                                 className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                             >
-                                <option value="starter">Starter · $0</option>
-                                <option value="basico">Básico · $34.900</option>
-                                <option value="trimestral">Trimestral · $83.900</option>
-                                <option value="semestral">Pro · $146.900</option>
-                                <option value="anual">Escala · $230.900</option>
+                                <option value="basico">1 mes · $20.000</option>
+                                <option value="trimestral">3 meses · $50.000</option>
+                                <option value="semestral">6 meses · $110.000</option>
+                                <option value="anual">12 meses · $200.000</option>
                             </select>
                         </div>
                         <div>
@@ -411,11 +410,10 @@ export default function Tenants({ tenants, flash }: Props) {
 
                             <Field label="Plan" error={errors.plan}>
                                 <select value={data.plan} onChange={e => setData('plan', e.target.value)} className="input-modern appearance-none">
-                                    <option value="starter">Starter · $0</option>
-                                    <option value="basico">Básico · $34.900</option>
-                                    <option value="trimestral">Trimestral · $83.900</option>
-                                    <option value="semestral">Pro · $146.900</option>
-                                    <option value="anual">Escala · $230.900</option>
+                                    <option value="basico">1 mes · $20.000</option>
+                                    <option value="trimestral">3 meses · $50.000</option>
+                                    <option value="semestral">6 meses · $110.000</option>
+                                    <option value="anual">12 meses · $200.000</option>
                                 </select>
                             </Field>
 

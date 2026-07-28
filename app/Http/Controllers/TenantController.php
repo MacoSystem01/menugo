@@ -22,7 +22,7 @@ class TenantController extends Controller
 
         $data = $request->validate([
             'type'                  => 'required|in:restaurante,puesto',
-            'plan'                  => 'required|in:starter,basico,trimestral,semestral,anual',
+            'plan'                  => 'required|in:basico,trimestral,semestral,anual',
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9]+$/'],
             'owner_name'            => 'required|string|max:150',
@@ -42,21 +42,13 @@ class TenantController extends Controller
             return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
         }
 
-        // Determinar estado según plan: starter = gratis, pagos = trial 15 días
-        $isPlanFree  = ($data['plan'] ?? '') === 'starter';
         $hasEvidence = $request->hasFile('evidence');
 
-        if ($isPlanFree) {
-            $paymentStatus = 'paid';
-            $isActive      = true;
-            $trialEndsAt   = null;
-            $expiresAt     = now()->addYears(10);
-        } else {
-            $paymentStatus = 'trial';
-            $isActive      = true;
-            $trialEndsAt   = now()->addDays(15);
-            $expiresAt     = now()->addDays(15);
-        }
+        // Todos inician con 15 días de cortesía
+        $paymentStatus = 'trial';
+        $isActive      = true;
+        $trialEndsAt   = now()->addDays(15);
+        $expiresAt     = now()->addDays(15);
 
         $tenant = Tenant::create([
             'id'             => Str::uuid(),
@@ -212,7 +204,7 @@ class TenantController extends Controller
     {
         $data = $request->validate([
             'type'                  => 'required|in:restaurante,puesto',
-            'plan'                  => 'required|in:starter,basico,trimestral,semestral,anual',
+            'plan'                  => 'required|in:basico,trimestral,semestral,anual',
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/'],
             'owner_name'            => 'required|string|max:150',
@@ -333,7 +325,7 @@ class TenantController extends Controller
         $data = $request->validate([
             'name'               => 'nullable|string|max:150',
             'email'              => 'nullable|email|max:150',
-            'plan'               => 'nullable|string|in:starter,basico,trimestral,semestral,anual',
+            'plan'               => 'nullable|string|in:basico,trimestral,semestral,anual',
             'active'             => 'nullable|boolean',
             'expires_at'         => 'nullable|date',
             'restaurant_address' => 'nullable|string|max:255',
