@@ -77,12 +77,12 @@ const plans = [
 const OFFER_PLANS = [
     { key: 'basico',     months: 1,  label: '1 mes',    price: '$20.000',  period: '/mes',     popular: false, savings: null },
     { key: 'trimestral', months: 3,  label: '3 meses',  price: '$50.000',  period: '/3 meses', popular: false, savings: 'Ahorras 17%' },
-    { key: 'semestral',  months: 6,  label: '6 meses',  price: '$110.000', period: '/6 meses', popular: true,  savings: 'Ahorras 8%' },
-    { key: 'anual',      months: 12, label: '12 meses', price: '$200.000', period: '/año',     popular: false, savings: 'Mejor precio' },
+    { key: 'semestral',  months: 6,  label: '6 meses',  price: '$110.000', period: '/6 meses', popular: false, savings: 'Ahorras 8%' },
+    { key: 'anual',      months: 12, label: '12 meses', price: '$200.000', period: '/año',     popular: true,  savings: 'Mejor precio' },
 ];
 
 function PlansModal({ onClose }: { onClose: () => void }) {
-    const [selected, setSelected] = useState('semestral');
+    const [selected, setSelected] = useState('anual');
 
     function selectPlan(planKey: string) {
         router.visit(`/register?plan=${planKey}`);
