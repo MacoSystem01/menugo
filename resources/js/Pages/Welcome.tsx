@@ -72,9 +72,18 @@ const plans = [
 ];
 
 /* ─────────────────────────────────────────────
-   Modal de planes (aparece al entrar a Welcome)
+   Modal de oferta principal (aparece al entrar a Welcome)
 ───────────────────────────────────────────── */
+const OFFER_PLANS = [
+    { key: 'basico',     months: 1,  label: '1 mes',    price: '$20.000',  period: '/mes',     popular: false, savings: null },
+    { key: 'trimestral', months: 3,  label: '3 meses',  price: '$50.000',  period: '/3 meses', popular: false, savings: 'Ahorras 17%' },
+    { key: 'semestral',  months: 6,  label: '6 meses',  price: '$110.000', period: '/6 meses', popular: true,  savings: 'Ahorras 8%' },
+    { key: 'anual',      months: 12, label: '12 meses', price: '$200.000', period: '/año',     popular: false, savings: 'Mejor precio' },
+];
+
 function PlansModal({ onClose }: { onClose: () => void }) {
+    const [selected, setSelected] = useState('semestral');
+
     function selectPlan(planKey: string) {
         router.visit(`/register?plan=${planKey}`);
     }
@@ -86,8 +95,10 @@ function PlansModal({ onClose }: { onClose: () => void }) {
         return () => window.removeEventListener('keydown', handler);
     }, [onClose]);
 
+    const chosenPlan = OFFER_PLANS.find(p => p.key === selected) ?? OFFER_PLANS[2];
+
     return (
-        /* Backdrop — overflow-y-auto + min-h-full para que el modal nunca quede fuera del viewport en mobile */
+        /* Backdrop */
         <div
             className="fixed inset-0 z-50 overflow-y-auto"
             style={{ background: 'oklch(0 0 0 / 0.75)', backdropFilter: 'blur(6px)' }}
@@ -95,7 +106,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
         >
             <div className="flex min-h-full items-center justify-center px-4 py-6">
             <div
-                className="relative w-full max-w-4xl rounded-3xl border border-border overflow-hidden"
+                className="relative w-full max-w-2xl rounded-3xl border border-border overflow-hidden"
                 style={{ background: 'oklch(0.14 0.018 50)' }}
             >
                 {/* Botón cerrar */}
@@ -108,112 +119,124 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                     <X className="h-4 w-4" />
                 </button>
 
-                <div className="px-8 pt-10 pb-8 flex flex-col items-center text-center gap-4">
+                <div className="px-8 pt-10 pb-8 flex flex-col items-center text-center gap-5">
 
                     {/* Badge */}
                     <div
                         className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium"
                         style={{
                             borderColor: 'oklch(0.85 0.18 110 / 0.4)',
-                            background: 'oklch(0.85 0.18 110 / 0.08)',
-                            color: 'oklch(0.85 0.18 110)',
+                            background:  'oklch(0.85 0.18 110 / 0.08)',
+                            color:       'oklch(0.85 0.18 110)',
                         }}
                     >
                         <span className="h-2 w-2 rounded-full bg-current animate-pulse" />
-                        Oferta especial
+                        🚀 Lanza tu carta digital hoy
                     </div>
 
                     {/* Título */}
-                    <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
-                        Lleva tu negocio al{' '}
-                        <span className="text-gradient-warm">siguiente nivel</span>
-                    </h2>
+                    <div>
+                        <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+                            Sin instalaciones,{' '}
+                            <span className="text-gradient-warm">sin líos.</span>
+                        </h2>
+                        <p className="text-muted-foreground text-sm mt-2 max-w-md mx-auto leading-relaxed">
+                            Empieza en menos de 10 minutos y gestiona tu restaurante de forma completamente digital.
+                        </p>
+                    </div>
 
-                    {/* Subtítulo */}
-                    <p className="text-muted-foreground text-sm max-w-md leading-relaxed">
-                        Suscríbete a Menugo y accede a todas las herramientas para
-                        gestionar tu restaurante de forma digital.
-                    </p>
-
-                    {/* Grid de planes */}
-                    <div className="w-full mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                        {plans.map((plan) => (
-                            <div key={plan.key} className="relative flex flex-col">
-
-                                {/* Badge "MÁS POPULAR" encima del card */}
-                                {plan.popular ? (
-                                    <div className="mb-1.5 flex justify-center">
-                                        <span
-                                            className="text-[10px] font-bold tracking-widest rounded-full px-3 py-1"
-                                            style={{
-                                                background: 'oklch(0.85 0.18 110)',
-                                                color: 'oklch(0.18 0.02 50)',
-                                            }}
-                                        >
-                                            MÁS POPULAR
-                                        </span>
-                                    </div>
-                                ) : (
-                                    /* Espacio reservado para alinear las cards */
-                                    <div className="mb-1.5 h-6.5" />
+                    {/* Selector de tiempo */}
+                    <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-1">
+                        {OFFER_PLANS.map((plan) => (
+                            <button
+                                key={plan.key}
+                                type="button"
+                                onClick={() => setSelected(plan.key)}
+                                className="relative flex flex-col items-center rounded-2xl p-4 gap-1.5 transition-all focus:outline-none"
+                                style={{
+                                    background: selected === plan.key
+                                        ? 'oklch(0.20 0.04 120 / 0.5)'
+                                        : 'oklch(0.19 0.02 50)',
+                                    border: selected === plan.key
+                                        ? '2px solid oklch(0.85 0.18 110 / 0.8)'
+                                        : '1.5px solid oklch(0.30 0.02 55)',
+                                    transform: selected === plan.key ? 'scale(1.04)' : 'scale(1)',
+                                }}
+                            >
+                                {/* Badge popular */}
+                                {plan.popular && (
+                                    <span
+                                        className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold tracking-widest rounded-full px-2.5 py-0.5 whitespace-nowrap"
+                                        style={{
+                                            background: 'oklch(0.85 0.18 110)',
+                                            color: 'oklch(0.18 0.02 50)',
+                                        }}
+                                    >
+                                        MÁS POPULAR
+                                    </span>
                                 )}
 
-                                {/* Tarjeta — clickeable */}
-                                <button
-                                    type="button"
-                                    onClick={() => selectPlan(plan.key)}
-                                    className="flex-1 flex flex-col items-center rounded-2xl p-4 gap-2 transition-all hover:scale-[1.03] hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-primary/60"
-                                    style={{
-                                        background: plan.popular
-                                            ? 'oklch(0.18 0.03 120 / 0.35)'
-                                            : 'oklch(0.19 0.02 50)',
-                                        border: plan.popular
-                                            ? '1.5px solid oklch(0.85 0.18 110 / 0.7)'
-                                            : '1px solid oklch(0.30 0.02 55)',
-                                    }}
+                                <span className="text-xs font-bold tracking-wider text-muted-foreground mt-1">
+                                    {plan.label}
+                                </span>
+                                <div
+                                    className="font-display text-2xl font-bold leading-none"
+                                    style={{ color: selected === plan.key ? 'oklch(0.85 0.18 110)' : 'white' }}
                                 >
-                                    <span className="text-3xl" role="img" aria-label={plan.name}>
-                                        {plan.emoji}
+                                    {plan.price}
+                                </div>
+                                <span className="text-[11px] text-muted-foreground">{plan.period}</span>
+                                {plan.savings && (
+                                    <span
+                                        className="text-[10px] font-semibold rounded-full px-2 py-0.5 mt-0.5"
+                                        style={{
+                                            background: 'oklch(0.85 0.18 110 / 0.15)',
+                                            color:      'oklch(0.85 0.18 110)',
+                                            border:     '1px solid oklch(0.85 0.18 110 / 0.3)',
+                                        }}
+                                    >
+                                        {plan.savings}
                                     </span>
-                                    <span className="text-[11px] font-bold tracking-wider text-muted-foreground">
-                                        {plan.name}
-                                    </span>
-                                    <div className="font-display text-2xl font-bold leading-none">
-                                        {plan.price}
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                        {plan.period}
-                                    </span>
-                                    {plan.savings && (
-                                        <span
-                                            className="text-[11px] font-semibold rounded-full px-2.5 py-0.5 mt-0.5"
-                                            style={{
-                                                background: 'oklch(0.85 0.18 110 / 0.15)',
-                                                color: 'oklch(0.85 0.18 110)',
-                                                border: '1px solid oklch(0.85 0.18 110 / 0.3)',
-                                            }}
-                                        >
-                                            {plan.savings}
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
+                                )}
+                            </button>
                         ))}
+                    </div>
+
+                    {/* Qué incluye el plan */}
+                    <div className="w-full rounded-2xl p-4 text-left space-y-2" style={{ background: 'oklch(0.18 0.02 50)', border: '1px solid oklch(0.28 0.02 55)' }}>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">¿Qué incluye?</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {[
+                                'Carta digital con QR',
+                                'Gestión de pedidos en tiempo real',
+                                'Panel de cocina (KDS)',
+                                'Reportes y cierres de caja',
+                                'Control de inventario',
+                                'Módulo de domicilio',
+                                'Registro de mesas',
+                                'Soporte por WhatsApp',
+                            ].map(f => (
+                                <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                    <span>{f}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* CTA */}
                     <Button
                         variant="hero"
                         size="lg"
-                        className="mt-4 w-full max-w-xs rounded-full text-base font-semibold group"
-                        onClick={() => selectPlan('semestral')}
+                        className="mt-1 w-full max-w-xs rounded-full text-base font-semibold group"
+                        onClick={() => selectPlan(selected)}
                     >
-                        Registrarme ahora
+                        Regístrate ahora — {chosenPlan.price}
                         <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" />
                     </Button>
 
-                    <p className="text-xs text-muted-foreground">
-                        15 días de prueba gratis
+                    <p className="text-xs text-muted-foreground -mt-2">
+                        15 días de prueba gratis · Sin tarjeta requerida
                     </p>
                 </div>
             </div>
