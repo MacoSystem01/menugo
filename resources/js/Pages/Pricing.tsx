@@ -118,7 +118,7 @@ export default function Pricing() {
                                 className={`relative flex flex-col rounded-3xl border p-5 ${p.popular ? 'border-primary bg-card shadow-glow scale-[1.02]' : 'border-border bg-card hover:border-primary/50 transition-colors'}`}>
                                 {p.popular && (
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-warm px-3 py-1 text-xs font-semibold text-primary-foreground whitespace-nowrap">
-                                        Más popular
+                                        MÁS POPULAR
                                     </div>
                                 )}
                                 <h3 className="font-display text-xl font-bold">{p.name}</h3>
@@ -149,7 +149,7 @@ export default function Pricing() {
                                 </Button>
                                 {p.key !== 'starter' && (
                                     <p className="text-[10px] text-center text-muted-foreground mt-1.5">
-                                        🎁 15 días gratis · Sin tarjeta
+                                        🎁 15 días de cortesia - Gratis!
                                     </p>
                                 )}
 

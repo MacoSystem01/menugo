@@ -31,6 +31,7 @@ interface OrderRow {
     tipo: string;
     mesa: number | null;
     turn_number: number | null;
+    tracking_token: string | null;
     delivery_address: string | null;
     delivery_phone: string | null;
     status: string;
@@ -749,12 +750,20 @@ export default function Orders({ orders, tables, filters, delivery_zones, flash 
                                                         <Printer className="h-3 w-3" /> Imprimir orden
                                                     </button>
                                                     {!['delivered', 'cancelled'].includes(o.status) && (
-                                                        <button
-                                                            onClick={() => cancelar(o.id)}
-                                                            className="text-xs text-red-400 hover:underline"
-                                                        >
-                                                            Cancelar pedido
-                                                        </button>
+                                                        <>
+                                                            <a
+                                                                href={`/carta?add_to=${o.tracking_token}&waiter=true`}
+                                                                className="text-xs text-amber-500 hover:underline"
+                                                            >
+                                                                Adición
+                                                            </a>
+                                                            <button
+                                                                onClick={() => cancelar(o.id)}
+                                                                className="text-xs text-red-400 hover:underline"
+                                                            >
+                                                                Cancelar pedido
+                                                            </button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>

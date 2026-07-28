@@ -29,6 +29,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         InitializeTenancyByDomain::class,
         PreventAccessFromCentralDomains::class,
         \App\Http\Middleware\CheckTenantActive::class,
+        \App\Http\Middleware\HandleInertiaRequests::class,
     ])->group(function () {
 
     // ── Auth del restaurante ──────────────────────────────────────────────────
@@ -46,6 +47,9 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     Route::post('/carta/pedido', [CartaController::class, 'placeOrder'])
     ->middleware('throttle:60,1')
         ->name('carta.pedido');
+    Route::post('/carta/pedido/{token}/adicion', [CartaController::class, 'addItemsToOrder'])
+        ->middleware('throttle:60,1')
+        ->name('carta.pedido.adicion');
     Route::get('/carta/pedido/{token}', [CartaController::class, 'tracking'])
         ->middleware('throttle:60,1')
         ->name('carta.tracking');

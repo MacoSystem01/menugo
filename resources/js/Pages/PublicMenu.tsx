@@ -247,6 +247,17 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const [success, setSuccess] = useState<{ name: string; total: number; paymentMethod: string; turnNumber?: number; trackingToken?: string } | null>(null);
     const [occupiedConfirmed, setOccupiedConfirmed] = useState(false);
 
+    // ── Adiciones (Modo adición) ───────────────────────────────────────────────
+    const [additionToken, setAdditionToken] = useState<string | null>(null);
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const addToken = params.get('add_to');
+        if (addToken) {
+            setAdditionToken(addToken);
+            setScreen('menu'); // Force menu screen
+        }
+    }, []);
+
     // ── Link de seguimiento del último pedido (persistido en este navegador) ──
     const [trackingLink, setTrackingLink] = useState<string | null>(null);
     useEffect(() => {
@@ -402,37 +413,40 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         ? tables.find(t => String(t.id) === form.table_id) ?? null
         : null;
     const tableIsOccupied = selectedTable?.has_active_orders ?? false;
-    const canSubmit = (!tableIsOccupied || occupiedConfirmed)
-        && !belowMinOrder;
+    const canSubmit = additionToken 
+        ? true 
+        : ((!tableIsOccupied || occupiedConfirmed) && !belowMinOrder);
 
     function submitOrder() {
         if (submitting) return;
 
         // ── Validaciones por tipo de entrega ───────────────────────────────────────
 
-        if (form.type === 'mesa') {
-            if (!form.table_id) {
-                setErrors(e => ({ ...e, table_id: 'Selecciona una mesa.' }));
-                return;
+        if (!additionToken) {
+            if (form.type === 'mesa') {
+                if (!form.table_id) {
+                    setErrors(e => ({ ...e, table_id: 'Selecciona una mesa.' }));
+                    return;
+                }
             }
-        }
 
-        if (form.type === 'domicilio') {
-            const newErrs: Record<string, string> = {};
-            if (!form.customer_name.trim()) newErrs.customer_name = 'Ingresa el nombre del cliente.';
-            const addr = form.delivery_address.trim();
-            if (!addr) newErrs.delivery_address = 'Ingresa la dirección de entrega.';
-            if (!form.customer_phone.trim()) newErrs.customer_phone = 'Ingresa el número de contacto.';
-            if (Object.keys(newErrs).length > 0) {
-                setErrors(e => ({ ...e, ...newErrs }));
-                return;
-            }
-            if (belowMinOrder) {
-                setWarnModal({
-                    title: 'Pedido mínimo no alcanzado',
-                    message: `El pedido mínimo para domicilio es ${fmt(deliveryMinOrder)}. Tu pedido actual es ${fmt(totalPrice)}. Agrega ${fmt(deliveryMinOrder - totalPrice)} más para continuar.`,
-                });
-                return;
+            if (form.type === 'domicilio') {
+                const newErrs: Record<string, string> = {};
+                if (!form.customer_name.trim()) newErrs.customer_name = 'Ingresa el nombre del cliente.';
+                const addr = form.delivery_address.trim();
+                if (!addr) newErrs.delivery_address = 'Ingresa la dirección de entrega.';
+                if (!form.customer_phone.trim()) newErrs.customer_phone = 'Ingresa el número de contacto.';
+                if (Object.keys(newErrs).length > 0) {
+                    setErrors(e => ({ ...e, ...newErrs }));
+                    return;
+                }
+                if (belowMinOrder) {
+                    setWarnModal({
+                        title: 'Pedido mínimo no alcanzado',
+                        message: `El pedido mínimo para domicilio es ${fmt(deliveryMinOrder)}. Tu pedido actual es ${fmt(totalPrice)}. Agrega ${fmt(deliveryMinOrder - totalPrice)} más para continuar.`,
+                    });
+                    return;
+                }
             }
         }
 
@@ -447,6 +461,26 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             ? (selectedTableNum ? `Mesa #${selectedTableNum}` : 'Mesa')
             : form.customer_name || 'Cliente';
         const snapshotMethod = form.payment_method;
+        const itemsPayload = cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity }));
+
+        if (additionToken) {
+            router.post(`/carta/pedido/${additionToken}/adicion`, {
+                items: itemsPayload,
+            }, {
+                onError: (errs) => { setErrors(errs); setSubmitting(false); },
+                onSuccess: () => {
+                    // Si se usó desde /pedidos (waiter view), redirigir de vuelta a /pedidos
+                    const params = new URLSearchParams(window.location.search);
+                    if (params.get('waiter') === 'true') {
+                        window.location.href = '/pedidos';
+                    } else {
+                        window.location.href = `/carta/pedido/${additionToken}`;
+                    }
+                }
+            });
+            return;
+        }
+
         router.post('/carta/pedido', {
             customer_name: form.customer_name || null,
             customer_phone: form.type === 'domicilio' ? form.customer_phone || null : null,
@@ -459,7 +493,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             payment_method: form.payment_method,
             notes: form.notes || null,
             confirmed: occupiedConfirmed,
-            items: cart.map(i => ({ dish_id: i.dish.id, quantity: i.quantity })),
+            items: itemsPayload,
         }, {
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
             onSuccess: (page: any) => {
@@ -626,13 +660,34 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             </header>
 
             {/* ── Aviso de pedido en seguimiento ── */}
-            {trackingLink && (
+            {additionToken ? (
+                <div className="w-full border-b px-4 sm:px-8 py-3" style={{ backgroundColor: '#f59e0b15', borderColor: '#f59e0b40' }}>
+                    <div className="max-w-5xl mx-auto flex items-center gap-3">
+                        <Plus className="h-4 w-4 shrink-0 text-amber-500" />
+                        <span className="flex-1 text-sm font-semibold text-amber-600">
+                            Modo Adición: Agrega productos a tu pedido en curso
+                        </span>
+                        <a
+                            href={`/carta/pedido/${additionToken}`}
+                            className="shrink-0 text-sm font-bold text-amber-600 underline-offset-2 hover:underline"
+                        >
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+            ) : trackingLink && (
                 <div className="w-full border-b px-4 sm:px-8 py-3" style={{ backgroundColor: `${s.primary}10`, borderColor: `${s.primary}25` }}>
                     <div className="max-w-5xl mx-auto flex items-center gap-3">
                         <Clock className="h-4 w-4 shrink-0" style={{ color: s.primary }} />
                         <span className="flex-1 text-sm font-medium" style={{ color: s.text }}>
                             Tienes un pedido en curso
                         </span>
+                        <a
+                            href={`/carta?add_to=${trackingLink}`}
+                            className="shrink-0 text-sm font-bold text-amber-500 underline-offset-2 hover:underline mr-2"
+                        >
+                            Adición
+                        </a>
                         <a
                             href={`/carta/pedido/${trackingLink}`}
                             className="shrink-0 text-sm font-bold underline-offset-2 hover:underline"
@@ -1172,9 +1227,11 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
 
                             {/* Tipo de servicio — va PRIMERO */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de entrega</label>
-                                <div className={`grid gap-2 ${allowedDeliveryTypes.length === 3 ? 'grid-cols-3' : allowedDeliveryTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            {!additionToken && (
+                                <>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de entrega</label>
+                                        <div className={`grid gap-2 ${allowedDeliveryTypes.length === 3 ? 'grid-cols-3' : allowedDeliveryTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                                     {([
                                         { val: 'mostrador' as const, Icon: Package, label: 'Mostrador' },
                                         { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
@@ -1444,6 +1501,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 </div>
                                 {errors.payment_method && <p className="text-xs text-red-500">{errors.payment_method}</p>}
                             </div>
+                                </>
+                            )}
 
                             {/* Notas */}
                             <div className="space-y-1.5">
@@ -1545,10 +1604,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                     style={{ backgroundColor: s.primary, color: '#ffffff' }}
                                 >
                                     {submitting
-                                        ? 'Enviando pedido...'
+                                        ? 'Enviando...'
                                         : tableIsOccupied && !occupiedConfirmed
                                             ? 'Confirma el pedido nuevo arriba ↑'
-                                            : `Confirmar pedido · ${fmt(grandTotal)}`}
+                                            : additionToken
+                                                ? `Confirmar adición · ${fmt(grandTotal)}`
+                                                : `Confirmar pedido · ${fmt(grandTotal)}`}
                                 </button>
                             )}
                         </div>

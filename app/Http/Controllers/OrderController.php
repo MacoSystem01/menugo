@@ -39,6 +39,7 @@ class OrderController extends Controller
             'tipo'             => $o->type,
             'mesa'             => $o->table?->number,
             'turn_number'      => $o->turn_number,
+            'tracking_token'   => $o->tracking_token,
             'delivery_address' => $o->delivery_address,
             'delivery_phone'   => $o->delivery_phone,
             'status'           => $o->status,

@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // ── Públicas (dominio central Menugo.local) ───────────────────────────────────
-Route::get('/', function () {
+Route::middleware([\App\Http\Middleware\HandleInertiaRequests::class])->group(function () {
+    Route::get('/', function () {
     try {
         // Usar el accessor image_url del modelo (Advertisement::getImageUrlAttribute)
         // evita duplicar la lógica de Storage::disk('public')->url() y resuelve el
@@ -120,4 +121,5 @@ Route::middleware(['auth', 'role:administrador'])->prefix('admin')->group(functi
     // Solicitudes publicitarias — acciones del administrador
     Route::patch('/ad-requests/{id}/approve', [AdminDashboardController::class, 'approveAdRequest'])->name('admin.ad-requests.approve');
     Route::patch('/ad-requests/{id}/reject',  [AdminDashboardController::class, 'rejectAdRequest'])->name('admin.ad-requests.reject');
+});
 });

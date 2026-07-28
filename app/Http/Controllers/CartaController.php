@@ -313,6 +313,63 @@ class CartaController extends Controller
         ]);
     }
 
+    // ── Adición a pedido existente ────────────────────────────────────────────
+
+    public function addItemsToOrder(Request $request, string $token)
+    {
+        abort_unless(Str::isUuid($token), 404);
+
+        $order = Order::where('tracking_token', $token)->firstOrFail();
+
+        if ($order->status === 'cancelled') {
+            return redirect()->back()->withErrors(['order' => 'No se puede adicionar a un pedido cancelado.']);
+        }
+
+        $data = $request->validate([
+            'items'             => 'required|array|min:1|max:50',
+            'items.*.dish_id'   => 'required|integer|exists:dishes,id',
+            'items.*.quantity'  => 'required|integer|min:1|max:99',
+        ]);
+
+        $totalAddition = 0;
+        $orderItems = [];
+
+        foreach ($data['items'] as $item) {
+            $dish = Dish::where('id', $item['dish_id'])->where('available', true)->first();
+            if (! $dish) continue;
+
+            $totalAddition += $dish->price * $item['quantity'];
+            $orderItems[] = [
+                'dish_id'    => $dish->id,
+                'quantity'   => $item['quantity'],
+                'unit_price' => (float) $dish->price,
+            ];
+        }
+
+        if (empty($orderItems)) {
+            return redirect()->back()->withErrors(['items' => 'Ningún plato de la adición está disponible.']);
+        }
+
+        try {
+            $order->items()->createMany($orderItems);
+            
+            // Si el pedido ya estaba listo o entregado, lo devolvemos a pending para que cocina lo vea
+            $newStatus = in_array($order->status, ['pending', 'in_kitchen', 'cooking']) ? $order->status : 'pending';
+            
+            $order->update([
+                'total' => $order->total + $totalAddition,
+                'status' => $newStatus,
+            ]);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'server_error' => 'Error Interno al adicionar: ' . $e->getMessage()
+            ]);
+        }
+
+        return redirect("/carta/pedido/{$token}")->with('success', 'Adición confirmada correctamente.');
+    }
+
     // ── Seguimiento público del pedido (vía token, sin login) ────────────────
 
     /** Métodos de pago que el cliente paga por su cuenta (no en caja/mostrador). */

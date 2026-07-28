@@ -221,13 +221,32 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                     </div>
                 )}
 
-                <a
-                    href="/carta"
-                    className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border"
-                    style={{ borderColor: `${s.primary}50`, color: s.primary }}
-                >
-                    Hacer otro pedido
-                </a>
+                {order.status !== 'cancelled' ? (
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                        <a
+                            href={`/carta?add_to=${token}`}
+                            className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border transition hover:opacity-80"
+                            style={{ borderColor: `${s.primary}50`, color: s.primary, backgroundColor: `${s.primary}15` }}
+                        >
+                            Adición
+                        </a>
+                        <a
+                            href="/carta"
+                            className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border transition hover:opacity-80"
+                            style={{ borderColor: `${s.text}20`, color: s.text }}
+                        >
+                            Nuevo pedido
+                        </a>
+                    </div>
+                ) : (
+                    <a
+                        href="/carta"
+                        className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border mt-4 transition hover:opacity-80"
+                        style={{ borderColor: `${s.primary}50`, color: s.primary }}
+                    >
+                        Hacer otro pedido
+                    </a>
+                )}
             </div>
         </div>
     );
