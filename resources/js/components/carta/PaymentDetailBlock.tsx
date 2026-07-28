@@ -5,6 +5,7 @@ interface PaymentDetail {
     tipo_cuenta?: string;
     link?: string;
     nota?: string;
+    qr_image_path?: string;
 }
 
 interface Props {
@@ -47,7 +48,17 @@ export default function PaymentDetailBlock({ method, detail, total, primary, tex
                     <span className="opacity-60">Monto a pagar: </span><strong>{fmt(total)}</strong>
                 </p>
                 {detail?.nota && <p className="text-xs opacity-60" style={{ color: text }}>{detail.nota}</p>}
-                {nequiUrl ? (
+                
+                {detail?.qr_image_path ? (
+                    <div className="mt-3">
+                        <img 
+                            src={`/storage/${detail.qr_image_path}`} 
+                            alt="QR Nequi" 
+                            className="w-full max-w-[200px] mx-auto rounded-xl border object-contain"
+                            style={{ borderColor: `${primary}30` }}
+                        />
+                    </div>
+                ) : nequiUrl ? (
                     <a
                         href={nequiUrl}
                         target="_blank"
