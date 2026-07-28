@@ -50,6 +50,15 @@ interface Props {
 
 const DIGITAL_METHODS = ['nequi', 'daviplata', 'pse', 'transferencia'];
 
+const PAYMENT_LABELS: Record<string, string> = {
+    efectivo:      'Efectivo',
+    tarjeta:       'Tarjeta',
+    nequi:         'Nequi',
+    daviplata:     'Daviplata',
+    pse:           'PSE',
+    transferencia: 'Transferencia',
+};
+
 const STEPS: { key: OrderData['status']; label: string; Icon: typeof Clock }[] = [
     { key: 'pending', label: 'Pedido recibido', Icon: Clock },
     { key: 'in_kitchen', label: 'En cocina', Icon: ChefHat },
@@ -70,6 +79,7 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
     };
 
     const [reporting, setReporting] = useState(false);
+    const [includeService, setIncludeService] = useState(true);
 
     // Refresca el estado del pedido cada 10s, mientras siga activo.
     useEffect(() => {
@@ -174,9 +184,33 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                             <span className="font-semibold shrink-0">{fmt(item.unit_price * item.quantity)}</span>
                         </div>
                     ))}
-                    <div className="border-t pt-2 flex items-center justify-between" style={{ borderColor: `${s.text}15` }}>
-                        <span className="font-semibold">Total</span>
-                        <span className="font-display font-bold text-base" style={{ color: s.primary }}>{fmt(order.total)}</span>
+                    
+                    <div className="flex items-center justify-between text-sm mt-3 pt-2 border-t" style={{ borderColor: `${s.text}15` }}>
+                        <span className="opacity-80">Subtotal</span>
+                        <span className="font-semibold">{fmt(order.total)}</span>
+                    </div>
+
+                    {!isPaid && order.status !== 'cancelled' && (
+                        <div className="flex items-center justify-between text-sm">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input 
+                                    type="checkbox" 
+                                    checked={includeService} 
+                                    onChange={(e) => setIncludeService(e.target.checked)}
+                                    className="rounded border-gray-300 focus:ring-2"
+                                    style={{ color: s.primary }}
+                                />
+                                <span className="opacity-80">Incluir Servicio (10%)</span>
+                            </label>
+                            <span className="font-semibold">{fmt(order.total * 0.10)}</span>
+                        </div>
+                    )}
+
+                    <div className="border-t pt-2 mt-2 flex items-center justify-between" style={{ borderColor: `${s.text}15` }}>
+                        <span className="font-semibold">Total a pagar</span>
+                        <span className="font-display font-bold text-base" style={{ color: s.primary }}>
+                            {fmt( (!isPaid && order.status !== 'cancelled' && includeService) ? order.total * 1.10 : order.total )}
+                        </span>
                     </div>
                 </div>
 
@@ -198,7 +232,7 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                                 <PaymentDetailBlock
                                     method={order.payment_method!}
                                     detail={settings.payment_details?.[order.payment_method!]}
-                                    total={order.total}
+                                    total={includeService ? order.total * 1.10 : order.total}
                                     primary={s.primary}
                                     text={s.text}
                                     fmt={fmt}
@@ -213,10 +247,31 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                                 </button>
                             </>
                         ) : (
-                            <div className="flex items-center gap-2 rounded-2xl border p-4" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
-                                <AlertTriangle className="h-5 w-5 opacity-50 shrink-0" />
-                                <span className="text-sm opacity-70">Pago pendiente — paga directamente en caja/mostrador</span>
-                            </div>
+                            <>
+                                <div className="flex items-center gap-2 rounded-2xl border p-4 mb-4" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
+                                    <AlertTriangle className="h-5 w-5 opacity-50 shrink-0" />
+                                    <span className="text-sm opacity-70">Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
+                                </div>
+                                {Object.keys(settings.payment_details || {}).length > 0 && (
+                                    <div className="space-y-3">
+                                        {Object.keys(settings.payment_details).map(method => (
+                                            <div key={method} className="rounded-xl border p-3" style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}03` }}>
+                                                <p className="text-xs font-bold uppercase mb-2" style={{ color: s.primary }}>
+                                                    {PAYMENT_LABELS[method] ?? method}
+                                                </p>
+                                                <PaymentDetailBlock
+                                                    method={method}
+                                                    detail={settings.payment_details[method]}
+                                                    total={includeService ? order.total * 1.10 : order.total}
+                                                    primary={s.primary}
+                                                    text={s.text}
+                                                    fmt={fmt}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 )}

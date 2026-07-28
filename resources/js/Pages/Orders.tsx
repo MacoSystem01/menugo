@@ -112,7 +112,7 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 // ── Ticket de impresión ────────────────────────────────────────────────────────
-function PrintTicket({ order }: { order: OrderRow }) {
+function PrintTicket({ order, includeService = true }: { order: OrderRow, includeService?: boolean }) {
     const { props }       = usePage<PageProps>();
     const subtotalesItems = order.items.filter(i => !i.is_addition);
     const adiciones       = order.items.filter(i => i.is_addition);
@@ -122,6 +122,9 @@ function PrintTicket({ order }: { order: OrderRow }) {
     const tenantAddress   = (props.tenant_address   as string | undefined) || '';
     const tenantPhone     = (props.tenant_phone     as string | undefined) || '';
     const logoSrc         = (props.tenant_logo_url  as string | undefined) || '/logo.png';
+    const settings        = (props.settings         as any) || {};
+    const serviceFee      = includeService ? order.total * 0.10 : 0;
+    const displayTotal    = order.total + serviceFee;
 
     return (
         <div id="menugo-print-area" style={{
@@ -320,13 +323,25 @@ function PrintTicket({ order }: { order: OrderRow }) {
                     </div>
                 )}
 
+                {/* Servicio */}
+                {includeService && (
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        paddingBottom: '8px', marginBottom: '8px',
+                        borderBottom: '1px dashed #bbb',
+                    }}>
+                        <span style={{ fontSize: '12px', color: '#555' }}>Servicio (10% sugerido)</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600' }}>{fmt(serviceFee)}</span>
+                    </div>
+                )}
+
                 {/* Total */}
                 <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     paddingBottom: '10px', borderBottom: '2px solid #1a1a1a', marginBottom: '10px',
                 }}>
-                    <span style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Total</span>
-                    <span style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.5px' }}>{fmt(order.total)}</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Total a pagar</span>
+                    <span style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.5px' }}>{fmt(displayTotal)}</span>
                 </div>
 
                 {/* Estado · Pago · Abonado */}
@@ -366,6 +381,22 @@ function PrintTicket({ order }: { order: OrderRow }) {
                         <div style={{ fontSize: '12px', color: '#444', fontStyle: 'italic', lineHeight: '1.5' }}>{order.notas}</div>
                     </div>
                 )}
+
+                {/* Opciones de pago */}
+                {Object.keys(settings?.payment_details || {}).length > 0 && (
+                    <div style={{ padding: '10px 0', borderTop: '1px dashed #bbb', marginTop: '5px' }}>
+                        <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700', marginBottom: '6px' }}>
+                            Opciones de pago
+                        </div>
+                        {Object.entries(settings.payment_details).map(([method, detail]: [string, any]) => (
+                            <div key={method} style={{ fontSize: '11px', marginBottom: '4px', lineHeight: '1.3' }}>
+                                <strong style={{ textTransform: 'uppercase' }}>{PAYMENT_LABELS[method] ?? method}:</strong>{' '}
+                                {detail.numero ? detail.numero : detail.link}
+                                {detail.titular ? ` (${detail.titular})` : ''}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* ══ PIE DE PÁGINA ════════════════════════════════════════════════ */}
@@ -381,6 +412,7 @@ function PrintTicket({ order }: { order: OrderRow }) {
 // ── Modal de impresión ─────────────────────────────────────────────────────────
 function PrintModal({ order, onClose }: { order: OrderRow; onClose: () => void }) {
     const ticketRef = useRef<HTMLDivElement>(null);
+    const [includeService, setIncludeService] = useState(true);
 
     // Inyectar CSS de impresión al montar
     useEffect(() => {
@@ -409,7 +441,7 @@ function PrintModal({ order, onClose }: { order: OrderRow; onClose: () => void }
         <>
             {/* Portal de impresión — invisible en pantalla, visible al imprimir */}
             <div id="menugo-print-portal" style={{ display: 'none' }}>
-                <PrintTicket order={order} />
+                <PrintTicket order={order} includeService={includeService} />
             </div>
 
             {/* Modal de previsualización */}
@@ -427,7 +459,17 @@ function PrintModal({ order, onClose }: { order: OrderRow; onClose: () => void }
                             </h2>
                             <p className="text-xs text-white/50 mt-0.5">Revisa el ticket antes de imprimir</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-1.5 text-white/90 text-sm cursor-pointer select-none">
+                                <input 
+                                    type="checkbox" 
+                                    checked={includeService} 
+                                    onChange={(e) => setIncludeService(e.target.checked)}
+                                    className="rounded border-white/20 bg-black/50 text-amber-500 focus:ring-0"
+                                />
+                                Incluir Servicio (10%)
+                            </label>
+                            <div className="w-px h-6 bg-white/20"></div>
                             <button
                                 onClick={() => window.print()}
                                 className="inline-flex items-center gap-2 rounded-xl bg-white text-gray-900 px-5 py-2.5 text-sm font-bold hover:bg-gray-100 transition-colors shadow-lg"
@@ -453,7 +495,7 @@ function PrintModal({ order, onClose }: { order: OrderRow; onClose: () => void }
                             padding: '28px 24px',
                         }}
                     >
-                        <PrintTicket order={order} />
+                        <PrintTicket order={order} includeService={includeService} />
                     </div>
 
                     {/* Nota de impresión */}
