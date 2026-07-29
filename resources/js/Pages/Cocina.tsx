@@ -59,22 +59,24 @@ function ItemList({
     interactive,
     checked,
     onToggle,
+    strikeOriginals = false,
 }: {
     items: OrderItem[];
     interactive: boolean;
     checked: Record<string, boolean>;
     onToggle: (item: OrderItem) => void;
+    strikeOriginals?: boolean;
 }) {
     return (
         <div className="space-y-1.5">
             {items.map((item) => {
                 const key  = String(item.id);
                 // En modo interactivo usa el estado local del checkbox.
-                // En modo no-interactivo (columna Listo): ítems originales siempre "done",
-                // adiciones según su is_prepared real.
+                // Si strikeOriginals es true (columna Listo): ítems originales siempre "done",
+                // de lo contrario solo si is_prepared es true.
                 const done = interactive
                     ? (checked[key] ?? item.is_prepared)
-                    : (!item.is_addition || (checked[key] ?? item.is_prepared));
+                    : (strikeOriginals ? (!item.is_addition || (checked[key] ?? item.is_prepared)) : (checked[key] ?? item.is_prepared));
 
                 return (
                     <div
@@ -272,6 +274,7 @@ function KdsCard({
                     interactive={interactive}
                     checked={checked}
                     onToggle={onToggle}
+                    strikeOriginals={!interactive}
                 />
             </div>
 
