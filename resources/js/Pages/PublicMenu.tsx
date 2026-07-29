@@ -414,8 +414,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         ? tables.find(t => String(t.id) === form.table_id) ?? null
         : null;
     const tableIsOccupied = selectedTable?.has_active_orders ?? false;
-    const canSubmit = additionToken 
-        ? true 
+    const canSubmit = additionToken
+        ? true
         : ((!tableIsOccupied || occupiedConfirmed) && !belowMinOrder);
 
     function submitOrder() {
@@ -1233,169 +1233,194 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium" style={{ color: s.text }}>Tipo de entrega</label>
                                         <div className={`grid gap-2 ${allowedDeliveryTypes.length === 3 ? 'grid-cols-3' : allowedDeliveryTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                                    {([
-                                        { val: 'mostrador' as const, Icon: Package, label: 'Mostrador' },
-                                        { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
-                                        { val: 'domicilio' as const, Icon: Bike, label: 'Domicilio' },
-                                    ]).filter(o => allowedDeliveryTypes.includes(o.val)).map(({ val, Icon, label }) => (
-                                        <button
-                                            key={val}
-                                            type="button"
-                                            onClick={() => {
-                                                setForm(f => ({
-                                                    ...f,
-                                                    type: val,
-                                                    // Auto-seleccionar zona única al cambiar a domicilio
-                                                    delivery_zone_idx: val === 'domicilio' && deliveryZones.length === 1 ? 0 : null,
-                                                }));
-                                                if (errors.type) setErrors(e => { const n = { ...e }; delete n.type; return n; });
-                                            }}
-                                            className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border text-xs font-medium transition-colors"
-                                            style={{
-                                                borderColor: form.type === val ? s.primary : `${s.text}20`,
-                                                backgroundColor: form.type === val ? `${s.primary}15` : 'transparent',
-                                                color: form.type === val ? s.primary : s.text,
-                                            }}
-                                        >
-                                            <Icon className="h-4 w-4" />
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Mesa */}
-                            {form.type === 'mesa' && (
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium" style={{ color: s.text }}>Mesa</label>
-                                    {tables.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            {tables.map(t => {
-                                                const isSelected = form.table_id === String(t.id);
-                                                const occupied = t.has_active_orders;
-                                                return (
-                                                    <button
-                                                        key={t.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setField('table_id', String(t.id));
-                                                            setOccupiedConfirmed(false);
-                                                        }}
-                                                        className="relative h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
-                                                        style={{
-                                                            borderColor: isSelected ? s.primary : occupied ? '#f97316' : `${s.text}20`,
-                                                            backgroundColor: isSelected ? `${s.primary}20` : occupied ? 'rgba(249,115,22,0.08)' : 'transparent',
-                                                            color: isSelected ? s.primary : occupied ? '#f97316' : s.text,
-                                                        }}
-                                                    >
-                                                        {t.number}
-                                                        {occupied && (
-                                                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500" />
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
+                                            {([
+                                                { val: 'mostrador' as const, Icon: Package, label: 'Mostrador' },
+                                                { val: 'mesa' as const, Icon: UtensilsCrossed, label: 'Mesa' },
+                                                { val: 'domicilio' as const, Icon: Bike, label: 'Domicilio' },
+                                            ]).filter(o => allowedDeliveryTypes.includes(o.val)).map(({ val, Icon, label }) => (
+                                                <button
+                                                    key={val}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setForm(f => ({
+                                                            ...f,
+                                                            type: val,
+                                                            // Auto-seleccionar zona única al cambiar a domicilio
+                                                            delivery_zone_idx: val === 'domicilio' && deliveryZones.length === 1 ? 0 : null,
+                                                        }));
+                                                        if (errors.type) setErrors(e => { const n = { ...e }; delete n.type; return n; });
+                                                    }}
+                                                    className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border text-xs font-medium transition-colors"
+                                                    style={{
+                                                        borderColor: form.type === val ? s.primary : `${s.text}20`,
+                                                        backgroundColor: form.type === val ? `${s.primary}15` : 'transparent',
+                                                        color: form.type === val ? s.primary : s.text,
+                                                    }}
+                                                >
+                                                    <Icon className="h-4 w-4" />
+                                                    {label}
+                                                </button>
+                                            ))}
                                         </div>
-                                    ) : (
-                                        <p className="text-xs opacity-50" style={{ color: s.text }}>
-                                            No hay mesas registradas.
-                                        </p>
+                                    </div>
+
+                                    {/* Mesa */}
+                                    {form.type === 'mesa' && (
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium" style={{ color: s.text }}>Mesa</label>
+                                            {tables.length > 0 ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {tables.map(t => {
+                                                        const isSelected = form.table_id === String(t.id);
+                                                        const occupied = t.has_active_orders;
+                                                        return (
+                                                            <button
+                                                                key={t.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setField('table_id', String(t.id));
+                                                                    setOccupiedConfirmed(false);
+                                                                }}
+                                                                className="relative h-10 w-10 rounded-xl border text-sm font-semibold transition-colors"
+                                                                style={{
+                                                                    borderColor: isSelected ? s.primary : occupied ? '#f97316' : `${s.text}20`,
+                                                                    backgroundColor: isSelected ? `${s.primary}20` : occupied ? 'rgba(249,115,22,0.08)' : 'transparent',
+                                                                    color: isSelected ? s.primary : occupied ? '#f97316' : s.text,
+                                                                }}
+                                                            >
+                                                                {t.number}
+                                                                {occupied && (
+                                                                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500" />
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs opacity-50" style={{ color: s.text }}>
+                                                    No hay mesas registradas.
+                                                </p>
+                                            )}
+
+                                            {/* Aviso de mesa ocupada */}
+                                            {tableIsOccupied && (
+                                                <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-3 space-y-2">
+                                                    <p className="text-xs font-semibold text-orange-500">
+                                                        ⚠️ Esta mesa ya tiene un pedido activo.
+                                                    </p>
+                                                    <p className="text-xs" style={{ color: s.text, opacity: 0.7 }}>
+                                                        Para agregar productos al pedido en curso, comunícate con el personal. Si deseas hacer un pedido nuevo e independiente, confírmalo.
+                                                    </p>
+                                                    {!occupiedConfirmed ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOccupiedConfirmed(true)}
+                                                            className="w-full rounded-lg border border-orange-500/60 py-1.5 text-xs font-semibold text-orange-500 hover:bg-orange-500/10 transition-colors"
+                                                        >
+                                                            Confirmar pedido nuevo e independiente
+                                                        </button>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-400">
+                                                            <Check className="h-3.5 w-3.5" /> Confirmado — se creará un pedido nuevo
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {errors.table_id && <p className="text-xs text-red-500">{errors.table_id}</p>}
+                                        </div>
                                     )}
 
-                                    {/* Aviso de mesa ocupada */}
-                                    {tableIsOccupied && (
-                                        <div className="rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-3 space-y-2">
-                                            <p className="text-xs font-semibold text-orange-500">
-                                                ⚠️ Esta mesa ya tiene un pedido activo.
-                                            </p>
-                                            <p className="text-xs" style={{ color: s.text, opacity: 0.7 }}>
-                                                Para agregar productos al pedido en curso, comunícate con el personal. Si deseas hacer un pedido nuevo e independiente, confírmalo.
-                                            </p>
-                                            {!occupiedConfirmed ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setOccupiedConfirmed(true)}
-                                                    className="w-full rounded-lg border border-orange-500/60 py-1.5 text-xs font-semibold text-orange-500 hover:bg-orange-500/10 transition-colors"
-                                                >
-                                                    Confirmar pedido nuevo e independiente
-                                                </button>
-                                            ) : (
-                                                <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-400">
-                                                    <Check className="h-3.5 w-3.5" /> Confirmado — se creará un pedido nuevo
-                                                </div>
+                                    {/* Dirección domicilio */}
+                                    {form.type === 'domicilio' && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium flex items-center gap-1.5" style={{ color: s.text }}>
+                                                <MapPin className="h-3.5 w-3.5" />
+                                                Dirección de entrega
+                                            </label>
+
+                                            <input
+                                                ref={addressInputRef}
+                                                type="text"
+                                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                                style={{
+                                                    borderColor: errors.delivery_address ? '#ef4444' : `${s.text}25`,
+                                                    backgroundColor: `${s.text}06`,
+                                                    color: s.text,
+                                                }}
+                                                placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
+                                                value={form.delivery_address}
+                                                onChange={handleAddressInput}
+                                                autoComplete="off"
+                                            />
+
+                                            {errors.delivery_address && (
+                                                <p className="text-xs text-red-500">{errors.delivery_address}</p>
                                             )}
                                         </div>
                                     )}
 
-                                    {errors.table_id && <p className="text-xs text-red-500">{errors.table_id}</p>}
-                                </div>
-                            )}
-
-                            {/* Dirección domicilio */}
-                            {form.type === 'domicilio' && (
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium flex items-center gap-1.5" style={{ color: s.text }}>
-                                        <MapPin className="h-3.5 w-3.5" />
-                                        Dirección de entrega
-                                    </label>
-
-                                    <input
-                                        ref={addressInputRef}
-                                        type="text"
-                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                        style={{
-                                            borderColor: errors.delivery_address ? '#ef4444' : `${s.text}25`,
-                                            backgroundColor: `${s.text}06`,
-                                            color: s.text,
-                                        }}
-                                        placeholder="Ej: Cra 15 # 23-45, Barrio Los Álamos, Cali"
-                                        value={form.delivery_address}
-                                        onChange={handleAddressInput}
-                                        autoComplete="off"
-                                    />
-
-                                    {errors.delivery_address && (
-                                        <p className="text-xs text-red-500">{errors.delivery_address}</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Costo de domicilio - asignado automáticamente por el sistema */}
-                            {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
-                                <div className="space-y-2">
-                                    {selectedZone && (
-                                        <>
-                                            <label className="text-sm font-medium" style={{ color: s.text }}>
-                                                Costo máximo del domicilio
-                                            </label>
-                                            <div
-                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
-                                                style={{
-                                                    borderColor: s.primary,
-                                                    backgroundColor: `${s.primary}12`,
-                                                    color: s.text,
-                                                }}
-                                            >
-                                                <span className="flex items-center gap-2">
-                                                    <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
-                                                    <span>
-                                                        <span className="font-medium">{selectedZone.label}</span>
-                                                        {deliveryZones.length > 1 && (
-                                                            <span className="opacity-55 ml-2 text-xs">
-                                                                {selectedZone.min_km}–{selectedZone.max_km} km
+                                    {/* Costo de domicilio - asignado automáticamente por el sistema */}
+                                    {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length > 0 && (
+                                        <div className="space-y-2">
+                                            {selectedZone && (
+                                                <>
+                                                    <label className="text-sm font-medium" style={{ color: s.text }}>
+                                                        Costo máximo del domicilio
+                                                    </label>
+                                                    <div
+                                                        className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm"
+                                                        style={{
+                                                            borderColor: s.primary,
+                                                            backgroundColor: `${s.primary}12`,
+                                                            color: s.text,
+                                                        }}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <Check className="h-3.5 w-3.5 shrink-0" style={{ color: s.primary }} />
+                                                            <span>
+                                                                <span className="font-medium">{selectedZone.label}</span>
+                                                                {deliveryZones.length > 1 && (
+                                                                    <span className="opacity-55 ml-2 text-xs">
+                                                                        {selectedZone.min_km}–{selectedZone.max_km} km
+                                                                    </span>
+                                                                )}
                                                             </span>
-                                                        )}
-                                                    </span>
-                                                </span>
-                                                <span className="font-bold shrink-0" style={{ color: s.primary }}>
-                                                    {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
-                                                </span>
-                                            </div>
-                                        </>
+                                                        </span>
+                                                        <span className="font-bold shrink-0" style={{ color: s.primary }}>
+                                                            {selectedZone.price === 0 ? 'Gratis' : fmt(selectedZone.price)}
+                                                        </span>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Pedido mínimo */}
+                                            {deliveryMinOrder > 0 && (
+                                                <div
+                                                    className="rounded-xl px-3 py-2 text-xs font-medium"
+                                                    style={{
+                                                        backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
+                                                        color: belowMinOrder ? '#ef4444' : s.text,
+                                                        opacity: belowMinOrder ? 1 : 0.65,
+                                                        border: belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                                                    }}
+                                                >
+                                                    {belowMinOrder
+                                                        ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
+                                                        : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
+                                                    }
+                                                </div>
+                                            )}
+
+                                            {/* Error backend de pedido mínimo */}
+                                            {errors.delivery_min_order && (
+                                                <p className="text-xs text-red-500">{errors.delivery_min_order}</p>
+                                            )}
+                                        </div>
                                     )}
 
-                                    {/* Pedido mínimo */}
-                                    {deliveryMinOrder > 0 && (
+                                    {/* Pedido mínimo (cuando no hay zonas pero sí hay mínimo) */}
+                                    {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length === 0 && deliveryMinOrder > 0 && (
                                         <div
                                             className="rounded-xl px-3 py-2 text-xs font-medium"
                                             style={{
@@ -1412,94 +1437,69 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                         </div>
                                     )}
 
-                                    {/* Error backend de pedido mínimo */}
-                                    {errors.delivery_min_order && (
-                                        <p className="text-xs text-red-500">{errors.delivery_min_order}</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Pedido mínimo (cuando no hay zonas pero sí hay mínimo) */}
-                            {form.type === 'domicilio' && deliveryEnabled && deliveryZones.length === 0 && deliveryMinOrder > 0 && (
-                                <div
-                                    className="rounded-xl px-3 py-2 text-xs font-medium"
-                                    style={{
-                                        backgroundColor: belowMinOrder ? 'rgba(239,68,68,0.1)' : `${s.text}08`,
-                                        color: belowMinOrder ? '#ef4444' : s.text,
-                                        opacity: belowMinOrder ? 1 : 0.65,
-                                        border: belowMinOrder ? '1px solid rgba(239,68,68,0.35)' : 'none',
-                                    }}
-                                >
-                                    {belowMinOrder
-                                        ? `⚠ Mínimo para domicilio: ${fmt(deliveryMinOrder)} — faltan ${fmt(deliveryMinOrder - totalPrice)}`
-                                        : `Pedido mínimo para domicilio: ${fmt(deliveryMinOrder)}`
-                                    }
-                                </div>
-                            )}
-
-                            {/* Nombre — para todos los pedidos */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>
-                                    Nombre del cliente <span style={{ color: s.primary }}>*</span>
-                                </label>
-                                    <input
-                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                        style={{
-                                            borderColor: errors.customer_name ? '#ef4444' : `${s.text}25`,
-                                            backgroundColor: `${s.text}06`,
-                                            color: s.text,
-                                        }}
-                                        placeholder="Nombre del cliente"
-                                        value={form.customer_name}
-                                        onChange={e => setField('customer_name', e.target.value)}
-                                    />
-                                    {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
-                                </div>
-
-                            {/* Teléfono — solo para Domicilio */}
-                            {form.type === 'domicilio' && (
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium" style={{ color: s.text }}>
-                                        Número de contacto <span style={{ color: s.primary }}>*</span>
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
-                                        style={{
-                                            borderColor: errors.customer_phone ? '#ef4444' : `${s.text}25`,
-                                            backgroundColor: `${s.text}06`,
-                                            color: s.text,
-                                        }}
-                                        placeholder="3001234567"
-                                        value={form.customer_phone}
-                                        onChange={e => setField('customer_phone', e.target.value)}
-                                    />
-                                    {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
-                                </div>
-                            )}
-
-                            {/* Método de pago */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium" style={{ color: s.text }}>Método de pago</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {payMethods.map(method => (
-                                        <button
-                                            key={method}
-                                            type="button"
-                                            onClick={() => setField('payment_method', method)}
-                                            className="h-9 px-4 rounded-full border text-sm font-medium transition-colors"
+                                    {/* Nombre — para todos los pedidos */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium" style={{ color: s.text }}>
+                                            Nombre del cliente <span style={{ color: s.primary }}>*</span>
+                                        </label>
+                                        <input
+                                            className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
                                             style={{
-                                                borderColor: form.payment_method === method ? s.primary : `${s.text}20`,
-                                                backgroundColor: form.payment_method === method ? `${s.primary}15` : 'transparent',
-                                                color: form.payment_method === method ? s.primary : s.text,
+                                                borderColor: errors.customer_name ? '#ef4444' : `${s.text}25`,
+                                                backgroundColor: `${s.text}06`,
+                                                color: s.text,
                                             }}
-                                        >
-                                            {PAYMENT_LABELS[method] ?? method}
-                                        </button>
-                                    ))}
-                                </div>
-                                {errors.payment_method && <p className="text-xs text-red-500">{errors.payment_method}</p>}
-                            </div>
+                                            placeholder="Nombre del cliente"
+                                            value={form.customer_name}
+                                            onChange={e => setField('customer_name', e.target.value)}
+                                        />
+                                        {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
+                                    </div>
+
+                                    {/* Teléfono — solo para Domicilio */}
+                                    {form.type === 'domicilio' && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium" style={{ color: s.text }}>
+                                                Número de contacto <span style={{ color: s.primary }}>*</span>
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                className="w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none"
+                                                style={{
+                                                    borderColor: errors.customer_phone ? '#ef4444' : `${s.text}25`,
+                                                    backgroundColor: `${s.text}06`,
+                                                    color: s.text,
+                                                }}
+                                                placeholder="3001234567"
+                                                value={form.customer_phone}
+                                                onChange={e => setField('customer_phone', e.target.value)}
+                                            />
+                                            {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* Método de pago */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium" style={{ color: s.text }}>Método de pago</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {payMethods.map(method => (
+                                                <button
+                                                    key={method}
+                                                    type="button"
+                                                    onClick={() => setField('payment_method', method)}
+                                                    className="h-9 px-4 rounded-full border text-sm font-medium transition-colors"
+                                                    style={{
+                                                        borderColor: form.payment_method === method ? s.primary : `${s.text}20`,
+                                                        backgroundColor: form.payment_method === method ? `${s.primary}15` : 'transparent',
+                                                        color: form.payment_method === method ? s.primary : s.text,
+                                                    }}
+                                                >
+                                                    {PAYMENT_LABELS[method] ?? method}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {errors.payment_method && <p className="text-xs text-red-500">{errors.payment_method}</p>}
+                                    </div>
                                 </>
                             )}
 
@@ -1739,63 +1739,63 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             <p className="text-sm opacity-65 mb-2" style={{ color: s.text }}>
                                 Gracias, {success.name}. Tu pedido ha sido recibido.
                             </p>
-                        
-                        <div className="flex flex-col items-center gap-1 mb-3">
-                            <label className="flex items-center gap-2 cursor-pointer select-none text-xs" style={{ color: s.text }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={includeServiceModal} 
-                                    onChange={(e) => setIncludeServiceModal(e.target.checked)}
-                                    className="rounded border-gray-300 focus:ring-2"
-                                    style={{ color: s.primary }}
-                                />
-                                <span className="opacity-80">Incluir Servicio (10%)</span>
-                            </label>
-                            <p className="font-display text-2xl font-bold" style={{ color: s.primary }}>
-                                {fmt(includeServiceModal ? success.total * 1.10 : success.total)}
-                            </p>
-                        </div>
 
-                        {/* Número de turno — solo para pedidos de mostrador */}
-                        {success.turnNumber && (
-                            <div
-                                className="w-full mb-3 rounded-2xl py-3 text-center"
-                                style={{ backgroundColor: `${s.primary}12`, border: `2px solid ${s.primary}30` }}
-                            >
-                                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: s.primary, opacity: 0.7 }}>
-                                    Tu número de turno
-                                </p>
-                                <p className="font-display text-4xl font-black leading-none" style={{ color: s.primary }}>
-                                    #{success.turnNumber}
-                                </p>
-                                <p className="text-[10px] mt-1" style={{ color: s.text, opacity: 0.55 }}>
-                                    Te llamamos cuando esté listo
+                            <div className="flex flex-col items-center gap-1 mb-3">
+                                <label className="flex items-center gap-2 cursor-pointer select-none text-xs" style={{ color: s.text }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={includeServiceModal}
+                                        onChange={(e) => setIncludeServiceModal(e.target.checked)}
+                                        className="rounded border-gray-300 focus:ring-2"
+                                        style={{ color: s.primary }}
+                                    />
+                                    <span className="opacity-80">Incluir Servicio (10%)</span>
+                                </label>
+                                <p className="font-display text-2xl font-bold" style={{ color: s.primary }}>
+                                    {fmt(includeServiceModal ? success.total * 1.10 : success.total)}
                                 </p>
                             </div>
-                        )}
 
-                        {/* Bloque de pagos */}
-                        <div className="text-left mb-4 space-y-2">
-                            <div className="flex items-center gap-2 rounded-xl border p-2 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
-                                <AlertTriangle className="h-3.5 w-3.5 opacity-50 shrink-0" style={{ color: s.text }} />
-                                <span className="text-[11px] opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
-                            </div>
-                            {Object.keys(settings.payment_details || {}).length > 0 && (
-                                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                                    {Object.keys(settings.payment_details).map(method => (
-                                        <PaymentDetailBlock
-                                            key={method}
-                                            method={method}
-                                            detail={settings.payment_details[method]}
-                                            total={includeServiceModal ? success.total * 1.10 : success.total}
-                                            primary={s.primary}
-                                            text={s.text}
-                                            fmt={fmt}
-                                        />
-                                    ))}
+                            {/* Número de turno — solo para pedidos de mostrador */}
+                            {success.turnNumber && (
+                                <div
+                                    className="w-full mb-3 rounded-2xl py-3 text-center"
+                                    style={{ backgroundColor: `${s.primary}12`, border: `2px solid ${s.primary}30` }}
+                                >
+                                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: s.primary, opacity: 0.7 }}>
+                                        Tu número de turno
+                                    </p>
+                                    <p className="font-display text-4xl font-black leading-none" style={{ color: s.primary }}>
+                                        #{success.turnNumber}
+                                    </p>
+                                    <p className="text-[10px] mt-1" style={{ color: s.text, opacity: 0.55 }}>
+                                        Te llamamos cuando esté listo
+                                    </p>
                                 </div>
                             )}
-                        </div>
+
+                            {/* Bloque de pagos */}
+                            <div className="text-left mb-4 space-y-2">
+                                <div className="flex items-center gap-2 rounded-xl border p-2 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
+                                    <AlertTriangle className="h-3.5 w-3.5 opacity-50 shrink-0" style={{ color: s.text }} />
+                                    <span className="text-[11px] opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — Realiza el pago en caja o transfiere a uno de estos medios:</span>
+                                </div>
+                                {Object.keys(settings.payment_details || {}).length > 0 && (
+                                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                                        {Object.keys(settings.payment_details).map(method => (
+                                            <PaymentDetailBlock
+                                                key={method}
+                                                method={method}
+                                                detail={settings.payment_details[method]}
+                                                total={includeServiceModal ? success.total * 1.10 : success.total}
+                                                primary={s.primary}
+                                                text={s.text}
+                                                fmt={fmt}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
 
                         </div> {/* Close flex-1 overflow-y-auto */}
 

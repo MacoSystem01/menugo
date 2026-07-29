@@ -250,6 +250,18 @@ function KdsCard({
                 </div>
             </div>
 
+            {/* Mostrar nombre de cliente y método de pago solo si no está listo */}
+            {order.status !== 'ready' && (
+                <p className="text-xs text-muted-foreground mb-2">
+                    {order.customer_name}
+                    {order.payment_method && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded-md bg-muted text-xs">
+                            {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}
+                        </span>
+                    )}
+                </p>
+            )}
+
             {/* Barra de progreso */}
             <ItemProgress total={order.items.length} done={doneCnt} />
 
