@@ -1719,28 +1719,29 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             {/* ── Modal de éxito ── */}
             {success && (
                 <div
-                    className="fixed inset-0 z-40 flex items-center justify-center p-6"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}
                 >
                     <div
-                        className="w-full max-w-md rounded-3xl p-6 md:p-8 text-center shadow-2xl"
+                        className="w-full max-w-sm rounded-3xl p-5 md:p-6 text-center shadow-2xl flex flex-col max-h-[90vh]"
                         style={{ backgroundColor: s.bg }}
                     >
-                        <div
-                            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
-                            style={{ backgroundColor: `${s.primary}20` }}
-                        >
-                            <Check className="h-8 w-8" style={{ color: s.primary }} />
-                        </div>
-                        <h2 className="font-display text-2xl font-bold mb-1" style={{ color: s.text }}>
-                            ¡Pedido enviado!
-                        </h2>
-                        <p className="text-sm opacity-65 mb-3" style={{ color: s.text }}>
-                            Gracias, {success.name}. Tu pedido ha sido recibido.
-                        </p>
+                        <div className="flex-1 overflow-y-auto">
+                            <div
+                                className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+                                style={{ backgroundColor: `${s.primary}20` }}
+                            >
+                                <Check className="h-6 w-6" style={{ color: s.primary }} />
+                            </div>
+                            <h2 className="font-display text-xl font-bold mb-1" style={{ color: s.text }}>
+                                ¡Pedido enviado!
+                            </h2>
+                            <p className="text-sm opacity-65 mb-2" style={{ color: s.text }}>
+                                Gracias, {success.name}. Tu pedido ha sido recibido.
+                            </p>
                         
-                        <div className="flex flex-col items-center gap-1 mb-4">
-                            <label className="flex items-center gap-2 cursor-pointer select-none text-sm" style={{ color: s.text }}>
+                        <div className="flex flex-col items-center gap-1 mb-3">
+                            <label className="flex items-center gap-2 cursor-pointer select-none text-xs" style={{ color: s.text }}>
                                 <input 
                                     type="checkbox" 
                                     checked={includeServiceModal} 
@@ -1750,7 +1751,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 />
                                 <span className="opacity-80">Incluir Servicio (10%)</span>
                             </label>
-                            <p className="font-display text-3xl font-bold" style={{ color: s.primary }}>
+                            <p className="font-display text-2xl font-bold" style={{ color: s.primary }}>
                                 {fmt(includeServiceModal ? success.total * 1.10 : success.total)}
                             </p>
                         </div>
@@ -1758,16 +1759,16 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                         {/* Número de turno — solo para pedidos de mostrador */}
                         {success.turnNumber && (
                             <div
-                                className="w-full mb-4 rounded-2xl py-4 text-center"
+                                className="w-full mb-3 rounded-2xl py-3 text-center"
                                 style={{ backgroundColor: `${s.primary}12`, border: `2px solid ${s.primary}30` }}
                             >
-                                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: s.primary, opacity: 0.7 }}>
+                                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: s.primary, opacity: 0.7 }}>
                                     Tu número de turno
                                 </p>
-                                <p className="font-display text-6xl font-black leading-none" style={{ color: s.primary }}>
+                                <p className="font-display text-4xl font-black leading-none" style={{ color: s.primary }}>
                                     #{success.turnNumber}
                                 </p>
-                                <p className="text-xs mt-2" style={{ color: s.text, opacity: 0.55 }}>
+                                <p className="text-[10px] mt-1" style={{ color: s.text, opacity: 0.55 }}>
                                     Te llamamos cuando esté listo
                                 </p>
                             </div>
@@ -1775,12 +1776,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         {/* Bloque de pagos */}
                         <div className="text-left mb-4 space-y-2">
-                            <div className="flex items-center gap-2 rounded-xl border p-2.5 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
-                                <AlertTriangle className="h-4 w-4 opacity-50 shrink-0" style={{ color: s.text }} />
-                                <span className="text-xs opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
+                            <div className="flex items-center gap-2 rounded-xl border p-2 mb-1" style={{ borderColor: `${s.text}20`, backgroundColor: `${s.text}05` }}>
+                                <AlertTriangle className="h-3.5 w-3.5 opacity-50 shrink-0" style={{ color: s.text }} />
+                                <span className="text-[11px] opacity-70 leading-snug" style={{ color: s.text }}>Pago pendiente — abona en caja o transfiere a uno de estos medios:</span>
                             </div>
                             {Object.keys(settings.payment_details || {}).length > 0 && (
-                                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
                                     {Object.keys(settings.payment_details).map(method => (
                                         <PaymentDetailBlock
                                             key={method}
@@ -1796,11 +1797,13 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                             )}
                         </div>
 
+                        </div> {/* Close flex-1 overflow-y-auto */}
+
                         {/* Link de seguimiento del pedido */}
                         {success.trackingToken && (
                             <a
                                 href={`/carta/pedido/${success.trackingToken}`}
-                                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold mb-3"
+                                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-[13px] font-bold mb-2 shrink-0"
                                 style={{ backgroundColor: s.primary, color: '#ffffff' }}
                             >
                                 Seguir mi pedido →
@@ -1809,7 +1812,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
 
                         <button
                             onClick={() => setSuccess(null)}
-                            className="w-full py-3 rounded-2xl text-sm font-semibold"
+                            className="w-full py-2.5 rounded-xl text-[13px] font-semibold shrink-0"
                             style={{
                                 backgroundColor: ['nequi', 'daviplata', 'pse', 'transferencia'].includes(success.paymentMethod) ? 'transparent' : s.primary,
                                 color: ['nequi', 'daviplata', 'pse', 'transferencia'].includes(success.paymentMethod) ? s.primary : '#ffffff',
