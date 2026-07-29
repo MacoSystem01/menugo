@@ -446,14 +446,14 @@ export default function Cocina({ orders, recientes }: Props) {
                                 )}
                                 <button
                                     onClick={() => router.post(
-                                        order.tipo === 'mostrador'
+                                        order.tipo === 'mostrador' || isPuesto
                                             ? `/cocina/${order.id}/listo`
                                             : `/cocina/${order.id}/aceptar`
                                     )}
                                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-cyan-500 py-2 text-xs font-semibold text-white hover:bg-cyan-600 transition-colors"
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5" />
-                                    {order.tipo === 'mostrador' ? 'Marcar listo' : 'Preparar adición'}
+                                    {order.tipo === 'mostrador' || isPuesto ? 'Marcar listo' : 'Preparar adición'}
                                 </button>
                                 <div className="mt-2 pt-2 border-t border-border/20">
                                     <button
@@ -525,14 +525,14 @@ export default function Cocina({ orders, recientes }: Props) {
                                 )}
                                 <button
                                     onClick={() => router.post(
-                                        order.tipo === 'mostrador'
+                                        order.tipo === 'mostrador' || isPuesto
                                             ? `/cocina/${order.id}/listo`
                                             : `/cocina/${order.id}/aceptar`
                                     )}
                                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-orange-500 py-2 text-xs font-semibold text-white hover:bg-orange-600 transition-colors"
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5" />
-                                    {order.tipo === 'mostrador' ? 'Marcar listo' : 'Aceptar pedido'}
+                                    {order.tipo === 'mostrador' || isPuesto ? 'Marcar listo' : 'Aceptar pedido'}
                                 </button>
                                 <div className="mt-2 pt-2 border-t border-border/20">
                                     <button
