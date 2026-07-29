@@ -382,8 +382,14 @@ export default function Cocina({ orders, recientes }: Props) {
 
     const byStatus = (status: string) => orders.filter(o => o.status === status);
 
-    const pendingFresh    = byStatus('pending').filter(o => !o.es_adicion);
-    const pendingAdiccion = byStatus('pending').filter(o => o.es_adicion);
+    // Consideramos una "Adición a pedido" (separada en su propia caja) SOLO si 
+    // el pedido ya había sido entregado antes (es decir, tiene items ya cocinados).
+    // Si no tiene ningún item cocinado, es un pedido 100% nuevo que el cocinero aún no ha empezado,
+    // y debe mostrarse en "Nuevos pedidos" completo.
+    const isReopenedAddition = (o: KitchenOrder) => o.es_adicion && o.items.some(i => i.is_cooked);
+
+    const pendingFresh    = byStatus('pending').filter(o => !isReopenedAddition(o));
+    const pendingAdiccion = byStatus('pending').filter(o => isReopenedAddition(o));
 
     const visibleColumns = isPuesto
         ? COLUMNS.filter(c => c.key === 'ready')
@@ -402,7 +408,7 @@ export default function Cocina({ orders, recientes }: Props) {
                         <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-cyan-500/15 text-cyan-400">
                             {pendingAdiccion.length}
                         </span>
-                        <span className="text-xs text-cyan-400/60 ml-1">· Solo los ítems nuevos a preparar</span>
+                        <span className="text-xs text-cyan-400/60 ml-1">· Adiciones a pedidos ya entregados</span>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {pendingAdiccion.map(order => (
@@ -500,6 +506,11 @@ export default function Cocina({ orders, recientes }: Props) {
                                                     : <><Bike className="h-3 w-3" /> Domicilio</>
                                             }
                                         </span>
+                                        {order.es_adicion && (
+                                            <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 uppercase tracking-wide">
+                                                Adición
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                         <Clock className="h-3 w-3" /> {order.tiempo}
