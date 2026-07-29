@@ -37,7 +37,7 @@ class CocinaController extends Controller
                 // Solo los ítems que aún no han sido cocinados/entregados.
                 // is_cooked se marca true en markDelivered(), de modo que adiciones
                 // posteriores arrancan con is_cooked = false y nunca se repiten.
-                $itemsParaCocina = $o->items->where('is_cooked', false)->values();
+                $itemsParaCocina = $o->items; // Send all items to show their status
 
                 // Es una adición si el pedido tiene ítems marcados explícitamente como adición.
                 $esAdicion = $o->items->where('is_addition', true)->isNotEmpty();
@@ -59,7 +59,8 @@ class CocinaController extends Controller
                         'notes'       => $i->notes,
                         'is_addition' => (bool) $i->is_addition,
                         'is_prepared' => (bool) $i->is_prepared,
-                    ]),
+                        'is_cooked'   => (bool) $i->is_cooked,
+                    ])->values(),
                     'tiempo'         => $o->created_at->diffForHumans(short: true),
                     'created_at'     => $o->created_at->format('H:i'),
                 ];

@@ -11,6 +11,7 @@ interface OrderItem {
     notes: string | null;
     is_addition: boolean;
     is_prepared: boolean;
+    is_cooked: boolean;
 }
 
 interface KitchenOrder {
@@ -43,9 +44,9 @@ interface Props {
 }
 
 const COLUMNS = [
-    { key: 'in_kitchen', label: 'En espera',  color: 'border-yellow-500/40 bg-yellow-500/5', badge: 'bg-yellow-500/15 text-yellow-400' },
-    { key: 'cooking',    label: 'Cocinando',  color: 'border-primary/40 bg-primary/5',      badge: 'bg-primary/15 text-primary' },
-    { key: 'ready',      label: 'Listo',      color: 'border-accent/40 bg-accent/5',        badge: 'bg-accent/15 text-accent' },
+    { key: 'in_kitchen', label: 'En espera', color: 'border-orange-500/40 bg-orange-500/5', badge: 'bg-orange-500/15 text-orange-400' },
+    { key: 'cooking', label: 'Cocinando', color: 'border-primary/40 bg-primary/5', badge: 'bg-primary/15 text-primary' },
+    { key: 'ready', label: 'Listo', color: 'border-green-500/40 bg-green-500/5', badge: 'bg-green-500/15 text-green-400' },
 ];
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -71,24 +72,45 @@ function ItemList({
         <div className="space-y-1.5">
             {items.map((item) => {
                 const key  = String(item.id);
-                // En modo interactivo usa el estado local del checkbox.
+                
+                // Si el item ya está cocinado (entregado), siempre está marcado como listo visualmente.
+                // Si no, verificamos el estado interactivo.
+                const isItemCooked = item.is_cooked;
+                const isItemPrepared = item.is_prepared;
+
+                // En modo interactivo usa el estado local del checkbox (a menos que ya esté entregado).
                 // Si strikeOriginals es true (columna Listo): ítems originales siempre "done",
-                // de lo contrario solo si is_prepared es true.
-                const done = interactive
-                    ? (checked[key] ?? item.is_prepared)
-                    : (strikeOriginals ? (!item.is_addition || (checked[key] ?? item.is_prepared)) : (checked[key] ?? item.is_prepared));
+                // de lo contrario solo si is_prepared es true o is_cooked es true.
+                let done = false;
+                if (isItemCooked) {
+                    done = true;
+                } else if (interactive) {
+                    done = (checked[key] ?? isItemPrepared);
+                } else if (strikeOriginals) {
+                    done = (!item.is_addition || (checked[key] ?? isItemPrepared));
+                } else {
+                    done = (checked[key] ?? isItemPrepared);
+                }
+
+                // Determinar el texto de estado ("Entregado", "Listo", etc) si está marcado "done"
+                let statusLabel = null;
+                if (isItemCooked) {
+                    statusLabel = 'Entregado';
+                } else if (isItemPrepared && !interactive) {
+                    statusLabel = 'Listo';
+                }
 
                 return (
                     <div
                         key={item.id}
-                        onClick={() => interactive && onToggle(item)}
+                        onClick={() => interactive && !isItemCooked && onToggle(item)}
                         className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-all
-                            ${interactive ? 'cursor-pointer select-none' : ''}
+                            ${interactive && !isItemCooked ? 'cursor-pointer select-none' : ''}
                             ${done ? 'bg-green-500/8 opacity-50' : interactive ? 'bg-muted/20 hover:bg-muted/40' : ''}
                             ${item.is_addition && !done ? 'border border-cyan-500/20' : ''}`}
                     >
                         {/* Checkbox circular */}
-                        {interactive && (
+                        {interactive && !isItemCooked && (
                             <div className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors
                                 ${done
                                     ? 'bg-green-500 border-green-500'
@@ -114,7 +136,14 @@ function ItemList({
 
                         {/* Check visual cuando está listo */}
                         {done && (
-                            <Check className="h-3.5 w-3.5 shrink-0 text-green-400 mt-0.5" />
+                            <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                                {statusLabel && (
+                                    <span className="text-[10px] font-bold tracking-wider text-green-500 uppercase bg-green-500/10 px-1.5 rounded-md">
+                                        {statusLabel}
+                                    </span>
+                                )}
+                                {!interactive && <Check className="h-3.5 w-3.5 text-green-400" />}
+                            </div>
                         )}
                     </div>
                 );
