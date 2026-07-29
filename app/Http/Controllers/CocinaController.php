@@ -30,7 +30,12 @@ class CocinaController extends Controller
             : ['pending', 'in_kitchen', 'cooking', 'ready'];
 
         $orders = Order::with(['items.dish', 'table'])
-            ->whereIn('status', $statuses)
+            ->where(function($query) use ($statuses) {
+                $query->whereIn('status', $statuses)
+                      ->orWhere(function($q) {
+                          $q->where('type', 'domicilio')->where('status', 'pending');
+                      });
+            })
             ->oldest()
             ->get()
             ->map(function ($o) {
