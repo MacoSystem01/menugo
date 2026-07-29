@@ -130,15 +130,16 @@ class CocinaController extends Controller
 
     public function markReady(Order $order)
     {
+        $isPuesto    = tenant('type') === 'puesto';
         $isMostrador = $order->type === 'mostrador';
-        $validFrom   = $isMostrador ? ['pending'] : ['cooking'];
+        $validFrom   = ($isMostrador || $isPuesto) ? ['pending', 'in_kitchen', 'cooking'] : ['cooking'];
 
         if (!in_array($order->status, $validFrom)) {
             return back()->withErrors(['error' => 'Estado incorrecto.']);
         }
 
         // Para restaurante: todos los ítems deben estar marcados como preparados
-        if (!$isMostrador) {
+        if (!$isMostrador && !$isPuesto) {
             $pendingItems = $order->items()->where('is_prepared', false)->count();
 
             if ($pendingItems > 0) {
