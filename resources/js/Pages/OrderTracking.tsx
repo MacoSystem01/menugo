@@ -143,29 +143,31 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                     </div>
                 ) : (
                     <div className="rounded-2xl border p-5" style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}>
-                        <div className="flex items-center">
+                        <div className="flex items-start w-full relative">
                             {STEPS.map((step, i) => {
                                 const reached = i <= stepIndex;
                                 return (
-                                    <div key={step.key} className="flex-1 flex flex-col items-center text-center gap-1.5">
-                                        <div className="flex items-center w-full">
-                                            {i > 0 && (
-                                                <div className="flex-1 h-0.5" style={{ backgroundColor: reached ? s.primary : `${s.text}20` }} />
-                                            )}
-                                            <div
-                                                className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
-                                                style={{
-                                                    backgroundColor: reached ? s.primary : `${s.text}10`,
-                                                    color: reached ? '#fff' : `${s.text}60`,
-                                                }}
-                                            >
-                                                {i < stepIndex ? <Check className="h-4 w-4" /> : <step.Icon className="h-4 w-4" />}
-                                            </div>
-                                            {i < STEPS.length - 1 && (
-                                                <div className="flex-1 h-0.5" style={{ backgroundColor: i < stepIndex ? s.primary : `${s.text}20` }} />
-                                            )}
+                                    <div key={step.key} className="flex-1 relative flex flex-col items-center text-center gap-1.5">
+                                        {i > 0 && (
+                                            <div 
+                                                className="absolute top-4 h-0.5 -translate-y-1/2" 
+                                                style={{ 
+                                                    backgroundColor: reached ? s.primary : `${s.text}20`,
+                                                    right: 'calc(50% + 16px)',
+                                                    width: 'calc(100% - 32px)'
+                                                }} 
+                                            />
+                                        )}
+                                        <div
+                                            className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 relative z-10"
+                                            style={{
+                                                backgroundColor: reached ? s.primary : `${s.text}10`,
+                                                color: reached ? '#fff' : `${s.text}60`,
+                                            }}
+                                        >
+                                            {i < stepIndex ? <Check className="h-4 w-4" /> : <step.Icon className="h-4 w-4" />}
                                         </div>
-                                        <span className="text-[10px] font-medium leading-tight" style={{ color: reached ? s.primary : `${s.text}60` }}>
+                                        <span className="text-[10px] font-medium leading-tight px-1" style={{ color: reached ? s.primary : `${s.text}60` }}>
                                             {step.label}
                                         </span>
                                     </div>
