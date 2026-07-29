@@ -192,9 +192,9 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
             .reduce((s, o) => s + o.amount_paid, 0);
 
     const totalDatafono =
-        orders.filter(o => o.payment_method === 'datafono')
+        orders.filter(o => o.payment_method && o.payment_method !== 'efectivo')
             .reduce((s, o) => s + Math.min(o.amount_paid, o.total), 0) +
-        deliveredHistorial.filter(o => o.payment_method === 'datafono')
+        deliveredHistorial.filter(o => o.payment_method && o.payment_method !== 'efectivo')
             .reduce((s, o) => s + o.amount_paid, 0);
 
     function confirmarAltPago() {
