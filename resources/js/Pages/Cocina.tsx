@@ -233,14 +233,15 @@ function KdsCard({
     checked: Record<string, boolean>;
     onToggle: (item: OrderItem) => void;
 }) {
+    const { isPuesto } = useBusinessType();
     const interactive = order.status !== 'ready';
-    // En columna "Listo" (no interactiva) los ítems originales se consideran siempre listos,
-    // igual que la lógica de `done` en ItemList.
-    const doneCnt = order.items.filter(item =>
-        interactive
-            ? (checked[String(item.id)] ?? false)
-            : !item.is_addition || (checked[String(item.id)] ?? item.is_prepared)
-    ).length;
+    // En columna "Listo" de restaurantes, los ítems originales se consideran siempre listos.
+    // En "Puestos", la columna "Listo" es donde preparan, así que no se marcan listos automáticamente.
+    const doneCnt = order.items.filter(item => {
+        if (interactive) return (checked[String(item.id)] ?? false);
+        if (isPuesto && order.status === 'ready') return false;
+        return !item.is_addition || (checked[String(item.id)] ?? item.is_prepared);
+    }).length;
     // Bloquear "Marcar listo" si CUALQUIER ítem (original o adición) aún no está preparado.
     const hasPendingItems = order.items.some(i => !(checked[String(i.id)] ?? i.is_prepared));
 
@@ -303,7 +304,7 @@ function KdsCard({
                     interactive={interactive}
                     checked={checked}
                     onToggle={onToggle}
-                    strikeOriginals={!interactive}
+                    strikeOriginals={!interactive && !isPuesto}
                 />
             </div>
 
