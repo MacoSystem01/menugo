@@ -79,8 +79,12 @@ const PAYMENT_METHODS = [
 ];
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-    efectivo: 'Efectivo', datafono: 'Datáfono', nequi: 'Nequi',
-    daviplata: 'Daviplata', pse: 'PSE', transferencia: 'Transferencia',
+    efectivo: 'Efectivo',
+    datafono: 'Datáfono',
+    nequi: 'Datáfono (Nequi)',
+    daviplata: 'Datáfono (Daviplata)',
+    pse: 'Datáfono (PSE)',
+    transferencia: 'Datáfono (Transferencia)',
 };
 
 const PAYMENT_METHOD_COLORS: Record<string, string> = {
