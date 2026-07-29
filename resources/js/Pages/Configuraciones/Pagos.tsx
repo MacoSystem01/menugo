@@ -42,8 +42,8 @@ const METODOS = [
         campos:      [] as CampoConfig[],
     },
     {
-        key:         'tarjeta',
-        label:       'Tarjeta crédito / débito',
+        key:         'datafono',
+        label:       'Datáfono',
         descripcion: 'Pago con datáfono, tarjeta de crédito o débito.',
         icon:        CreditCard,
         requerido:   false,

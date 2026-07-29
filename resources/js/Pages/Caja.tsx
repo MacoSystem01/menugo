@@ -71,7 +71,7 @@ interface Props {
 
 const PAYMENT_METHODS = [
     { value: 'efectivo',      label: 'Efectivo' },
-    { value: 'tarjeta',       label: 'Tarjeta' },
+    { value: 'datafono',      label: 'Datáfono' },
     { value: 'nequi',         label: 'Nequi' },
     { value: 'daviplata',     label: 'Daviplata' },
     { value: 'pse',           label: 'PSE' },
@@ -79,13 +79,13 @@ const PAYMENT_METHODS = [
 ];
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-    efectivo: 'Efectivo', tarjeta: 'Tarjeta', nequi: 'Nequi',
+    efectivo: 'Efectivo', datafono: 'Datáfono', nequi: 'Nequi',
     daviplata: 'Daviplata', pse: 'PSE', transferencia: 'Transferencia',
 };
 
 const PAYMENT_METHOD_COLORS: Record<string, string> = {
     efectivo:      'bg-green-500/15  text-green-400  border-green-500/30',
-    tarjeta:       'bg-blue-500/15   text-blue-400   border-blue-500/30',
+    datafono:      'bg-blue-500/15   text-blue-400   border-blue-500/30',
     nequi:         'bg-purple-500/15 text-purple-400 border-purple-500/30',
     daviplata:     'bg-red-500/15    text-red-400    border-red-500/30',
     pse:           'bg-cyan-500/15   text-cyan-400   border-cyan-500/30',
@@ -189,6 +189,12 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
         orders.filter(o => o.payment_method === 'efectivo')
             .reduce((s, o) => s + Math.min(o.amount_paid, o.total), 0) +
         deliveredHistorial.filter(o => o.payment_method === 'efectivo')
+            .reduce((s, o) => s + o.amount_paid, 0);
+
+    const totalDatafono =
+        orders.filter(o => o.payment_method === 'datafono')
+            .reduce((s, o) => s + Math.min(o.amount_paid, o.total), 0) +
+        deliveredHistorial.filter(o => o.payment_method === 'datafono')
             .reduce((s, o) => s + o.amount_paid, 0);
 
     function confirmarAltPago() {
@@ -324,12 +330,13 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
             )}
 
             {/* Resumen financiero */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 {([
                     { label: 'Pedidos Registrados', value: String(orders.length + historial.length), Icon: ShoppingBag,  sub: 'Mesa + Domicilio',                                                                                                            hi: false },
-                    { label: 'Cuentas Por Pagar', value: fmt(totalFalta),                         Icon: AlertCircle,  sub: 'Cuentas Pendientes por Pagar',                                                                                                hi: totalFalta > 0 },
-                    { label: 'Pagos Realizados', value: fmt(totalPagosRealizados),                Icon: CheckCircle2, sub: 'Total Pagos Realizados',                                                                                                      hi: false },
-                    { label: 'Pago Efectivo',    value: fmt(totalEfectivo),                       Icon: DollarSign,   sub: 'Pagos en Efectivo',                                                                                                            hi: false },
+                    { label: 'Cuentas Por Pagar', value: fmt(totalFalta),                         Icon: AlertCircle,  sub: 'Cuentas Pendientes',                                                                                                hi: totalFalta > 0 },
+                    { label: 'Pagos Realizados', value: fmt(totalPagosRealizados),                Icon: CheckCircle2, sub: 'Total Recaudado',                                                                                                      hi: false },
+                    { label: 'Efectivo',    value: fmt(totalEfectivo),                       Icon: DollarSign,   sub: 'Pagos en Efectivo',                                                                                                            hi: false },
+                    { label: 'Datáfono',    value: fmt(totalDatafono),                       Icon: CreditCard,   sub: 'Pagos por Datáfono',                                                                                                            hi: false },
                 ] as const).map(({ label, value, Icon, sub, hi }) => (
                     <div key={label} className={`rounded-2xl border p-4 ${hi ? 'border-red-500/30 bg-red-500/5' : 'border-border bg-card'}`}>
                         <div className="flex items-center justify-between mb-2">
@@ -838,7 +845,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                         )}
 
                                         {/* Tarjeta */}
-                                        {altMethod === 'tarjeta' && (
+                                        {altMethod === 'datafono' && (
                                             <div className="space-y-1.5 text-sm">
                                                 <div className="flex justify-between">
                                                     <span className="text-muted-foreground">Monto a cobrar</span>

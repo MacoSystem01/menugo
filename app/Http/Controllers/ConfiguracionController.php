@@ -33,7 +33,7 @@ class ConfiguracionController extends Controller
     {
         $request->validate([
             'metodos'                      => 'required|array|min:1',
-            'metodos.*'                    => 'required|string|in:efectivo,tarjeta,nequi,daviplata,pse,transferencia',
+            'metodos.*'                    => 'required|string|in:efectivo,datafono,nequi,daviplata,pse,transferencia',
             'detalles'                     => 'nullable|array',
             'detalles.*.titular'           => 'nullable|string|max:120',
             'detalles.*.numero'            => 'nullable|string|max:60',

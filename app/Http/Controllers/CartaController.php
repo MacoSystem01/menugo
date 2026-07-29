@@ -162,7 +162,7 @@ class CartaController extends Controller
         $allowedMethods  = $cfg->payment_methods ?? ['efectivo'];
         // Fallback a la lista completa si CartaSetting está vacío (tenant recién creado)
         if (empty($allowedMethods)) {
-            $allowedMethods = ['efectivo', 'pse', 'nequi', 'daviplata', 'tarjeta', 'transferencia'];
+            $allowedMethods = ['efectivo', 'pse', 'nequi', 'daviplata', 'datafono', 'transferencia'];
         }
         $allowedMethodsStr = implode(',', $allowedMethods);
 
@@ -551,7 +551,7 @@ class CartaController extends Controller
             'slogan'                   => 'nullable|string|max:200',
             'slogan_size'              => 'required|in:xs,sm,md,lg',
             'payment_methods'          => 'required|array|min:1',
-            'payment_methods.*'        => 'string|in:efectivo,pse,nequi,daviplata,tarjeta,transferencia',
+            'payment_methods.*'        => 'string|in:efectivo,pse,nequi,daviplata,datafono,transferencia',
             'social_links'             => 'nullable|array',
             'social_links.instagram'   => 'nullable|url|max:255',
             'social_links.facebook'    => 'nullable|url|max:255',
