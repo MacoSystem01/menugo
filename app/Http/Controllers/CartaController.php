@@ -401,6 +401,7 @@ class CartaController extends Controller
                 'turn_number'          => $order->turn_number,
                 'customer_name'        => $order->customer_name,
                 'total'                => (float) $order->total,
+                'delivery_fee'         => (float) ($order->delivery_fee ?? 0),
                 'amount_paid'          => (float) $order->amount_paid,
                 'payment_method'       => $order->payment_method,
                 'payment_reported_at'  => $order->payment_reported_at?->toIso8601String(),

@@ -31,6 +31,7 @@ interface OrderData {
     mesa: string | null;
     created_at: string;
     items: OrderItem[];
+    delivery_fee?: number;
 }
 
 interface Settings {
@@ -188,12 +189,19 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                     ))}
                     
                     <div className="flex items-center justify-between text-sm mt-3 pt-2 border-t" style={{ borderColor: `${s.text}15` }}>
-                        <span className="opacity-80">Subtotal</span>
-                        <span className="font-semibold">{fmt(order.total)}</span>
+                        <span className="opacity-80">Subtotal de platos</span>
+                        <span className="font-semibold">{fmt(order.total - (order.delivery_fee ?? 0))}</span>
                     </div>
 
-                    {!isPaid && order.status !== 'cancelled' && (
-                        <div className="flex items-center justify-between text-sm">
+                    {(order.delivery_fee ?? 0) > 0 && (
+                        <div className="flex items-center justify-between text-sm mt-1">
+                            <span className="opacity-80">Tarifa de domicilio</span>
+                            <span className="font-semibold">{fmt(order.delivery_fee!)}</span>
+                        </div>
+                    )}
+
+                    {!isPaid && order.status !== 'cancelled' && order.type !== 'domicilio' && (
+                        <div className="flex items-center justify-between text-sm mt-1">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input 
                                     type="checkbox" 
@@ -204,14 +212,18 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                                 />
                                 <span className="opacity-80">Incluir Servicio (10%)</span>
                             </label>
-                            <span className="font-semibold">{fmt(order.total * 0.10)}</span>
+                            <span className="font-semibold">{fmt((order.total - (order.delivery_fee ?? 0)) * 0.10)}</span>
                         </div>
                     )}
 
                     <div className="border-t pt-2 mt-2 flex items-center justify-between" style={{ borderColor: `${s.text}15` }}>
                         <span className="font-semibold">Total a pagar</span>
                         <span className="font-display font-bold text-base" style={{ color: s.primary }}>
-                            {fmt( (!isPaid && order.status !== 'cancelled' && includeService) ? order.total * 1.10 : order.total )}
+                            {fmt( 
+                                (!isPaid && order.status !== 'cancelled' && includeService && order.type !== 'domicilio') 
+                                    ? order.total + ((order.total - (order.delivery_fee ?? 0)) * 0.10) 
+                                    : order.total 
+                            )}
                         </span>
                     </div>
                 </div>
@@ -234,7 +246,7 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                                 <PaymentDetailBlock
                                     method={order.payment_method!}
                                     detail={settings.payment_details?.[order.payment_method!]}
-                                    total={includeService ? order.total * 1.10 : order.total}
+                                    total={(!isPaid && order.status !== 'cancelled' && includeService && order.type !== 'domicilio') ? order.total + ((order.total - (order.delivery_fee ?? 0)) * 0.10) : order.total}
                                     primary={s.primary}
                                     text={s.text}
                                     fmt={fmt}
