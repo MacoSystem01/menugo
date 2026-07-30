@@ -142,6 +142,11 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                         <X className="h-8 w-8 mx-auto text-red-500" />
                         <p className="font-semibold text-red-500">Pedido cancelado</p>
                     </div>
+                ) : order.status === 'delivered' ? (
+                    <div className="rounded-2xl border p-5 text-center space-y-2" style={{ borderColor: '#22c55e40', backgroundColor: '#22c55e10' }}>
+                        <Check className="h-8 w-8 mx-auto text-green-500" />
+                        <p className="font-semibold text-green-600">Pedido entregado</p>
+                    </div>
                 ) : (
                     <div className="rounded-2xl border p-5" style={{ borderColor: `${s.text}15`, backgroundColor: `${s.text}05` }}>
                         <div className="flex items-start w-full relative">
@@ -291,18 +296,20 @@ export default function OrderTracking({ token, tenant_name, settings, order }: P
                 )}
 
                 {order.status !== 'cancelled' ? (
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                        <a
-                            href={`/carta?add_to=${token}`}
-                            className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-bold shadow-sm transition hover:opacity-80"
-                            style={{ color: '#ffffff', backgroundColor: s.primary }}
-                        >
-                            ➕ Adición
-                        </a>
+                    <div className={order.status === 'delivered' ? "mt-4" : "grid grid-cols-2 gap-3 mt-4"}>
+                        {order.status !== 'delivered' && (
+                            <a
+                                href={`/carta?add_to=${token}`}
+                                className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-bold shadow-sm transition hover:opacity-80"
+                                style={{ color: '#ffffff', backgroundColor: s.primary }}
+                            >
+                                ➕ Adición
+                            </a>
+                        )}
                         <a
                             href="/carta"
                             className="flex items-center justify-center w-full py-3 rounded-2xl text-sm font-semibold border transition hover:opacity-80"
-                            style={{ borderColor: `${s.text}20`, color: s.text }}
+                            style={{ borderColor: `${s.text}20`, backgroundColor: order.status === 'delivered' ? s.primary : 'transparent', color: order.status === 'delivered' ? '#ffffff' : s.text }}
                         >
                             Nuevo pedido
                         </a>
