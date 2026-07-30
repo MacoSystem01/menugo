@@ -12,6 +12,15 @@ export default defineConfig({
         tailwindcss(),
         react(),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom', '@inertiajs/react', 'lucide-react'],
+                }
+            }
+        }
+    },
     resolve: {
         alias: {
             '@': '/resources/js',
