@@ -175,7 +175,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
         { href: '/pedidos',   label: 'Pedidos',    icon: 'shopping-bag' },
     ],
     superadmin: [
-        { href: '/admin',                  label: 'Global',            icon: 'layout-dashboard' },
+        { href: '/admin',                  label: 'Inicio',            icon: 'layout-dashboard' },
         { href: '/admin/tenants',          label: 'Locales',           icon: 'building-2' },
         { href: '/admin/billing',          label: 'Facturación',       icon: 'credit-card' },
         { href: '/admin/publicidad',       label: 'Publicidad MockUp', icon: 'image-ad' },
@@ -539,6 +539,7 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
     const user  = props.auth.user;
     const role  = user?.role ?? 'gerente';
     const flash = props.flash;
+    const tenant_features = props.tenant_features;
 
     const { can } = usePlan();
     const { isPuesto } = useBusinessType();
@@ -547,20 +548,36 @@ export default function AppShell({ title, subtitle, variant = 'restaurant', chil
         ? NAV_BY_ROLE['superadmin']
         : (NAV_BY_ROLE[role] ?? NAV_BY_ROLE['gerente']);
 
-    let nav = (variant === 'restaurant' && ['gerente', 'administrador'].includes(role))
-        ? rawNav.filter(item => {
-            const href     = 'href' in item ? item.href : undefined;
-            const children = 'children' in item ? item.children : undefined;
+    // ── Aplicar bloqueos de feature (candaditos) ─────────────────────────────────
+    const processedNav = tenant_features ? rawNav.map(item => {
+        let readOnly = item.readOnly;
+        
+        // Bloquear grupos principales completos si no hay feature
+        if (item.label === 'Cocina' && !tenant_features.cocina) readOnly = true;
+        if (item.label === 'Domicilio' && !tenant_features.domicilio) readOnly = true;
+        if (item.label === 'Inventario' && !tenant_features.inventario) readOnly = true;
+        if (item.label === 'Reportes' && !tenant_features.reporte) readOnly = true;
 
-            if (href === '/domicilio') return can('delivery');
-            if (children?.some(c => c.href === '/domicilio')) return can('delivery');
+        let children = item.children;
+        if (children) {
+            children = children.map(child => {
+                let cReadOnly = child.readOnly;
+                if (child.href.startsWith('/cocina') && !tenant_features.cocina) cReadOnly = true;
+                if (child.href.startsWith('/domicilio') && !tenant_features.domicilio) cReadOnly = true;
+                if (child.href.startsWith('/inventario') && !tenant_features.inventario) cReadOnly = true;
+                if (child.href.startsWith('/reporte') && !tenant_features.reporte) cReadOnly = true;
+                if (child.href.startsWith('/auditoria') && !tenant_features.reporte) cReadOnly = true;
+                if (child.href === '/usuarios' && !tenant_features.roles_avanzados) cReadOnly = true;
+                return { ...child, readOnly: cReadOnly };
+            });
+            // Si todos los hijos están bloqueados, bloquear el padre
+            if (children.length > 0 && children.every(c => c.readOnly)) readOnly = true;
+        }
 
-            if (href === '/reporte' || href === '/auditoria') return can('analytics');
-            if (children?.some(c => c.href === '/reporte' || c.href === '/auditoria')) return can('analytics');
+        return { ...item, readOnly, children } as NavItem;
+    }) : rawNav;
 
-            return true;
-        })
-        : rawNav;
+    const nav = processedNav;
 
     // Ambos módulos (Restaurante y Puesto de Comida Rápida) usarán exactamente la misma configuración de Sidebar.
 

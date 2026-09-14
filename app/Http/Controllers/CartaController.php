@@ -107,6 +107,7 @@ class CartaController extends Controller
             'orders_enabled'   => \App\Services\PlanService::can('orders'),
             'is_open_now'      => $isOpen,
             'now_iso'          => $nowIso,
+            'is_premium'       => tenant()->tier === 'premium' || (tenant()->plan ?? '') === 'anual' || (tenant()->plan ?? '') === 'semestral',
         ]);
     }
 

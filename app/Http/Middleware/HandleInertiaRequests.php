@@ -69,6 +69,8 @@ class HandleInertiaRequests extends Middleware
         $tenantPhone     = '';
         $tenantLogoUrl   = null;
         $tenantPlan      = null;
+        $tenantTier      = 'starter';
+        $tenantFeatures  = [];
         $tenantExpiresAt = null;
         $tenantDaysLeft  = null;
         $tenantIsTrial   = false;
@@ -79,6 +81,15 @@ class HandleInertiaRequests extends Middleware
                 $tenantAddress   = tenant('address') ?? '';
                 $tenantPhone     = tenant('phone')   ?? '';
                 $tenantPlan      = tenant()?->plan   ?? 'starter';
+                $tenantTier      = tenant()?->tier   ?? 'starter';
+                $tenantFeatures  = [
+                    'cocina'          => tenant()->hasFeature('cocina'),
+                    'domicilio'       => tenant()->hasFeature('domicilio'),
+                    'inventario'      => tenant()->hasFeature('inventario'),
+                    'reporte'         => tenant()->hasFeature('reporte'),
+                    'analitica'       => tenant()->hasFeature('analitica'),
+                    'roles_avanzados' => tenant()->hasFeature('roles_avanzados'),
+                ];
                 $tenantExpiresAt = tenant()?->expires_at;
                 $tenantDaysLeft  = \App\Services\PlanService::daysUntilExpiry();
                 $tenantIsTrial   = (tenant()?->payment_status ?? '') === 'trial';
@@ -97,6 +108,8 @@ class HandleInertiaRequests extends Middleware
             'tenant_phone'    => $tenantPhone,
             'tenant_logo_url' => $tenantLogoUrl,
             'tenant_plan'       => $tenantPlan,
+            'tenant_tier'       => $tenantTier,
+            'tenant_features'   => $tenantFeatures,
             'tenant_expires_at' => $tenantExpiresAt,
             'tenant_days_left'  => $tenantDaysLeft,
             'tenant_is_trial'   => $tenantIsTrial,

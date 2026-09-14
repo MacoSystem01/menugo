@@ -5,49 +5,49 @@ import { LoginSearch } from '@/components/LoginSearch';
 
 // ── Códigos de país ────────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
-    { flag: '🇨🇴', name: 'Colombia',          dial: '+57'  },
-    { flag: '🇲🇽', name: 'México',             dial: '+52'  },
-    { flag: '🇦🇷', name: 'Argentina',          dial: '+54'  },
-    { flag: '🇨🇱', name: 'Chile',              dial: '+56'  },
-    { flag: '🇵🇪', name: 'Perú',               dial: '+51'  },
-    { flag: '🇻🇪', name: 'Venezuela',          dial: '+58'  },
-    { flag: '🇪🇨', name: 'Ecuador',            dial: '+593' },
-    { flag: '🇧🇴', name: 'Bolivia',            dial: '+591' },
-    { flag: '🇵🇾', name: 'Paraguay',           dial: '+595' },
-    { flag: '🇺🇾', name: 'Uruguay',            dial: '+598' },
-    { flag: '🇵🇦', name: 'Panamá',             dial: '+507' },
-    { flag: '🇨🇷', name: 'Costa Rica',         dial: '+506' },
-    { flag: '🇬🇹', name: 'Guatemala',          dial: '+502' },
-    { flag: '🇭🇳', name: 'Honduras',           dial: '+504' },
-    { flag: '🇳🇮', name: 'Nicaragua',          dial: '+505' },
-    { flag: '🇸🇻', name: 'El Salvador',        dial: '+503' },
-    { flag: '🇩🇴', name: 'Rep. Dominicana',    dial: '+1'   },
-    { flag: '🇪🇸', name: 'España',             dial: '+34'  },
-    { flag: '🇺🇸', name: 'Estados Unidos',     dial: '+1'   },
-    { flag: '🇧🇷', name: 'Brasil',             dial: '+55'  },
+    { flag: '🇨🇴', name: 'Colombia', dial: '+57' },
+    { flag: '🇲🇽', name: 'México', dial: '+52' },
+    { flag: '🇦🇷', name: 'Argentina', dial: '+54' },
+    { flag: '🇨🇱', name: 'Chile', dial: '+56' },
+    { flag: '🇵🇪', name: 'Perú', dial: '+51' },
+    { flag: '🇻🇪', name: 'Venezuela', dial: '+58' },
+    { flag: '🇪🇨', name: 'Ecuador', dial: '+593' },
+    { flag: '🇧🇴', name: 'Bolivia', dial: '+591' },
+    { flag: '🇵🇾', name: 'Paraguay', dial: '+595' },
+    { flag: '🇺🇾', name: 'Uruguay', dial: '+598' },
+    { flag: '🇵🇦', name: 'Panamá', dial: '+507' },
+    { flag: '🇨🇷', name: 'Costa Rica', dial: '+506' },
+    { flag: '🇬🇹', name: 'Guatemala', dial: '+502' },
+    { flag: '🇭🇳', name: 'Honduras', dial: '+504' },
+    { flag: '🇳🇮', name: 'Nicaragua', dial: '+505' },
+    { flag: '🇸🇻', name: 'El Salvador', dial: '+503' },
+    { flag: '🇩🇴', name: 'Rep. Dominicana', dial: '+1' },
+    { flag: '🇪🇸', name: 'España', dial: '+34' },
+    { flag: '🇺🇸', name: 'Estados Unidos', dial: '+1' },
+    { flag: '🇧🇷', name: 'Brasil', dial: '+55' },
 ] as const;
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type EstabType = 'restaurante' | 'puesto' | '';
-type PlanKey   = 'basico' | 'trimestral' | 'semestral' | 'anual' | '';
+type Tier = 'starter' | 'pro' | 'premium' | '';
+type BillingCycle = 'monthly' | 'yearly';
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 const ESTAB_TYPES = [
-    { key: 'restaurante' as const, icon: Utensils, label: 'Restaurante',           desc: 'Mesas, comandas, cocina y reportes' },
-    { key: 'puesto'      as const, icon: Zap,      label: 'Puesto de Comida Rápida', desc: 'Ágil, móvil y sin complicaciones'  },
+    { key: 'restaurante' as const, icon: Utensils, label: 'Restaurante', desc: 'Mesas, comandas, cocina y reportes' },
+    { key: 'puesto' as const, icon: Zap, label: 'Puesto de Comida Rápida', desc: 'Ágil, móvil y sin complicaciones' },
 ];
 
 const PLANS = [
-    { key: 'basico'     as const, emoji: '💳', name: '1 MES',      price: '$20.000',   period: '/mes',     savings: null,          popular: false },
-    { key: 'trimestral' as const, emoji: '📦', name: '3 MESES',    price: '$50.000',   period: '/3 meses', savings: 'Ahorras 17%', popular: false },
-    { key: 'semestral'  as const, emoji: '⭐', name: '6 MESES',    price: '$110.000',  period: '/6 meses', savings: 'Ahorras 8%',  popular: false },
-    { key: 'anual'      as const, emoji: '🏆', name: '12 MESES',   price: '$200.000',  period: '/año',     savings: 'Mejor precio', popular: true  },
+    { key: 'starter' as const, emoji: '🌱', name: 'STARTER', monthlyPrice: '$20.000', yearlyPrice: '$200.000', popular: false },
+    { key: 'pro' as const, emoji: '🚀', name: 'PRO', monthlyPrice: '$40.000', yearlyPrice: '$400.000', popular: true },
+    { key: 'premium' as const, emoji: '👑', name: 'PREMIUM', monthlyPrice: '$60.000', yearlyPrice: '$600.000', popular: false },
 ];
 
 const STEPS = ['Negocio', 'Plan', 'Establecimiento', 'Tu cuenta'];
 
 const BENEFITS = [
-    '14 días de plan PRO gratis',
+    '15 días de licencia Gratis!',
     'Migración asistida sin costo',
     'Soporte por WhatsApp',
     'Cancela cuando quieras',
@@ -65,8 +65,8 @@ function toSlug(str: string): string {
 
 // ── Tipo para métodos de pago ──────────────────────────────────────────────────
 interface PaymentMethod {
-    id:           number;
-    name:         string;
+    id: number;
+    name: string;
     account_info: string;
     instructions: string | null;
 }
@@ -82,41 +82,42 @@ const INPUT = 'w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default function Register() {
-    const urlPlan = typeof window !== 'undefined'
-        ? (new URLSearchParams(window.location.search).get('plan') ?? '') as PlanKey
-        : '' as PlanKey;
+    const urlTier = typeof window !== 'undefined'
+        ? (new URLSearchParams(window.location.search).get('tier') ?? '') as Tier
+        : '' as Tier;
 
     const [step, setStep] = useState(1);
 
     // Estado local para el teléfono dividido en código + número
-    const [phoneCode,   setPhoneCode]   = useState('+57');
+    const [phoneCode, setPhoneCode] = useState('+57');
     const [phoneNumber, setPhoneNumber] = useState('');
 
     // Estado del modal de pago
     const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [paymentMethods,   setPaymentMethods]   = useState<PaymentMethod[]>([]);
-    const [fetchingMethods,  setFetchingMethods]  = useState(false);
-    const [activeMethodIdx,  setActiveMethodIdx]  = useState(0);
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+    const [fetchingMethods, setFetchingMethods] = useState(false);
+    const [activeMethodIdx, setActiveMethodIdx] = useState(0);
     const evidenceRef = useRef<HTMLInputElement>(null);
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, clearErrors } = useForm({
         // paso 1
-        type:                  '' as EstabType,
+        type: '' as EstabType,
         // paso 2
-        plan:                  urlPlan,
+        tier: urlTier,
+        billing_cycle: 'monthly' as BillingCycle,
         // paso 3
-        name:                  '',   // nombre del establecimiento
-        subdomain:             '',
-        restaurant_address:    '',
-        restaurant_lat:        null as number | null,
-        restaurant_lng:        null as number | null,
+        name: '',   // nombre del establecimiento
+        subdomain: '',
+        restaurant_address: '',
+        restaurant_lat: null as number | null,
+        restaurant_lng: null as number | null,
         // paso 4
-        owner_name:            '',
-        phone:                 '',
-        email:                 '',
-        password:              '',
+        owner_name: '',
+        phone: '',
+        email: '',
+        password: '',
         password_confirmation: '',
-        evidence:              null as File | null,
+        evidence: null as File | null,
     });
 
     // Auto-generar subdominio a partir del nombre del establecimiento
@@ -137,17 +138,17 @@ export default function Register() {
         fetch('/api/payment-methods')
             .then(r => r.json())
             .then((data: PaymentMethod[]) => setPaymentMethods(data))
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setFetchingMethods(false));
     }, [showPaymentModal]);
 
     // ── Validación por paso ──────────────────────────────────────────────────
     const ok: Record<number, boolean> = {
         1: !!data.type,
-        2: !!data.plan,
+        2: !!data.tier,
         3: data.name.trim().length >= 2 && data.subdomain.length >= 2,
         4: !!data.owner_name.trim() && !!data.email.trim() &&
-           data.password.length >= 8 && data.password === data.password_confirmation,
+            data.password.length >= 8 && data.password === data.password_confirmation,
     };
 
     const next = () => { if (ok[step]) setStep(s => Math.min(s + 1, 4)); };
@@ -157,7 +158,7 @@ export default function Register() {
 
     const openPaymentModal = () => {
         if (!ok[4]) return;
-        if (data.plan === 'starter') {
+        if (data.tier === 'starter') {
             post('/register'); // plan gratuito: submit directo sin modal de pago
         } else {
             setShowPaymentModal(true);
@@ -170,7 +171,7 @@ export default function Register() {
     };
 
     const selectedType = ESTAB_TYPES.find(t => t.key === data.type);
-    const selectedPlan = PLANS.find(p => p.key === data.plan);
+    const selectedPlan = PLANS.find(p => p.key === data.tier);
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
@@ -255,9 +256,27 @@ export default function Register() {
                                     <h1 className="font-display text-2xl font-bold">Elige tu plan</h1>
                                     <p className="text-sm text-muted-foreground mt-1">Todos incluyen acceso completo. Sin costos ocultos.</p>
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div className="flex justify-center mb-4">
+                                    <div className="bg-card border border-border p-1 flex rounded-lg">
+                                        <button
+                                            type="button"
+                                            onClick={() => setData('billing_cycle', 'monthly')}
+                                            className={`px-4 py-1.5 text-sm rounded-md transition ${data.billing_cycle === 'monthly' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            Mensual
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setData('billing_cycle', 'yearly')}
+                                            className={`px-4 py-1.5 text-sm rounded-md transition ${data.billing_cycle === 'yearly' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
+                                        >
+                                            Anual (Ahorra 16%)
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     {PLANS.map(plan => {
-                                        const sel = data.plan === plan.key;
+                                        const sel = data.tier === plan.key;
                                         return (
                                             <div key={plan.key} className="flex flex-col">
                                                 {/* Badge "MÁS POPULAR" (reserva espacio siempre) */}
@@ -270,20 +289,23 @@ export default function Register() {
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setData('plan', plan.key)}
-                                                    className={`flex-1 flex flex-col items-center text-center rounded-2xl border p-4 gap-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 ${
-                                                        sel           ? 'border-primary bg-primary/10 shadow-glow' :
-                                                        plan.popular  ? 'border-accent/50 bg-card hover:border-accent' :
-                                                                        'border-border bg-card hover:border-primary/40'
-                                                    }`}
+                                                    onClick={() => setData('tier', plan.key)}
+                                                    className={`flex-1 flex flex-col items-center text-center rounded-2xl border p-4 gap-1.5 transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 ${sel ? 'border-primary bg-primary/10 shadow-glow' :
+                                                        plan.popular ? 'border-accent/50 bg-card hover:border-accent' :
+                                                            'border-border bg-card hover:border-primary/40'
+                                                        }`}
                                                 >
                                                     <span className="text-2xl">{plan.emoji}</span>
                                                     <span className="text-[10px] font-bold tracking-wider text-muted-foreground">{plan.name}</span>
-                                                    <span className="font-display text-xl font-bold leading-none">{plan.price}</span>
-                                                    <span className="text-[10px] text-muted-foreground">{plan.period}</span>
-                                                    {plan.savings && (
+                                                    <span className="font-display text-xl font-bold leading-none">
+                                                        {data.billing_cycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        {data.billing_cycle === 'monthly' ? '/mes' : '/año'}
+                                                    </span>
+                                                    {data.billing_cycle === 'yearly' && (
                                                         <span className="text-[10px] font-semibold text-accent bg-accent/10 rounded-full px-2 py-0.5">
-                                                            {plan.savings}
+                                                            Ahorras 16%
                                                         </span>
                                                     )}
                                                     {sel && (
@@ -298,7 +320,7 @@ export default function Register() {
                                 </div>
 
                                 {/* Aviso plan gratuito */}
-                                {data.plan === 'starter' && (
+                                {data.tier === 'starter' && (
                                     <div className="rounded-xl border border-accent/30 bg-accent/10 px-4 py-3">
                                         <p className="text-sm font-semibold text-accent">Plan gratuito — sin tarjeta requerida</p>
                                         <p className="text-xs text-accent/75 mt-0.5">Tu cuenta se activa de forma inmediata al registrarte.</p>
@@ -541,7 +563,7 @@ export default function Register() {
                         </div>
 
                         <p className="text-center text-sm text-muted-foreground">
-                            ¿Ya registraste tu local?{' '}
+                            ¿Ya registraste tu local? <br></br>{' '}
                             <span className="text-foreground font-medium">
                                 Accede desde tu subdominio personalizado.
                             </span>
@@ -653,11 +675,10 @@ export default function Register() {
                                             key={m.id}
                                             type="button"
                                             onClick={() => setActiveMethodIdx(i)}
-                                            className={`w-full text-left rounded-xl border p-4 transition-all ${
-                                                activeMethodIdx === i
-                                                    ? 'border-primary bg-primary/8'
-                                                    : 'border-border bg-card hover:border-primary/40'
-                                            }`}
+                                            className={`w-full text-left rounded-xl border p-4 transition-all ${activeMethodIdx === i
+                                                ? 'border-primary bg-primary/8'
+                                                : 'border-border bg-card hover:border-primary/40'
+                                                }`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2.5 min-w-0">
@@ -707,11 +728,10 @@ export default function Register() {
                                 <button
                                     type="button"
                                     onClick={() => evidenceRef.current?.click()}
-                                    className={`w-full rounded-xl border-2 border-dashed p-4 text-center transition-colors ${
-                                        data.evidence
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-border hover:border-primary/50 hover:bg-muted/40'
-                                    }`}
+                                    className={`w-full rounded-xl border-2 border-dashed p-4 text-center transition-colors ${data.evidence
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-border hover:border-primary/50 hover:bg-muted/40'
+                                        }`}
                                 >
                                     {data.evidence ? (
                                         <div className="flex items-center gap-3 text-left">

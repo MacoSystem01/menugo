@@ -22,7 +22,8 @@ class TenantController extends Controller
 
         $data = $request->validate([
             'type'                  => 'required|in:restaurante,puesto',
-            'plan'                  => 'required|in:basico,trimestral,semestral,anual',
+            'tier'                  => 'required|in:starter,pro,premium',
+            'billing_cycle'         => 'required|in:monthly,yearly',
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9]+$/'],
             'owner_name'            => 'required|string|max:150',
@@ -56,7 +57,9 @@ class TenantController extends Controller
             'owner_name'     => $data['owner_name'],
             'email'          => $data['email'],
             'address'        => $data['restaurant_address'] ?? null,
-            'plan'           => $data['plan'],
+            'plan'           => $data['tier'] . '_' . $data['billing_cycle'], // Legacy
+            'tier'           => $data['tier'],
+            'billing_cycle'  => $data['billing_cycle'],
             'type'           => $data['type'],
             'active'         => $isActive,
             'payment_status' => $paymentStatus,
@@ -168,6 +171,8 @@ class TenantController extends Controller
             'name'                 => $t->name,
             'email'                => $t->email,
             'plan'                 => $t->plan,
+            'tier'                 => $t->tier ?? 'starter',
+            'billing_cycle'        => $t->billing_cycle ?? 'monthly',
             'active'               => $t->active ?? true,
             'payment_status'       => $t->payment_status ?? 'paid', // FIX: fallback 'active' era inválido
             'payment_evidence_path'=> $t->payment_evidence_path,
@@ -205,7 +210,8 @@ class TenantController extends Controller
     {
         $data = $request->validate([
             'type'                  => 'required|in:restaurante,puesto',
-            'plan'                  => 'required|in:basico,trimestral,semestral,anual',
+            'tier'                  => 'required|in:starter,pro,premium',
+            'billing_cycle'         => 'required|in:monthly,yearly',
             'name'                  => 'required|string|max:150',
             'subdomain'             => ['required', 'string', 'max:50', 'regex:/^[a-z0-9\-]+$/'],
             'owner_name'            => 'required|string|max:150',
@@ -227,14 +233,16 @@ class TenantController extends Controller
             return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
         }
 
-        $planDays = \App\Services\PlanService::planDays($data['plan'] ?? 'basico') ?? 30;
+        $planDays = $data['billing_cycle'] === 'yearly' ? 365 : 30;
         $tenant = Tenant::create([
             'id'             => Str::uuid(),
             'name'           => $data['name'],
             'owner_name'     => $data['owner_name'],
             'email'          => $data['email'],
             'address'        => $data['restaurant_address'] ?? null,
-            'plan'           => $data['plan'],
+            'plan'           => $data['tier'] . '_' . $data['billing_cycle'],
+            'tier'           => $data['tier'],
+            'billing_cycle'  => $data['billing_cycle'],
             'type'           => $data['type'],
             'active'         => true,
             'payment_status' => $data['payment_status'] ?? 'paid',
@@ -311,11 +319,11 @@ class TenantController extends Controller
         $data = $request->validate([
             'name'               => 'nullable|string|max:150',
             'email'              => 'nullable|email|max:150',
-            'plan'               => 'nullable|string|in:basico,trimestral,semestral,anual',
+            'tier'               => 'nullable|string|in:starter,pro,premium',
+            'billing_cycle'      => 'nullable|string|in:monthly,yearly',
             'active'             => 'nullable|boolean',
             'expires_at'         => 'nullable|date',
             'restaurant_address' => 'nullable|string|max:255',
-            // Validar payment_status — evita que se guarden valores inválidos como 'active'
             'payment_status'     => 'nullable|in:pending_payment,pending_review,paid,overdue,cancelled',
         ]);
 
@@ -356,14 +364,12 @@ class TenantController extends Controller
     public function activateTenant(string $id)
     {
         $tenant   = Tenant::findOrFail($id);
-        $planDays = \App\Services\PlanService::planDays($tenant->plan ?? 'basico');
+        $planDays = $tenant->billing_cycle === 'yearly' ? 365 : 30;
         
         $currentExpiresAt = $tenant->expires_at ? \Carbon\Carbon::parse($tenant->expires_at) : now();
         $baseDate = $currentExpiresAt->isFuture() ? $currentExpiresAt : now();
 
-        $expiresAt = $planDays
-            ? (clone $baseDate)->addDays($planDays)
-            : now()->addYears(10); // starter o plan sin límite práctico
+        $expiresAt = (clone $baseDate)->addDays($planDays);
 
         $tenant->update([
             'active'         => true,

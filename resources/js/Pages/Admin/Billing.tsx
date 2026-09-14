@@ -68,6 +68,12 @@ const PLAN_PRICES: Record<string, number> = {
     semestral: 110000,
     anual: 200000,
     mensual: 20000,
+    starter_monthly: 20000,
+    starter_yearly: 200000,
+    pro_monthly: 40000,
+    pro_yearly: 400000,
+    premium_monthly: 60000,
+    premium_yearly: 600000,
 };
 
 const PLAN_LABELS: Record<string, string> = {
@@ -77,6 +83,12 @@ const PLAN_LABELS: Record<string, string> = {
     semestral: '6 meses',
     anual: '12 meses',
     mensual: 'Mensual (legacy)',
+    starter_monthly: 'Starter (Mensual)',
+    starter_yearly: 'Starter (Anual)',
+    pro_monthly: 'Pro (Mensual)',
+    pro_yearly: 'Pro (Anual)',
+    premium_monthly: 'Premium (Mensual)',
+    premium_yearly: 'Premium (Anual)',
 };
 
 const PER_PAGE = 5;
@@ -283,11 +295,9 @@ export default function Billing({
     }, [tenantHistory]);
 
     const plans = [
+        { key: 'premium', name: 'Premium', icon: Crown, color: 'text-purple-500' },
+        { key: 'pro', name: 'Pro', icon: CreditCard, color: 'text-blue-500' },
         { key: 'starter', name: 'Starter', icon: Zap, color: 'text-emerald-500' },
-        { key: 'basico', name: 'Básico', icon: Clock, color: 'text-zinc-500' },
-        { key: 'trimestral', name: 'Trimestral', icon: Building, color: 'text-blue-500' },
-        { key: 'semestral', name: 'Pro', icon: CreditCard, color: 'text-purple-500' },
-        { key: 'anual', name: 'Escala', icon: Crown, color: 'text-amber-500' },
     ];
 
     function toggleMethod(id: number) {
@@ -343,18 +353,26 @@ export default function Billing({
 
             {/* ── Estadísticas de planes ─────────────────────────────────────── */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
-                {plans.map(p => (
-                    <div key={p.key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{p.name}</p>
-                            <p.icon className={`h-4 w-4 ${p.color}`} />
+                {plans.map(p => {
+                    // Agrupar monthly y yearly, e incluir legacy en starter
+                    const count = (stats.por_plan[`${p.key}_monthly`] || 0) + (stats.por_plan[`${p.key}_yearly`] || 0) + (p.key === 'starter' ? (stats.por_plan.basico || 0) + (stats.por_plan.mensual || 0) + (stats.por_plan.trimestral || 0) + (stats.por_plan.semestral || 0) + (stats.por_plan.anual || 0) + (stats.por_plan.starter || 0) : 0);
+                    const mrr = (stats.por_plan[`${p.key}_monthly`] || 0) * PLAN_PRICES[`${p.key}_monthly`] 
+                              + (stats.por_plan[`${p.key}_yearly`] || 0) * Math.round(PLAN_PRICES[`${p.key}_yearly`] / 12)
+                              + (p.key === 'starter' ? (stats.por_plan.basico || 0) * PLAN_PRICES.basico + (stats.por_plan.mensual || 0) * PLAN_PRICES.mensual + (stats.por_plan.trimestral || 0) * Math.round(PLAN_PRICES.trimestral / 3) + (stats.por_plan.semestral || 0) * Math.round(PLAN_PRICES.semestral / 6) + (stats.por_plan.anual || 0) * Math.round(PLAN_PRICES.anual / 12) : 0);
+
+                    return (
+                        <div key={p.key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{p.name}</p>
+                                <p.icon className={`h-4 w-4 ${p.color}`} />
+                            </div>
+                            <p className="text-2xl font-display font-bold text-foreground">{count}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {fmt(mrr)} / mes
+                            </p>
                         </div>
-                        <p className="text-2xl font-display font-bold text-foreground">{stats.por_plan[p.key] ?? 0}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {fmt((stats.por_plan[p.key] ?? 0) * PLAN_PRICES[p.key])} / mes
-                        </p>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 mb-10">

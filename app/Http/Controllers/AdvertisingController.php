@@ -38,6 +38,7 @@ class AdvertisingController extends Controller
                 'id'        => $t->id,
                 'name'      => $t->name,
                 'subdomain' => $t->domains->first()?->domain,
+                'tier'      => $t->tier ?? (in_array($t->plan, ['anual','semestral']) ? 'premium' : ($t->plan == 'trimestral' ? 'pro' : 'starter')),
             ]);
 
         return response()->json($tenants);
@@ -169,6 +170,9 @@ class AdvertisingController extends Controller
             $proofPath = $request->file('payment_proof')->store('advertising-proofs', 'public');
             $proofAt   = now();
             $status    = 'pending_review';
+        } elseif (isset($tenant) && $tenant->tier === 'premium') {
+            $status    = 'pending_review';
+            $proofAt   = now(); // para indicar que se envió (sin comprobante)
         }
 
         $adRequest = AdvertisingRequest::create([

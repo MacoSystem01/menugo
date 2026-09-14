@@ -283,10 +283,9 @@ export default function AdminDashboard({ stats, lista, crecimiento, pendingPayme
                             <StatProgress label="Restaurantes" value={stats.por_tipo.restaurante ?? 0} total={stats.total} color="bg-primary" />
                             <StatProgress label="Puestos / Food Trucks" value={stats.por_tipo.puesto ?? 0} total={stats.total} color="bg-accent" />
                             <div className="pt-4 border-t border-border">
-                                <StatProgress label="12 meses"      value={stats.por_plan.anual ?? 0}      total={stats.total} color="bg-accent" />
-                                <StatProgress label="6 meses"  value={stats.por_plan.semestral ?? 0}  total={stats.total} color="bg-primary" />
-                                <StatProgress label="3 meses" value={stats.por_plan.trimestral ?? 0} total={stats.total} color="bg-blue-500" />
-                                <StatProgress label="1 mes"    value={stats.por_plan.basico ?? (stats.por_plan.mensual ?? 0)}    total={stats.total} color="bg-zinc-500" />
+                                <StatProgress label="Premium" value={(stats.por_plan.premium_monthly || 0) + (stats.por_plan.premium_yearly || 0)} total={stats.total} color="bg-purple-500" />
+                                <StatProgress label="Pro" value={(stats.por_plan.pro_monthly || 0) + (stats.por_plan.pro_yearly || 0)} total={stats.total} color="bg-blue-500" />
+                                <StatProgress label="Starter" value={(stats.por_plan.starter_monthly || 0) + (stats.por_plan.starter_yearly || 0) + (stats.por_plan.basico || 0) + (stats.por_plan.mensual || 0) + (stats.por_plan.anual || 0) + (stats.por_plan.trimestral || 0) + (stats.por_plan.semestral || 0)} total={stats.total} color="bg-zinc-500" />
                             </div>
                         </div>
                     </div>

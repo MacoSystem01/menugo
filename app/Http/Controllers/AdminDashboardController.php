@@ -105,29 +105,43 @@ class AdminDashboardController extends Controller
         // with('domains') reutilizado para todas las consultas derivadas
         $tenants = Tenant::withTrashed()->with('domains')->latest()->get();
 
-        $porPlan = $tenants->whereNull('deleted_at')->groupBy(fn($t) => $t->plan ?? 'basico')->map->count();
+        $porPlan = $tenants->whereNull('deleted_at')->groupBy(fn($t) => $t->plan ?? 'starter_monthly')->map->count();
 
         $prices = [
-            'starter'    => 0,
-            'basico'     => 20000,
-            'trimestral' => 50000,
-            'semestral'  => 110000,
-            'anual'      => 200000,
-            'mensual'    => 20000, // legacy
+            'starter'         => 0,
+            'basico'          => 20000,
+            'trimestral'      => 50000,
+            'semestral'       => 110000,
+            'anual'           => 200000,
+            'mensual'         => 20000, // legacy
+            // Nuevos Tiers SaaS
+            'starter_monthly' => 20000,
+            'starter_yearly'  => 200000,
+            'pro_monthly'     => 40000,
+            'pro_yearly'      => 400000,
+            'premium_monthly' => 60000,
+            'premium_yearly'  => 600000,
         ];
 
         $monthlyEquivalent = [
-            'starter'    => 0,
-            'basico'     => 20000,
-            'trimestral' => 16667,  // 50000 / 3
-            'semestral'  => 18333,  // 110000 / 6
-            'anual'      => 16667,  // 200000 / 12
-            'mensual'    => 20000,  // legacy
+            'starter'         => 0,
+            'basico'          => 20000,
+            'trimestral'      => 16667,  // 50000 / 3
+            'semestral'       => 18333,  // 110000 / 6
+            'anual'           => 16667,  // 200000 / 12
+            'mensual'         => 20000,  // legacy
+            // Nuevos Tiers SaaS
+            'starter_monthly' => 20000,
+            'starter_yearly'  => 16667, // 200000 / 12
+            'pro_monthly'     => 40000,
+            'pro_yearly'      => 33333, // 400000 / 12
+            'premium_monthly' => 60000,
+            'premium_yearly'  => 50000, // 600000 / 12
         ];
 
         $paidTenants  = $tenants->where('payment_status', 'paid')->whereNull('deleted_at');
-        $totalRevenue = $paidTenants->sum(fn($t) => $prices[$t->plan ?? 'basico'] ?? 34900);
-        $totalMonthly = $paidTenants->sum(fn($t) => $monthlyEquivalent[$t->plan ?? 'basico'] ?? 34900);
+        $totalRevenue = $paidTenants->sum(fn($t) => $prices[$t->plan ?? 'starter_monthly'] ?? 20000);
+        $totalMonthly = $paidTenants->sum(fn($t) => $monthlyEquivalent[$t->plan ?? 'starter_monthly'] ?? 20000);
 
         $pendingTenants = $tenants
             ->whereNull('deleted_at')

@@ -845,7 +845,7 @@ const AD_IMG_HINT: Record<AdType, string> = {
     combo:  'Sube primero la imagen del banner (1200 × 900 px) · JPG, PNG o WEBP',
 };
 
-interface FoundTenant { id: string; name: string; subdomain: string | null; }
+interface FoundTenant { id: string; name: string; subdomain: string | null; tier?: string; }
 interface PayMethod    { id: number; name: string; account_info: string; instructions: string | null; }
 
 function xsrfToken(): string {
@@ -1485,70 +1485,84 @@ function AdvertisingModal({ type, onClose }: { type: AdType; onClose: () => void
                                     <p className="text-sm font-semibold text-foreground">{AD_LABELS[type]}</p>
                                     <p className="text-xs text-muted-foreground">Facturación mensual</p>
                                 </div>
-                                <p className="font-display text-2xl font-black text-accent">{AD_PRICES[type]}</p>
+                                <p className="font-display text-2xl font-black text-accent">
+                                    {selectedTenant?.tier === 'premium' ? 'Gratis' : AD_PRICES[type]}
+                                </p>
                             </div>
 
-                            {/* Métodos de pago */}
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Métodos de pago</p>
-                                {payMethods.length === 0 ? (
-                                    <div className="flex justify-center py-4">
-                                        <div className="h-5 w-5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {payMethods.map(m => {
-                                            const isUrl = /^https?:\/\//i.test(m.account_info.trim());
-                                            return (
-                                                <div key={m.id} className="rounded-xl border border-border bg-muted/20 px-4 py-3">
-                                                    <p className="text-sm font-semibold text-foreground">{m.name}</p>
-                                                    {isUrl ? (
-                                                        <a
-                                                            href={m.account_info.trim()}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-1.5 text-xs text-accent font-mono mt-0.5 hover:underline break-all"
-                                                        >
-                                                            <ArrowRight className="h-3 w-3 shrink-0" />
-                                                            {m.account_info.trim()}
-                                                        </a>
-                                                    ) : (
-                                                        <p className="text-xs font-mono text-muted-foreground mt-0.5">{m.account_info}</p>
-                                                    )}
-                                                    {m.instructions && (
-                                                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{m.instructions}</p>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Comprobante de pago */}
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Comprobante de pago</p>
-                                <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
-                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                        <Zap className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" />
-                                        <span>Con comprobante → activación en <strong className="text-foreground">menos de 6 horas</strong></span>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                        <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                                        <span>Sin comprobante → activación en las <strong className="text-foreground">próximas 24 horas</strong></span>
-                                    </div>
-                                    <label className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
-                                        proofFile ? 'border-accent/40 bg-accent/5' : 'border-dashed border-border hover:border-accent/40'
-                                    }`}>
-                                        <input type="file" className="sr-only" accept="image/*,.pdf"
-                                            onChange={e => { const f = e.target.files?.[0]; if (f) setProofFile(f); }} />
-                                        <CheckCircle2 className={`h-4 w-4 shrink-0 ${proofFile ? 'text-accent' : 'text-muted-foreground'}`} />
-                                        <span className="text-xs text-muted-foreground truncate">
-                                            {proofFile ? proofFile.name : 'Subir comprobante (opcional) — JPG, PNG, PDF'}
-                                        </span>
-                                    </label>
+                            {selectedTenant?.tier === 'premium' ? (
+                                <div className="rounded-xl border border-accent/40 bg-accent/10 px-4 py-5 text-center">
+                                    <Sparkles className="h-8 w-8 text-accent mx-auto mb-3" />
+                                    <p className="text-sm font-bold text-foreground">¡Beneficio Premium!</p>
+                                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                                        Como cliente Premium, tu publicidad en el portal principal está incluida <strong className="text-foreground">sin costo adicional</strong>. No necesitas subir comprobante de pago. Al enviar la solicitud, pasará directamente a revisión para ser publicada en las próximas horas.
+                                    </p>
                                 </div>
-                            </div>
+                            ) : (
+                                <>
+                                    {/* Métodos de pago */}
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Métodos de pago</p>
+                                        {payMethods.length === 0 ? (
+                                            <div className="flex justify-center py-4">
+                                                <div className="h-5 w-5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {payMethods.map(m => {
+                                                    const isUrl = /^https?:\/\//i.test(m.account_info.trim());
+                                                    return (
+                                                        <div key={m.id} className="rounded-xl border border-border bg-muted/20 px-4 py-3">
+                                                            <p className="text-sm font-semibold text-foreground">{m.name}</p>
+                                                            {isUrl ? (
+                                                                <a
+                                                                    href={m.account_info.trim()}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1.5 text-xs text-accent font-mono mt-0.5 hover:underline break-all"
+                                                                >
+                                                                    <ArrowRight className="h-3 w-3 shrink-0" />
+                                                                    {m.account_info.trim()}
+                                                                </a>
+                                                            ) : (
+                                                                <p className="text-xs font-mono text-muted-foreground mt-0.5">{m.account_info}</p>
+                                                            )}
+                                                            {m.instructions && (
+                                                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{m.instructions}</p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Comprobante de pago */}
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Comprobante de pago</p>
+                                        <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                                            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                                <Zap className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" />
+                                                <span>Con comprobante → activación en <strong className="text-foreground">menos de 6 horas</strong></span>
+                                            </div>
+                                            <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                                <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                                <span>Sin comprobante → activación en las <strong className="text-foreground">próximas 24 horas</strong></span>
+                                            </div>
+                                            <label className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                                                proofFile ? 'border-accent/40 bg-accent/5' : 'border-dashed border-border hover:border-accent/40'
+                                            }`}>
+                                                <input type="file" className="sr-only" accept="image/*,.pdf"
+                                                    onChange={e => { const f = e.target.files?.[0]; if (f) setProofFile(f); }} />
+                                                <CheckCircle2 className={`h-4 w-4 shrink-0 ${proofFile ? 'text-accent' : 'text-muted-foreground'}`} />
+                                                <span className="text-xs text-muted-foreground truncate">
+                                                    {proofFile ? proofFile.name : 'Subir comprobante (opcional) — JPG, PNG, PDF'}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                         </div>
@@ -1565,7 +1579,9 @@ function AdvertisingModal({ type, onClose }: { type: AdType; onClose: () => void
                                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                                     {hasProof
                                         ? 'Revisaremos tu comprobante y activaremos tu publicidad en menos de 6 horas.'
-                                        : 'Tu publicidad será revisada y activada en las próximas 24 horas. Sube tu comprobante para activación más rápida.'}
+                                        : (selectedTenant?.tier === 'premium' 
+                                            ? 'Como cliente Premium, tu publicidad ha pasado directamente a revisión y se publicará en las próximas horas.' 
+                                            : 'Tu publicidad será revisada y activada en las próximas 24 horas. Sube tu comprobante para activación más rápida.')}
                                 </p>
                             </div>
                             <div className="rounded-xl border border-border bg-muted/20 px-4 py-3 text-left space-y-2">

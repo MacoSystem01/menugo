@@ -164,6 +164,7 @@ interface Props {
     orders_enabled: boolean;
     is_open_now?: boolean;
     now_iso?: string;
+    is_premium?: boolean;
 }
 
 interface CartItem {
@@ -215,7 +216,7 @@ type Screen = 'menu' | 'cart' | 'checkout';
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id, orders_enabled, is_open_now }: Props) {
+export default function PublicMenu({ categories, tenant_name, settings, tables, initial_table_id, orders_enabled, is_open_now, now_iso, is_premium }: Props) {
     const { isPuesto } = useBusinessType();
 
     const s = {
@@ -1071,10 +1072,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                     );
                 })()}
 
-                <p className="text-center text-xs opacity-35 pt-2" style={{ color: s.text }}>
-                    {tenant_name} · Carta digital por{' '}
-                    <span className="font-semibold" style={{ color: s.primary }}>Menugo</span>
-                </p>
+                {!is_premium && (
+                    <p className="text-center text-xs opacity-35 pt-2" style={{ color: s.text }}>
+                        {tenant_name} · Carta digital por{' '}
+                        <span className="font-semibold" style={{ color: s.primary }}>Menugo</span>
+                    </p>
+                )}
             </footer>
 
             {/* ── Barra flotante del carrito ── */}

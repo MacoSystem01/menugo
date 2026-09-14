@@ -72,9 +72,15 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     Route::middleware('auth')->group(function () {
 
         // Dashboard — accesible para todos los roles autenticados
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Dashboard principal
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('tenant.dashboard');
+    
+    // Vista de Upgrade (Bloqueado)
+    Route::get('/upgrade', function () {
+        return \Inertia\Inertia::render('Upgrade');
+    })->name('tenant.upgrade');
 
-        // ── Usuarios ─────────────────────────────────────────────────────────
+    // Usuarios y Roles─────────────────────────────────────────────────────────
         Route::get('/usuarios',                   [UserController::class, 'index'])
             ->middleware('perm:usuarios.ver')
             ->name('usuarios');
@@ -205,45 +211,47 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
             ->name('pedidos.cancelar');
 
         // ── Cocina ────────────────────────────────────────────────────────────
-        Route::get('/cocina',                                    [CocinaController::class, 'index'])
-            ->middleware('perm:cocina.ver')
-            ->name('cocina');
+        Route::middleware('feature:cocina')->group(function () {
+            Route::get('/cocina',                                    [CocinaController::class, 'index'])
+                ->middleware('perm:cocina.ver')
+                ->name('cocina');
 
-        Route::post('/cocina/items/{item}/preparado',            [CocinaController::class, 'marcarItemPreparado'])
-            ->middleware('perm:cocina.gestionar')
-            ->name('cocina.item.preparado');
+            Route::post('/cocina/items/{item}/preparado',            [CocinaController::class, 'marcarItemPreparado'])
+                ->middleware('perm:cocina.gestionar')
+                ->name('cocina.item.preparado');
 
-        Route::post('/cocina/{order}/aceptar',                   [CocinaController::class, 'acceptOrder'])
-            ->middleware('perm:cocina.gestionar')
-            ->name('cocina.aceptar');
+            Route::post('/cocina/{order}/aceptar',                   [CocinaController::class, 'acceptOrder'])
+                ->middleware('perm:cocina.gestionar')
+                ->name('cocina.aceptar');
 
-        Route::post('/cocina/{order}/cocinar',                   [CocinaController::class, 'startCooking'])
-            ->middleware('perm:cocina.gestionar')
-            ->name('cocina.cocinar');
+            Route::post('/cocina/{order}/cocinar',                   [CocinaController::class, 'startCooking'])
+                ->middleware('perm:cocina.gestionar')
+                ->name('cocina.cocinar');
 
-        Route::post('/cocina/{order}/listo',                     [CocinaController::class, 'markReady'])
-            ->middleware('perm:cocina.gestionar')
-            ->name('cocina.listo');
+            Route::post('/cocina/{order}/listo',                     [CocinaController::class, 'markReady'])
+                ->middleware('perm:cocina.gestionar')
+                ->name('cocina.listo');
 
-        Route::post('/cocina/{order}/entregado',                 [CocinaController::class, 'markDelivered'])
-            ->middleware('perm:mesa.gestionar')
-            ->name('cocina.entregado');
+            Route::post('/cocina/{order}/entregado',                 [CocinaController::class, 'markDelivered'])
+                ->middleware('perm:mesa.gestionar')
+                ->name('cocina.entregado');
 
-        Route::post('/cocina/{order}/cancelar',                  [CocinaController::class, 'cancelarPedido'])
-            ->middleware('perm:cocina.gestionar')
-            ->name('cocina.cancelar');
+            Route::post('/cocina/{order}/cancelar',                  [CocinaController::class, 'cancelarPedido'])
+                ->middleware('perm:cocina.gestionar')
+                ->name('cocina.cancelar');
 
-        Route::get('/cocina/novedades',                          [CocinaController::class, 'novedades'])
-            ->middleware('perm:novedades.ver')
-            ->name('cocina.novedades');
+            Route::get('/cocina/novedades',                          [CocinaController::class, 'novedades'])
+                ->middleware('perm:novedades.ver')
+                ->name('cocina.novedades');
 
-        Route::post('/cocina/novedades',                         [CocinaController::class, 'storeNovedad'])
-            ->middleware('perm:novedades.crear')
-            ->name('cocina.novedades.store');
+            Route::post('/cocina/novedades',                         [CocinaController::class, 'storeNovedad'])
+                ->middleware('perm:novedades.crear')
+                ->name('cocina.novedades.store');
 
-        Route::post('/cocina/novedades/{note}/verificar',        [CocinaController::class, 'verificarNovedad'])
-            ->middleware('perm:novedades.gestionar')
-            ->name('cocina.novedades.verificar');
+            Route::post('/cocina/novedades/{note}/verificar',        [CocinaController::class, 'verificarNovedad'])
+                ->middleware('perm:novedades.gestionar')
+                ->name('cocina.novedades.verificar');
+        });
 
         // ── Mesas ─────────────────────────────────────────────────────────────────
         Route::get('/tables',           [TableController::class, 'index'])
@@ -278,51 +286,57 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         });
 
         // ── Domicilio ─────────────────────────────────────────────────────────
-        Route::get('/domicilio',                     [DomicilioController::class, 'index'])
-            ->middleware('perm:domicilio.ver')
-            ->name('domicilio');
+        Route::middleware('feature:domicilio')->group(function () {
+            Route::get('/domicilio',                     [DomicilioController::class, 'index'])
+                ->middleware('perm:domicilio.ver')
+                ->name('domicilio');
 
-        Route::put('/domicilio/{order}/asignar',     [DomicilioController::class, 'asignar'])
-            ->middleware('perm:domicilio.gestionar')
-            ->name('domicilio.asignar');
+            Route::put('/domicilio/{order}/asignar',     [DomicilioController::class, 'asignar'])
+                ->middleware('perm:domicilio.gestionar')
+                ->name('domicilio.asignar');
 
-        Route::post('/domicilio/{order}/tomar',      [DomicilioController::class, 'tomar'])
-            ->middleware('perm:domicilio.gestionar')
-            ->name('domicilio.tomar');
+            Route::post('/domicilio/{order}/tomar',      [DomicilioController::class, 'tomar'])
+                ->middleware('perm:domicilio.gestionar')
+                ->name('domicilio.tomar');
 
-        Route::post('/domicilio/{order}/entregar',   [DomicilioController::class, 'entregar'])
-            ->middleware('perm:domicilio.gestionar')
-            ->name('domicilio.entregar');
+            Route::post('/domicilio/{order}/entregar',   [DomicilioController::class, 'entregar'])
+                ->middleware('perm:domicilio.gestionar')
+                ->name('domicilio.entregar');
 
-        Route::get('/api/delivery-alerts', [DomicilioController::class, 'alertas'])
-            ->middleware('perm:domicilio.ver')
-            ->name('delivery.alerts');
+            Route::get('/api/delivery-alerts', [DomicilioController::class, 'alertas'])
+                ->middleware('perm:domicilio.ver')
+                ->name('delivery.alerts');
+        });
 
         // ── Inventario ────────────────────────────────────────────────────────
-        Route::get('/inventario',                  [InventarioController::class, 'index'])
-            ->middleware('perm:inventario.ver')
-            ->name('inventario');
+        Route::middleware('feature:inventario')->group(function () {
+            Route::get('/inventario',                  [InventarioController::class, 'index'])
+                ->middleware('perm:inventario.ver')
+                ->name('inventario');
 
-        Route::post('/inventario',                 [InventarioController::class, 'store'])
-            ->middleware('perm:inventario.crear')
-            ->name('inventario.store');
+            Route::post('/inventario',                 [InventarioController::class, 'store'])
+                ->middleware('perm:inventario.crear')
+                ->name('inventario.store');
 
-        Route::put('/inventario/{inventario}',     [InventarioController::class, 'update'])
-            ->middleware('perm:inventario.editar')
-            ->name('inventario.update');
+            Route::put('/inventario/{inventario}',     [InventarioController::class, 'update'])
+                ->middleware('perm:inventario.editar')
+                ->name('inventario.update');
 
-        Route::delete('/inventario/{inventario}',  [InventarioController::class, 'destroy'])
-            ->middleware('perm:inventario.eliminar')
-            ->name('inventario.destroy');
+            Route::delete('/inventario/{inventario}',  [InventarioController::class, 'destroy'])
+                ->middleware('perm:inventario.eliminar')
+                ->name('inventario.destroy');
+        });
 
         // ── Reporte ───────────────────────────────────────────────────────────
-        Route::get('/reporte',          [ReporteController::class, 'index'])
-            ->middleware('perm:reporte.ver')
-            ->name('reporte');
+        Route::middleware('feature:reporte')->group(function () {
+            Route::get('/reporte',          [ReporteController::class, 'index'])
+                ->middleware('perm:reporte.ver')
+                ->name('reporte');
 
-        Route::get('/reporte/exportar', [ReporteController::class, 'exportar'])
-            ->middleware('perm:reporte.ver')
-            ->name('reporte.exportar');
+            Route::get('/reporte/exportar', [ReporteController::class, 'exportar'])
+                ->middleware('perm:reporte.ver')
+                ->name('reporte.exportar');
+        });
 
         // ── Auditoría ─────────────────────────────────────────────────────────
         Route::get('/auditoria', [AuditController::class, 'index'])
