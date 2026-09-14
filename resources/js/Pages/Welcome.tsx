@@ -75,14 +75,13 @@ const plans = [
    Modal de oferta principal (aparece al entrar a Welcome)
 ───────────────────────────────────────────── */
 const OFFER_PLANS = [
-    { key: 'basico',     months: 1,  label: '1 mes',    price: '$20.000',  period: '/mes',     popular: false, savings: null },
-    { key: 'trimestral', months: 3,  label: '3 meses',  price: '$50.000',  period: '/3 meses', popular: false, savings: 'Ahorras 17%' },
-    { key: 'semestral',  months: 6,  label: '6 meses',  price: '$110.000', period: '/6 meses', popular: false, savings: 'Ahorras 8%' },
-    { key: 'anual',      months: 12, label: '12 meses', price: '$200.000', period: '/año',     popular: true,  savings: 'Mejor precio' },
+    { key: 'starter', label: 'STARTER', price: '$20.000', period: '/mes', popular: false, savings: null },
+    { key: 'pro',     label: 'PRO',     price: '$40.000', period: '/mes', popular: true,  savings: 'Más popular' },
+    { key: 'premium', label: 'PREMIUM', price: '$60.000', period: '/mes', popular: false, savings: 'Todo incluido' },
 ];
 
 function PlansModal({ onClose }: { onClose: () => void }) {
-    const [selected, setSelected] = useState('anual');
+    const [selected, setSelected] = useState('pro');
 
     function selectPlan(planKey: string) {
         router.visit(`/register?plan=${planKey}`);
@@ -146,7 +145,7 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                     </div>
 
                     {/* Selector de tiempo */}
-                    <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-1">
+                    <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
                         {OFFER_PLANS.map((plan) => (
                             <button
                                 key={plan.key}
