@@ -17,7 +17,7 @@ class PlanService
     private const FEATURE_PLAN = [
         'orders'    => 'basico',     // Pedidos desde mesa
         'analytics' => 'trimestral', // Reportes y analytics
-        'delivery'  => 'anual',      // Módulo domicilio completo
+        'delivery'  => 'basico',     // Módulo domicilio completo (antes solo anual)
     ];
 
     private const DISH_LIMIT = [

@@ -189,6 +189,7 @@ class CartaController extends Controller
             'payment_method'    => "required|string|in:{$allowedMethodsStr}",
             'notes'             => 'nullable|string|max:500',
             'confirmed'         => 'nullable|boolean',
+            'include_tip'       => 'nullable|boolean',
             'items'             => 'required|array|min:1|max:50',
             'items.*.dish_id'   => 'required|integer|exists:dishes,id',
             'items.*.quantity'  => 'required|integer|min:1|max:99',
@@ -246,6 +247,14 @@ class CartaController extends Controller
         }
         $total += $deliveryFee;
 
+        // ── Lógica de propina ──────────────────────────────────────────────────
+        $tipAmount = 0;
+        if (!empty($data['include_tip'])) {
+            // Propina se calcula sobre el subtotal sin incluir deliveryFee (por eso restamos)
+            $tipAmount = round(($total - $deliveryFee) * 0.10, 2);
+        }
+        $total += $tipAmount;
+
         $trackingToken = (string) Str::uuid();
 
         // Calcular número de turno antes del INSERT para usarlo en fallback de nombre
@@ -270,6 +279,7 @@ class CartaController extends Controller
                 'delivery_fee'      => $deliveryFee,
                 'payment_method'    => $data['payment_method'],
                 'notes'             => $data['notes'] ?? null,
+                'tip'               => $tipAmount,
                 'status'            => 'pending',
                 'total'             => $total,
             ]);
@@ -754,6 +764,8 @@ class CartaController extends Controller
             'delivery_enabled'   => (bool) ($s->delivery_enabled   ?? false),
             'delivery_min_order' => (int)  ($s->delivery_min_order ?? 0),
             'delivery_zones'     => $s->delivery_zones     ?? [],
+            'delivery_types'     => $s->delivery_types     ?? null,
+            'order_flow'         => $s->order_flow         ?? null,
             'restaurant_lat'     => $s->restaurant_lat     ? (float) $s->restaurant_lat : null,
             'restaurant_lng'     => $s->restaurant_lng     ? (float) $s->restaurant_lng : null,
             'restaurant_address' => $s->restaurant_address ?? null,

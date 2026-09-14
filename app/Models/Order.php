@@ -21,7 +21,7 @@ class Order extends Model
         'customer_name', 'customer_phone',
         'type', 'turn_number', 'table_id', 'tracking_token',
         'delivery_address', 'delivery_phone', 'delivery_fee',
-        'payment_method',
+        'payment_method', 'tip',
         'status', 'total', 'amount_paid', 'payment_reported_at', 'notes',
         'cashier_id', 'cook_id', 'delivery_user_id',
         'ready_at', 'delivered_at', 'closed_at_eod',
@@ -30,6 +30,7 @@ class Order extends Model
     protected $casts = [
         'total'               => 'decimal:2',
         'amount_paid'         => 'decimal:2',
+        'tip'                 => 'decimal:2',
         'ready_at'            => 'datetime',
         'delivered_at'        => 'datetime',
         'closed_at_eod'       => 'datetime',

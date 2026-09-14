@@ -96,6 +96,7 @@ const configuracionGroup: NavItem = {
     label: 'Configuraciones', icon: 'settings', children: [
         { href: '/mi-plan',                  label: 'Mejorar Mi Plan' },
         { href: '/tables',                   label: 'Registro Mesas' },
+        { href: '/usuarios',                 label: 'Usuarios y Permisos' },
         { href: '/configuracion/pagos',      label: 'Métodos de Pago' },
         { href: '/configuracion/domicilio',  label: 'Tarifas Domicilio' },
         { href: '/configuracion/horario',    label: 'Horario Trabajo' },

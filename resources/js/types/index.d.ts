@@ -97,6 +97,7 @@ export interface Order {
     mesa: number | null;
     delivery_address: string | null;
     status: OrderStatus;
+    tip: number;
     total: number;
     notas: string | null;
     items: OrderItem[];
@@ -111,6 +112,7 @@ export interface TableOrder {
     id: number;
     turn_number: number | null;
     status: OrderStatus;
+    tip: number;
     total: number;
     items_count: number;
     items: Array<{ dish: string | null; quantity: number }>;
@@ -121,6 +123,7 @@ export interface TablelessOrder {
     id: number;
     turn_number: number | null;
     status: OrderStatus;
+    tip: number;
     total: number;
     items_count: number;
     customer_name: string;

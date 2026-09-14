@@ -66,6 +66,8 @@ class ConfiguracionController extends Controller
             'payment_details' => $detalles,
         ]);
 
+        \App\Http\Controllers\CartaController::invalidarCachePublica();
+
         AuditLog::registrar('update', 'Configuracion', null, 'Métodos de pago actualizados', [
             'metodos' => array_values($metodos),
         ]);
@@ -79,7 +81,7 @@ class ConfiguracionController extends Controller
     {
         if (!\App\Services\PlanService::can('delivery')) {
             return redirect('/dashboard')
-                ->with('warning', 'La configuración de domicilio requiere el plan Escala (anual).');
+                ->with('warning', 'La configuración de domicilio requiere un plan activo.');
         }
 
         $settings = $this->settings();
@@ -95,7 +97,7 @@ class ConfiguracionController extends Controller
     {
         if (!\App\Services\PlanService::can('delivery')) {
             return redirect('/dashboard')
-                ->with('warning', 'La configuración de domicilio requiere el plan Escala (anual).');
+                ->with('warning', 'La configuración de domicilio requiere un plan activo.');
         }
 
         $request->validate([
@@ -113,6 +115,8 @@ class ConfiguracionController extends Controller
             'delivery_min_order' => (int) ($request->delivery_min_order ?? 0),
             'delivery_zones'     => $request->delivery_zones ?? [],
         ]);
+
+        \App\Http\Controllers\CartaController::invalidarCachePublica();
 
         AuditLog::registrar('update', 'Configuracion', null, 'Configuración de domicilio actualizada', [
             'delivery_enabled'   => $request->boolean('delivery_enabled'),
@@ -170,6 +174,8 @@ class ConfiguracionController extends Controller
 
         $this->settings()->update(['work_schedule' => $schedule]);
 
+        \App\Http\Controllers\CartaController::invalidarCachePublica();
+
         AuditLog::registrar('update', 'Configuracion', null, 'Horario de trabajo actualizado');
 
         return back()->with('success', 'Horario de trabajo guardado correctamente.');
@@ -216,6 +222,8 @@ class ConfiguracionController extends Controller
             'order_flow'     => $request->order_flow,
             'delivery_types' => $types,
         ]);
+
+        \App\Http\Controllers\CartaController::invalidarCachePublica();
 
         AuditLog::registrar('update', 'Configuracion', null, 'Flujo de pedido y tipos de entrega actualizados', [
             'order_flow'     => $request->order_flow,
@@ -269,8 +277,8 @@ class ConfiguracionController extends Controller
                 'price'    => '$20.000',
                 'period'   => '/mes · COP',
                 'color'    => 'zinc',
-                'includes' => ['Menú ilimitado', 'QR ilimitados', 'Pedidos desde mesa', 'Notif. WhatsApp', 'KDS cocina', 'Soporte por chat'],
-                'excludes' => ['Analytics avanzado', 'Delivery propio'],
+                'includes' => ['Menú ilimitado', 'QR ilimitados', 'Pedidos desde mesa', 'Delivery propio', 'Notif. WhatsApp', 'KDS cocina', 'Soporte por chat'],
+                'excludes' => ['Analytics avanzado'],
             ],
             'trimestral' => [
                 'name'     => '3 meses',
@@ -278,7 +286,7 @@ class ConfiguracionController extends Controller
                 'period'   => '/3 meses · COP',
                 'color'    => 'blue',
                 'includes' => ['Todo lo de 1 mes', 'Analytics de ventas', 'Reportes avanzados', 'Horas pico', 'Soporte prioritario'],
-                'excludes' => ['Delivery propio'],
+                'excludes' => [],
             ],
             'semestral' => [
                 'name'     => '6 meses',
@@ -286,7 +294,7 @@ class ConfiguracionController extends Controller
                 'period'   => '/6 meses · COP',
                 'color'    => 'purple',
                 'includes' => ['Todo lo de 3 meses', 'Soporte prioritario', 'Asesoría inicial', 'Acceso anticipado'],
-                'excludes' => ['Delivery propio'],
+                'excludes' => [],
             ],
             'anual' => [
                 'name'     => '12 meses',

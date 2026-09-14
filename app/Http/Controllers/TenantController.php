@@ -55,6 +55,7 @@ class TenantController extends Controller
             'name'           => $data['name'],
             'owner_name'     => $data['owner_name'],
             'email'          => $data['email'],
+            'address'        => $data['restaurant_address'] ?? null,
             'plan'           => $data['plan'],
             'type'           => $data['type'],
             'active'         => $isActive,
@@ -226,17 +227,18 @@ class TenantController extends Controller
             return back()->withErrors(['subdomain' => 'Este subdominio ya está en uso.']);
         }
 
+        $planDays = \App\Services\PlanService::planDays($data['plan'] ?? 'basico') ?? 30;
         $tenant = Tenant::create([
             'id'             => Str::uuid(),
             'name'           => $data['name'],
+            'owner_name'     => $data['owner_name'],
             'email'          => $data['email'],
+            'address'        => $data['restaurant_address'] ?? null,
             'plan'           => $data['plan'],
             'type'           => $data['type'],
             'active'         => true,
             'payment_status' => $data['payment_status'] ?? 'paid',
-            'expires_at'     => now()->addDays(
-                \App\Services\PlanService::planDays($data['plan'] ?? 'basico') ?? 30
-            ),
+            'expires_at'     => now()->addDays($planDays + 15), // Se agregan los 15 días de cortesía
         ]);
 
         $tenant->domains()->create(['domain' => $fullDomain]);
@@ -283,22 +285,6 @@ class TenantController extends Controller
     public function destroy(string $id)
     {
         $tenant = Tenant::findOrFail($id);
-
-        // Safety: refuse deletion if the tenant has active (non-cancelled) orders
-        try {
-            tenancy()->initialize($tenant);
-            $activeOrders = \App\Models\Order::whereNotIn('status', ['delivered', 'cancelled'])->count();
-            tenancy()->end();
-
-            if ($activeOrders > 0) {
-                return back()->withErrors([
-                    'error' => "No se puede eliminar: el restaurante tiene {$activeOrders} pedido(s) activo(s).",
-                ]);
-            }
-        } catch (\Throwable) {
-            tenancy()->end();
-        }
-
         $name = $tenant->name;
 
         // Eliminar dominios para liberar el subdominio
@@ -371,8 +357,12 @@ class TenantController extends Controller
     {
         $tenant   = Tenant::findOrFail($id);
         $planDays = \App\Services\PlanService::planDays($tenant->plan ?? 'basico');
+        
+        $currentExpiresAt = $tenant->expires_at ? \Carbon\Carbon::parse($tenant->expires_at) : now();
+        $baseDate = $currentExpiresAt->isFuture() ? $currentExpiresAt : now();
+
         $expiresAt = $planDays
-            ? now()->addDays($planDays)
+            ? (clone $baseDate)->addDays($planDays)
             : now()->addYears(10); // starter o plan sin límite práctico
 
         $tenant->update([

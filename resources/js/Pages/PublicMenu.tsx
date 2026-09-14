@@ -342,7 +342,10 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
     const addressInputRef = useRef<HTMLInputElement>(null);
     const [warnModal, setWarnModal] = useState<{ title: string; message: string } | null>(null);
 
-    const allowedDeliveryTypes = settings?.delivery_types || (isPuesto ? ['mostrador', 'mesa', 'domicilio'] : ['mesa', 'domicilio']);
+    let allowedDeliveryTypes = settings?.delivery_types || (isPuesto ? ['mostrador', 'mesa', 'domicilio'] : ['mesa', 'domicilio']);
+    if (!deliveryEnabled) {
+        allowedDeliveryTypes = allowedDeliveryTypes.filter((t: string) => t !== 'domicilio');
+    }
     const defaultType = allowedDeliveryTypes.length > 0 ? allowedDeliveryTypes[0] : (isPuesto ? 'mostrador' : 'mesa');
 
     const [form, setForm] = useState({
@@ -354,6 +357,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         delivery_zone_idx: null as number | null,
         payment_method: payMethods[0],
         notes: '',
+        include_tip: true,
     });
 
     function setField<K extends keyof typeof form>(key: K, value: typeof form[K]) {
@@ -401,7 +405,8 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
         ? (deliveryZones[form.delivery_zone_idx] ?? null)
         : null;
     const deliveryFee = selectedZone?.price ?? 0;
-    const grandTotal = totalPrice + deliveryFee;
+    const tipAmount = form.include_tip ? totalPrice * 0.10 : 0;
+    const grandTotal = totalPrice + deliveryFee + tipAmount;
 
     // ── Validaciones de domicilio ───────────────────────────────────────────────
     const belowMinOrder = form.type === 'domicilio'
@@ -494,6 +499,7 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
             payment_method: form.payment_method,
             notes: form.notes || null,
             confirmed: occupiedConfirmed,
+            include_tip: form.include_tip,
             items: itemsPayload,
         }, {
             onError: (errs) => { setErrors(errs); setSubmitting(false); },
@@ -1522,6 +1528,24 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                 />
                             </div>
 
+                            {/* Propina */}
+                            <div 
+                                className="flex items-center justify-between rounded-xl border p-3 cursor-pointer select-none" 
+                                style={{ borderColor: form.include_tip ? s.primary : `${s.text}20`, backgroundColor: form.include_tip ? `${s.primary}10` : `${s.text}03` }} 
+                                onClick={() => setField('include_tip', !form.include_tip)}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <div 
+                                        className={`flex items-center justify-center h-5 w-5 rounded ${form.include_tip ? 'border-none' : 'border'}`} 
+                                        style={{ backgroundColor: form.include_tip ? s.primary : 'transparent', borderColor: `${s.text}40` }}
+                                    >
+                                        {form.include_tip && <Check className="h-3.5 w-3.5 text-white" />}
+                                    </div>
+                                    <span className="text-sm font-medium" style={{ color: form.include_tip ? s.primary : s.text }}>Incluir propina (10%)</span>
+                                </div>
+                                <span className="text-sm font-semibold" style={{ color: form.include_tip ? s.primary : s.text }}>{fmt(totalPrice * 0.10)}</span>
+                            </div>
+
                             {/* Resumen */}
                             <div
                                 className="rounded-2xl border p-4 space-y-2"
@@ -1548,6 +1572,12 @@ export default function PublicMenu({ categories, tenant_name, settings, tables, 
                                         <span className="font-semibold shrink-0" style={{ color: s.text }}>
                                             {deliveryFee === 0 ? 'Gratis' : fmt(deliveryFee)}
                                         </span>
+                                    </div>
+                                )}
+                                {form.include_tip && (
+                                    <div className="flex items-center justify-between text-sm gap-2">
+                                        <span className="opacity-70" style={{ color: s.text }}>+ Propina (10%)</span>
+                                        <span className="font-semibold shrink-0" style={{ color: s.text }}>{fmt(tipAmount)}</span>
                                     </div>
                                 )}
                                 <div

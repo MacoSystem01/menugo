@@ -37,34 +37,34 @@ interface TableForm {
 
 const STATUS_LABEL: Record<string, string> = {
     available: 'Disponible',
-    occupied:  'Ocupada',
-    reserved:  'Reservada',
+    occupied: 'Ocupada',
+    reserved: 'Reservada',
 };
 
 const STATUS_CLASS: Record<string, string> = {
     available: 'bg-accent/15 text-accent',
-    occupied:  'bg-primary/15 text-primary',
-    reserved:  'bg-yellow-500/15 text-yellow-400',
+    occupied: 'bg-primary/15 text-primary',
+    reserved: 'bg-yellow-500/15 text-yellow-400',
 };
 
 const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-    pending:    'Pendiente',
-    at_cash:    'En caja',
+    pending: 'Pendiente',
+    at_cash: 'En caja',
     in_kitchen: 'En cocina',
-    cooking:    'Cocinando',
-    ready:      'Listo',
-    delivered:  'Entregado',
-    cancelled:  'Cancelado',
+    cooking: 'Cocinando',
+    ready: 'Listo',
+    delivered: 'Entregado',
+    cancelled: 'Cancelado',
 };
 
 const ORDER_STATUS_CLASS: Record<OrderStatus, string> = {
-    pending:    'bg-muted text-muted-foreground',
-    at_cash:    'bg-primary/15 text-primary',
+    pending: 'bg-muted text-muted-foreground',
+    at_cash: 'bg-primary/15 text-primary',
     in_kitchen: 'bg-blue-500/15 text-blue-400',
-    cooking:    'bg-yellow-500/15 text-yellow-400',
-    ready:      'bg-accent/15 text-accent',
-    delivered:  'bg-accent/15 text-accent',
-    cancelled:  'bg-muted text-muted-foreground',
+    cooking: 'bg-yellow-500/15 text-yellow-400',
+    ready: 'bg-accent/15 text-accent',
+    delivered: 'bg-accent/15 text-accent',
+    cancelled: 'bg-muted text-muted-foreground',
 };
 
 function fmt(n: number) {
@@ -90,14 +90,13 @@ function TableOrdersPanel({ orders }: { orders: TableOrder[] }) {
             )}
             {activeOrders.map(order => {
                 const isExpanded = expanded === order.id;
-                const isReady    = order.status === 'ready';
+                const isReady = order.status === 'ready';
 
                 return (
                     <div
                         key={order.id}
-                        className={`rounded-xl border text-xs transition-colors ${
-                            isReady ? 'border-accent/30 bg-accent/5' : 'border-border/60 bg-muted/10'
-                        }`}
+                        className={`rounded-xl border text-xs transition-colors ${isReady ? 'border-accent/30 bg-accent/5' : 'border-border/60 bg-muted/10'
+                            }`}
                     >
                         <button
                             onClick={() => setExpanded(isExpanded ? null : order.id)}
@@ -127,6 +126,12 @@ function TableOrdersPanel({ orders }: { orders: TableOrder[] }) {
                                         <span>{item.quantity}× {item.dish ?? '—'}</span>
                                     </div>
                                 ))}
+                                {order.tip > 0 && (
+                                    <div className="flex justify-between text-muted-foreground pt-1">
+                                        <span>Propina (10%)</span>
+                                        <span>{fmt(order.tip)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between font-semibold pt-1 border-t border-border/40 mt-1">
                                     <span>Total</span>
                                     <span>{fmt(order.total)}</span>
@@ -200,6 +205,12 @@ function DeliveredOrderRow({ order }: { order: TableOrder }) {
                             <span>{item.quantity}× {item.dish ?? '—'}</span>
                         </div>
                     ))}
+                    {order.tip > 0 && (
+                        <div className="flex justify-between text-muted-foreground pt-1">
+                            <span>Propina (10%)</span>
+                            <span>{fmt(order.tip)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between font-semibold pt-1 border-t border-border/40 mt-1">
                         <span>Total</span>
                         <span>{fmt(order.total)}</span>
@@ -244,14 +255,13 @@ function TablelessOrdersPanel({ orders }: { orders: TablelessOrder[] }) {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {active.map(order => {
                     const isExpanded = expanded === order.id;
-                    const isReady    = order.status === 'ready';
+                    const isReady = order.status === 'ready';
 
                     return (
                         <div
                             key={order.id}
-                            className={`rounded-xl border text-xs transition-colors bg-card ${
-                                isReady ? 'border-accent/30' : 'border-border/60'
-                            }`}
+                            className={`rounded-xl border text-xs transition-colors bg-card ${isReady ? 'border-accent/30' : 'border-border/60'
+                                }`}
                         >
                             <button
                                 onClick={() => setExpanded(isExpanded ? null : order.id)}
@@ -280,6 +290,12 @@ function TablelessOrdersPanel({ orders }: { orders: TablelessOrder[] }) {
                                             <span>{item.quantity}× {item.dish ?? '—'}</span>
                                         </div>
                                     ))}
+                                    {order.tip > 0 && (
+                                        <div className="flex justify-between text-muted-foreground pt-1">
+                                            <span>Propina (10%)</span>
+                                            <span>{fmt(order.tip)}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between font-semibold pt-1 border-t border-border/40 mt-1">
                                         <span>Total</span>
                                         <span>{fmt(order.total)}</span>
@@ -315,8 +331,8 @@ function TablelessOrdersPanel({ orders }: { orders: TablelessOrder[] }) {
 
 // ── Historial del día agrupado por mesa ────────────────────────────────────────
 function HistorySection({ tables, tablelessOrders }: { tables: TableRow[]; tablelessOrders: TablelessOrder[] }) {
-    const tablesWithHistory    = tables.filter(t => t.orders.some(o => o.status === 'delivered'));
-    const tablelessDelivered   = tablelessOrders.filter(o => o.status === 'delivered');
+    const tablesWithHistory = tables.filter(t => t.orders.some(o => o.status === 'delivered'));
+    const tablelessDelivered = tablelessOrders.filter(o => o.status === 'delivered');
     if (tablesWithHistory.length === 0 && tablelessDelivered.length === 0) return null;
 
     return (
@@ -330,7 +346,7 @@ function HistorySection({ tables, tablelessOrders }: { tables: TableRow[]; table
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {tablesWithHistory.map(t => {
                     const deliveredOrders = t.orders.filter(o => o.status === 'delivered');
-                    const totalRevenue    = deliveredOrders.reduce((sum, o) => sum + o.total, 0);
+                    const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.total, 0);
                     return (
                         <div key={t.id} className="rounded-2xl border border-border bg-card p-4">
                             <div className="flex justify-between items-baseline mb-1">
@@ -389,14 +405,14 @@ export default function Tables({ tables, recentCancellations, tablelessOrders, f
     const { auth } = usePage<PageProps>().props;
     const canManageStatus = ['gerente', 'administrador'].includes(auth.user?.role ?? '');
 
-    const [showModal,      setShowModal]      = useState(false);
-    const [editing,        setEditing]        = useState<TableRow | null>(null);
-    const [newReady,       setNewReady]       = useState(false);
-    const [newCancelled,   setNewCancelled]   = useState<CancelledOrder[]>([]);
-    const prevReadyIds     = useRef<Set<number>>(new Set());
+    const [showModal, setShowModal] = useState(false);
+    const [editing, setEditing] = useState<TableRow | null>(null);
+    const [newReady, setNewReady] = useState(false);
+    const [newCancelled, setNewCancelled] = useState<CancelledOrder[]>([]);
+    const prevReadyIds = useRef<Set<number>>(new Set());
     const prevCancelledIds = useRef<Set<number>>(new Set());
-    const [qrTable,        setQrTable]        = useState<TableRow | null>(null);
-    const qrContainerRef   = useRef<HTMLDivElement>(null);
+    const [qrTable, setQrTable] = useState<TableRow | null>(null);
+    const qrContainerRef = useRef<HTMLDivElement>(null);
 
     // Solicitar permiso de notificaciones al montar
     useEffect(() => {
@@ -407,9 +423,9 @@ export default function Tables({ tables, recentCancellations, tablelessOrders, f
 
     // Detectar pedidos nuevos en "ready" en cada recarga y alertar
     useEffect(() => {
-        const tableReadyIds     = tables.flatMap(t => t.orders.filter(o => o.status === 'ready').map(o => o.id));
+        const tableReadyIds = tables.flatMap(t => t.orders.filter(o => o.status === 'ready').map(o => o.id));
         const tablelessReadyIds = tablelessOrders.filter(o => o.status === 'ready').map(o => o.id);
-        const currentIds        = new Set([...tableReadyIds, ...tablelessReadyIds]);
+        const currentIds = new Set([...tableReadyIds, ...tablelessReadyIds]);
 
         const addedIds = [...currentIds].filter(id => !prevReadyIds.current.has(id));
 
@@ -495,7 +511,7 @@ export default function Tables({ tables, recentCancellations, tablelessOrders, f
     function imprimirQR(table: TableRow) {
         const url = `${window.location.origin}/carta?mesa=${table.qr_code}`;
         const svg = qrContainerRef.current?.querySelector('svg')?.outerHTML ?? '';
-        const w   = window.open('', '_blank', 'width=340,height=480');
+        const w = window.open('', '_blank', 'width=340,height=480');
         if (!w) return;
         w.document.write(
             '<!DOCTYPE html><html><head><title>QR Mesa #' + table.number + '</title>' +
@@ -573,12 +589,11 @@ export default function Tables({ tables, recentCancellations, tablelessOrders, f
                         return (
                             <div
                                 key={t.id}
-                                className={`rounded-2xl border p-5 transition-colors ${
-                                    hasReady            ? 'border-accent/50 bg-accent/5' :
-                                    t.status === 'occupied'  ? 'border-primary/40 bg-primary/5' :
-                                    t.status === 'reserved'  ? 'border-yellow-500/40 bg-yellow-500/5' :
-                                    'border-border bg-card'
-                                }`}
+                                className={`rounded-2xl border p-5 transition-colors ${hasReady ? 'border-accent/50 bg-accent/5' :
+                                        t.status === 'occupied' ? 'border-primary/40 bg-primary/5' :
+                                            t.status === 'reserved' ? 'border-yellow-500/40 bg-yellow-500/5' :
+                                                'border-border bg-card'
+                                    }`}
                             >
                                 {/* ── Número + Estado ── */}
                                 <div className="flex justify-between items-start mb-3">
@@ -701,6 +716,7 @@ export default function Tables({ tables, recentCancellations, tablelessOrders, f
                                     <input type="number" min={1}
                                         className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                                         value={form.data.number} onChange={e => form.setData('number', e.target.value)} autoFocus />
+                                    <p className="text-[11px] text-muted-foreground mt-1 leading-tight">Número de Mesa para generar pedidos.</p>
                                     {form.errors.number && <p className="text-xs text-red-400 mt-1">{form.errors.number}</p>}
                                 </div>
                                 <div>
@@ -708,6 +724,7 @@ export default function Tables({ tables, recentCancellations, tablelessOrders, f
                                     <input type="number" min={1}
                                         className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                                         value={form.data.capacity} onChange={e => form.setData('capacity', e.target.value)} />
+                                    <p className="text-[11px] text-muted-foreground mt-1 leading-tight">Cantidad máxima de personas.</p>
                                     {form.errors.capacity && <p className="text-xs text-red-400 mt-1">{form.errors.capacity}</p>}
                                 </div>
                             </div>

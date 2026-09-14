@@ -32,6 +32,7 @@ class DomicilioController extends Controller
                 'delivery_address' => $o->delivery_address,
                 'delivery_phone'   => $o->delivery_phone,
                 'status'           => $o->status,
+                'tip'              => (float) $o->tip,
                 'total'            => (float) $o->total,
                 'delivery_fee'     => (float) ($o->delivery_fee ?? 0),
                 'delivery_user'    => $o->deliveryUser?->name,

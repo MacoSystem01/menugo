@@ -1,6 +1,6 @@
 import AppShell from '@/Layouts/AppShell';
-import { Head, useForm, router } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
     Power, Trash2, ExternalLink, Mail, Calendar,
     ShieldCheck, ShieldAlert, Utensils, Zap, MapPin,
@@ -63,6 +63,54 @@ function EditModal({ tenant, onClose }: EditModalProps) {
         restaurant_address: tenant.address ?? '',
     });
     const [saving, setSaving] = useState(false);
+
+    const PLAN_DAYS: Record<string, number> = {
+        basico: 30,
+        trimestral: 90,
+        semestral: 180,
+        anual: 365,
+    };
+
+    const minDate = useMemo(() => {
+        if (!tenant.created_at) return '';
+        const [day, month, year] = tenant.created_at.split('/');
+        const d = new Date(Number(year), Number(month) - 1, Number(day));
+        if (isNaN(d.getTime())) return '';
+        
+        const days = (PLAN_DAYS[form.plan] || 30) + 15;
+        d.setDate(d.getDate() + days);
+        
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dStr = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dStr}`;
+    }, [tenant.created_at, form.plan]);
+
+    useEffect(() => {
+        if (minDate && form.expires_at && form.expires_at < minDate) {
+            setForm(f => ({ ...f, expires_at: minDate }));
+        }
+    }, [minDate, form.expires_at]);
+
+    function handleRenew() {
+        let baseDate = new Date();
+        if (tenant.expires_at) {
+            // Se usa la fecha original de vencimiento del tenant
+            const expDate = new Date(tenant.expires_at);
+            // Si la fecha existe y es válida, la usamos; si está en el pasado, usamos hoy.
+            if (!isNaN(expDate.getTime()) && expDate > baseDate) {
+                baseDate = expDate;
+            }
+        }
+        const daysToAdd = PLAN_DAYS[form.plan] || 30;
+        baseDate.setDate(baseDate.getDate() + daysToAdd);
+        
+        const y = baseDate.getFullYear();
+        const m = String(baseDate.getMonth() + 1).padStart(2, '0');
+        const dStr = String(baseDate.getDate()).padStart(2, '0');
+        
+        setForm(f => ({ ...f, expires_at: `${y}-${m}-${dStr}` }));
+    }
 
     function handleSave(e: React.FormEvent) {
         e.preventDefault();
@@ -135,11 +183,19 @@ function EditModal({ tenant, onClose }: EditModalProps) {
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <input
                                     type="date"
+                                    min={minDate}
                                     value={form.expires_at}
                                     onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
                                     className="w-full rounded-xl border border-input bg-input pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                                 />
                             </div>
+                            <button 
+                                type="button" 
+                                onClick={handleRenew}
+                                className="mt-2 w-full text-center rounded-lg border border-primary/20 bg-primary/5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                            >
+                                + Renovar {PLAN_DAYS[form.plan] || 30} días al vencimiento
+                            </button>
                         </div>
                     </div>
 
@@ -271,6 +327,7 @@ function DeleteConfirmModal({ tenant, deleting, onConfirm, onClose }: DeleteModa
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function Tenants({ tenants, flash }: Props) {
+    const { errors: pageErrors } = usePage().props as any;
     const [showForm,      setShowForm]      = useState(false);
     const [processingId,  setProcessingId]  = useState<string | null>(null);
     const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -348,6 +405,11 @@ export default function Tenants({ tenants, flash }: Props) {
             {flash?.success && (
                 <div className="mb-6 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
                     {flash.success}
+                </div>
+            )}
+            {pageErrors?.error && (
+                <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+                    {pageErrors.error}
                 </div>
             )}
 

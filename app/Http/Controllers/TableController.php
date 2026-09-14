@@ -39,6 +39,7 @@ class TableController extends Controller
                     'id'          => $o->id,
                     'turn_number' => $o->turn_number,
                     'status'      => $o->status,
+                    'tip'         => (float) $o->tip,
                     'total'       => (float) $o->total,
                     'items_count' => $o->items->count(),
                     'items'       => $o->items->map(fn($i) => [
@@ -75,6 +76,7 @@ class TableController extends Controller
                 'id'            => $o->id,
                 'turn_number'   => $o->turn_number,
                 'status'        => $o->status,
+                'tip'           => (float) $o->tip,
                 'total'         => (float) $o->total,
                 'items_count'   => $o->items->count(),
                 'customer_name' => $o->customer_name,
