@@ -32,6 +32,7 @@ class CartaController extends Controller
         if ($tenantId) {
             Cache::forget("carta_public_{$tenantId}");
             Cache::forget("carta_settings_{$tenantId}");
+            Cache::forget("tenant_{$tenantId}_carta_model");
         }
     }
 
@@ -70,14 +71,19 @@ class CartaController extends Controller
         );
 
         // ── Settings: cacheados 5 min por tenant ─────────────────────────────
+        $cfg = Cache::remember(
+            "tenant_{$tenantId}_carta_model",
+            self::CARTA_CACHE_TTL,
+            fn() => CartaSetting::firstOrCreate([])
+        );
+
         $settings = Cache::remember(
             "carta_settings_{$tenantId}",
             self::CARTA_CACHE_TTL,
-            fn() => $this->settingsArray(CartaSetting::firstOrCreate([]))
+            fn() => $this->settingsArray($cfg)
         );
 
         // ── is_open_now y now_iso: NUNCA se cachean (valores dinámicos) ──────
-        $cfg      = CartaSetting::firstOrCreate([]);
         $isOpen   = $cfg->isOpenNow();
         $nowIso   = now()->toIso8601String();
 
@@ -151,7 +157,7 @@ class CartaController extends Controller
         // Se validan contra los métodos configurados en CartaSetting del tenant
         // (no contra una lista global hardcodeada) para evitar que un cliente
         // envíe un método de pago que el restaurante no acepta.
-        $cfg             = CartaSetting::firstOrCreate([]);
+        $cfg             = CartaSetting::cached();
 
         // Rechazar el pedido si el restaurante está cerrado por horario
         if (!$cfg->isOpenNow()) {
@@ -296,7 +302,7 @@ class CartaController extends Controller
 
         // Para pedidos de mostrador: cobro según flujo configurado + flash de turno
         if ($data['type'] === 'mostrador') {
-            $orderFlow = \App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero';
+            $orderFlow = \App\Models\CartaSetting::cached()->order_flow ?? 'pago_primero';
 
             if ($orderFlow === 'pago_primero') {
                 $order->update(['amount_paid' => $total]);
@@ -393,7 +399,7 @@ class CartaController extends Controller
             ->with(['items.dish', 'table'])
             ->firstOrFail();
 
-        $cfg = CartaSetting::firstOrCreate([]);
+        $cfg = CartaSetting::cached();
 
         return Inertia::render('OrderTracking', [
             'token'       => $token,
@@ -506,7 +512,7 @@ class CartaController extends Controller
 
     public function admin(Request $request)
     {
-        $settings = CartaSetting::firstOrCreate([]);
+        $settings = CartaSetting::cached();
 
         $categories = Category::with([
             'dishes' => fn($q) => $q->orderBy('sort_order')->orderBy('name'),

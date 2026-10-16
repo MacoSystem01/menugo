@@ -7,34 +7,29 @@ use Carbon\Carbon;
 class PlanService
 {
     private const PLAN_RANK = [
-        'starter'    => 0,
-        'basico'     => 1,
-        'trimestral' => 2,
-        'semestral'  => 3,
-        'anual'      => 4,
+        'starter' => 0,
+        'pro'     => 1,
+        'premium' => 2,
     ];
 
     private const FEATURE_PLAN = [
-        'orders'    => 'basico',     // Pedidos desde mesa
-        'analytics' => 'trimestral', // Reportes y analytics
-        'delivery'  => 'basico',     // Módulo domicilio completo (antes solo anual)
+        'orders'    => 'pro',     // Pedidos desde mesa
+        'analytics' => 'pro',     // Reportes y analytics
+        'delivery'  => 'premium', // Módulo domicilio completo
     ];
 
     private const DISH_LIMIT = [
-        'starter'    => 12,
-        'basico'     => null,
-        'trimestral' => null,
-        'semestral'  => null,
-        'anual'      => null,
+        'starter' => 15,
+        'pro'     => null,
+        'premium' => null,
     ];
 
     public static function currentPlan(): string
     {
         try {
             $t = tenant();
-            // tenant()->plan accede a la columna real
-            // tenant('plan') accede al JSON data — no funciona para columnas reales
-            return $t?->plan ?? 'starter';
+            // Acceder a 'tier' (starter, pro, premium) en lugar de 'plan' (pro_monthly)
+            return $t?->tier ?? 'starter';
         } catch (\Throwable) {
             return 'starter';
         }
@@ -47,7 +42,7 @@ class PlanService
 
     public static function can(string $feature): bool
     {
-        $required      = self::FEATURE_PLAN[$feature] ?? 'anual';
+        $required      = self::FEATURE_PLAN[$feature] ?? 'premium';
         $required_rank = self::PLAN_RANK[$required]   ?? 99;
         return self::currentRank() >= $required_rank;
     }
@@ -56,22 +51,20 @@ class PlanService
     {
         $plan = self::currentPlan();
         // array_key_exists distingue "clave con valor null" (ilimitado) de "clave inexistente" (desconocido → Starter)
-        return array_key_exists($plan, self::DISH_LIMIT) ? self::DISH_LIMIT[$plan] : 30;
+        return array_key_exists($plan, self::DISH_LIMIT) ? self::DISH_LIMIT[$plan] : 15;
     }
 
     public static function requiredPlanFor(string $feature): string
     {
-        return self::FEATURE_PLAN[$feature] ?? 'anual';
+        return self::FEATURE_PLAN[$feature] ?? 'premium';
     }
 
     public static function planDisplayName(string $planKey): string
     {
         return match ($planKey) {
-            'starter'    => 'Starter', // Mantenido para retrocompatibilidad
-            'basico'     => '1 mes',
-            'trimestral' => '3 meses',
-            'semestral'  => '6 meses',
-            'anual'      => '12 meses',
+            'starter'    => 'Básico',
+            'pro'        => 'Pro',
+            'premium'    => 'Premium',
             default      => ucfirst($planKey),
         };
     }

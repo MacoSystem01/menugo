@@ -283,9 +283,9 @@ export default function AdminDashboard({ stats, lista, crecimiento, pendingPayme
                             <StatProgress label="Restaurantes" value={stats.por_tipo.restaurante ?? 0} total={stats.total} color="bg-primary" />
                             <StatProgress label="Puestos / Food Trucks" value={stats.por_tipo.puesto ?? 0} total={stats.total} color="bg-accent" />
                             <div className="pt-4 border-t border-border">
-                                <StatProgress label="Premium" value={(stats.por_plan.premium_monthly || 0) + (stats.por_plan.premium_yearly || 0)} total={stats.total} color="bg-purple-500" />
-                                <StatProgress label="Pro" value={(stats.por_plan.pro_monthly || 0) + (stats.por_plan.pro_yearly || 0)} total={stats.total} color="bg-blue-500" />
-                                <StatProgress label="Starter" value={(stats.por_plan.starter_monthly || 0) + (stats.por_plan.starter_yearly || 0) + (stats.por_plan.basico || 0) + (stats.por_plan.mensual || 0) + (stats.por_plan.anual || 0) + (stats.por_plan.trimestral || 0) + (stats.por_plan.semestral || 0)} total={stats.total} color="bg-zinc-500" />
+                                <StatProgress label="Premium" value={stats.por_plan.premium || 0} total={stats.total} color="bg-purple-500" />
+                                <StatProgress label="Pro" value={stats.por_plan.pro || 0} total={stats.total} color="bg-blue-500" />
+                                <StatProgress label="Básico" value={stats.por_plan.starter || 0} total={stats.total} color="bg-zinc-500" />
                             </div>
                         </div>
                     </div>

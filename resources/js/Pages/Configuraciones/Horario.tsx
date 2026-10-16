@@ -218,7 +218,7 @@ export default function Horario({ schedule: initialSchedule, last_closing, flash
                     </div>
 
                     <p className="text-sm text-muted-foreground">
-                        Al cerrar la jornada, todos los pedidos activos son archivados y las mesas quedan liberadas para el inicio del siguiente turno. La información queda guardada en el historial.
+                        Al cerrar la jornada, los pedidos saldados son archivados y las mesas quedan liberadas para el inicio del siguiente turno. Las cuentas por cobrar con saldo pendiente se mantendrán activas en Caja registradas con su fecha de creación original.
                     </p>
 
                     {last_closing && (
@@ -230,7 +230,7 @@ export default function Horario({ schedule: initialSchedule, last_closing, flash
                     <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 flex gap-3">
                         <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0 mt-0.5" />
                         <p className="text-xs text-yellow-300/80">
-                            Esta acción archiva todos los pedidos que no hayan sido cerrados. Asegúrate de haber cobrado o gestionado todas las cuentas pendientes antes de cerrar la jornada.
+                            Esta acción archiva todos los pedidos ya saldados y libera las mesas. Las cuentas por cobrar pendientes seguirán disponibles en Caja para que puedas cobrarlas cuando el cliente pague.
                         </p>
                     </div>
 

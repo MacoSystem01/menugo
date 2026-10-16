@@ -41,7 +41,7 @@ class CheckTenantActive
         }
 
         // Tenant vencido (overdue) o inactivo — solo se permite el dashboard para mostrar el aviso
-        if ($paymentStatus === 'overdue' || (!$active && !in_array($paymentStatus, ['pending_payment', 'pending_review', 'trial']))) {
+        if (!$active || $paymentStatus === 'overdue') {
             if ($request->getPathInfo() === '/dashboard') {
                 return $next($request);
             }

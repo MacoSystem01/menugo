@@ -39,9 +39,9 @@ const ESTAB_TYPES = [
 ];
 
 const PLANS = [
-    { key: 'starter' as const, emoji: '🌱', name: 'STARTER', monthlyPrice: '$20.000', yearlyPrice: '$200.000', popular: false },
-    { key: 'pro' as const, emoji: '🚀', name: 'PRO', monthlyPrice: '$40.000', yearlyPrice: '$400.000', popular: true },
-    { key: 'premium' as const, emoji: '👑', name: 'PREMIUM', monthlyPrice: '$60.000', yearlyPrice: '$600.000', popular: false },
+    { key: 'starter' as const, emoji: '🌱', name: 'BÁSICO', monthlyPrice: '$20.000', yearlyPrice: '$192.000', popular: false },
+    { key: 'pro' as const, emoji: '🚀', name: 'PRO', monthlyPrice: '$40.000', yearlyPrice: '$384.000', popular: true },
+    { key: 'premium' as const, emoji: '👑', name: 'PREMIUM', monthlyPrice: '$60.000', yearlyPrice: '$576.000', popular: false },
 ];
 
 const STEPS = ['Negocio', 'Plan', 'Establecimiento', 'Tu cuenta'];
@@ -270,7 +270,7 @@ export default function Register() {
                                             onClick={() => setData('billing_cycle', 'yearly')}
                                             className={`px-4 py-1.5 text-sm rounded-md transition ${data.billing_cycle === 'yearly' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}
                                         >
-                                            Anual (Ahorra 16%)
+                                            Anual (Ahorra 20%)
                                         </button>
                                     </div>
                                 </div>
@@ -529,6 +529,17 @@ export default function Register() {
                         )}
 
                         {/* ── Botones de navegación ─────────────────────────── */}
+                        {Object.keys(errors).length > 0 && (
+                            <div className="p-3 mb-2 text-xs text-destructive bg-destructive/10 rounded-xl border border-destructive/20">
+                                <p className="font-bold mb-1">Por favor corrige lo siguiente:</p>
+                                <ul className="list-disc list-inside">
+                                    {Object.entries(errors).map(([key, err]) => (
+                                        <li key={key}>{err}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
                         <div className="flex gap-3">
                             {step > 1 && (
                                 <button

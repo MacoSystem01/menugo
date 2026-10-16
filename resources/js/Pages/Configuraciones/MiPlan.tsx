@@ -5,13 +5,12 @@ import { PageProps } from '@/types';
 import { CheckCircle2, XCircle, AlertTriangle, Clock } from 'lucide-react';
 import { useSupportWhatsapp } from '@/hooks/use-support-whatsapp';
 
-const PLAN_ORDER = ['basico', 'trimestral', 'semestral', 'anual'];
+const PLAN_ORDER = ['starter', 'pro', 'premium'];
 
 const PLAN_COLORS: Record<string, string> = {
-    basico:     'border-zinc-500/30 bg-zinc-500/5 text-zinc-400',
-    trimestral: 'border-blue-500/30 bg-blue-500/5 text-blue-400',
-    semestral:  'border-purple-500/30 bg-purple-500/5 text-purple-400',
-    anual:      'border-amber-500/30 bg-amber-500/5 text-amber-400',
+    starter: 'border-zinc-500/30 bg-zinc-500/5 text-zinc-400',
+    pro:     'border-blue-500/30 bg-blue-500/5 text-blue-400',
+    premium: 'border-purple-500/30 bg-purple-500/5 text-purple-400',
 };
 
 interface PlanFeature {

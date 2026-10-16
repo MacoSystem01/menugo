@@ -52,7 +52,7 @@
                         ['name'=>'TacoLab',       'type'=>'Cadena · 4 locales','plan'=>'Pro',        'revenue'=>'$8,420',  'status'=>'Activo'],
                         ['name'=>'Sushi Nori',    'type'=>'Restaurante',       'plan'=>'Pro',        'revenue'=>'$5,210',  'status'=>'Activo'],
                         ['name'=>'Burger Forge',  'type'=>'Cadena · 2 locales','plan'=>'Enterprise', 'revenue'=>'$12,840', 'status'=>'Activo'],
-                        ['name'=>'Arepa Street',  'type'=>'Food truck',        'plan'=>'Starter',    'revenue'=>'$420',    'status'=>'Activo'],
+                        ['name'=>'Arepa Street',  'type'=>'Food truck',        'plan'=>'Básico',    'revenue'=>'$420',    'status'=>'Activo'],
                         ['name'=>'Wok Express',   'type'=>'Food truck',        'plan'=>'Pro',        'revenue'=>'$1,840',  'status'=>'Trial'],
                         ['name'=>'El Asador',     'type'=>'Restaurante',       'plan'=>'Pro',        'revenue'=>'$6,720',  'status'=>'Activo'],
                         ['name'=>'La Trattoria',  'type'=>'Restaurante',       'plan'=>'Enterprise', 'revenue'=>'$9,310',  'status'=>'Activo'],

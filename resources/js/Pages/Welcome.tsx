@@ -75,9 +75,9 @@ const plans = [
    Modal de oferta principal (aparece al entrar a Welcome)
 ───────────────────────────────────────────── */
 const OFFER_PLANS = [
-    { key: 'starter', label: 'STARTER', price: '$20.000', period: '/mes', popular: false, savings: null },
-    { key: 'pro',     label: 'PRO',     price: '$40.000', period: '/mes', popular: true,  savings: 'Más popular' },
-    { key: 'premium', label: 'PREMIUM', price: '$60.000', period: '/mes', popular: false, savings: 'Todo incluido' },
+    { key: 'starter', label: 'BÁSICO', price: '$20.000', period: '/mes', popular: false, savings: null, emoji: '🌱' },
+    { key: 'pro',     label: 'PRO',     price: '$40.000', period: '/mes', popular: true,  savings: null, emoji: '🚀' },
+    { key: 'premium', label: 'PREMIUM', price: '$60.000', period: '/mes', popular: false, savings: null, emoji: '👑' },
 ];
 
 function PlansModal({ onClose }: { onClose: () => void }) {
@@ -145,66 +145,62 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                     </div>
 
                     {/* Selector de tiempo */}
-                    <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
-                        {OFFER_PLANS.map((plan) => (
-                            <button
-                                key={plan.key}
-                                type="button"
-                                onClick={() => setSelected(plan.key)}
-                                className="relative flex flex-col items-center rounded-2xl p-4 gap-1.5 transition-all focus:outline-none"
-                                style={{
-                                    background: selected === plan.key
-                                        ? 'oklch(0.20 0.04 120 / 0.5)'
-                                        : 'oklch(0.19 0.02 50)',
-                                    border: selected === plan.key
-                                        ? '2px solid oklch(0.85 0.18 110 / 0.8)'
-                                        : '1.5px solid oklch(0.30 0.02 55)',
-                                    transform: selected === plan.key ? 'scale(1.04)' : 'scale(1)',
-                                }}
-                            >
-                                {/* Badge popular */}
-                                {plan.popular && (
-                                    <span
-                                        className="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] font-bold tracking-widest rounded-full px-2.5 py-0.5 whitespace-nowrap"
-                                        style={{
-                                            background: 'oklch(0.85 0.18 110)',
-                                            color: 'oklch(0.18 0.02 50)',
-                                        }}
-                                    >
-                                        MÁS POPULAR
-                                    </span>
-                                )}
-
-                                <span className="text-xs font-bold tracking-wider text-muted-foreground mt-1">
-                                    {plan.label}
-                                </span>
-                                <div
-                                    className="font-display text-2xl font-bold leading-none"
-                                    style={{ color: selected === plan.key ? 'oklch(0.85 0.18 110)' : 'white' }}
-                                >
-                                    {plan.price}
-                                </div>
-                                <span className="text-[11px] text-muted-foreground">{plan.period}</span>
-                                {plan.savings && (
-                                    <span
-                                        className="text-[10px] font-semibold rounded-full px-2 py-0.5 mt-0.5"
-                                        style={{
-                                            background: 'oklch(0.85 0.18 110 / 0.15)',
-                                            color:      'oklch(0.85 0.18 110)',
-                                            border:     '1px solid oklch(0.85 0.18 110 / 0.3)',
-                                        }}
-                                    >
-                                        {plan.savings}
-                                    </span>
-                                )}
-                            </button>
-                        ))}
+                    <div className="w-full mt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {OFFER_PLANS.map((plan) => {
+                                const isSelected = selected === plan.key;
+                                return (
+                                    <div key={plan.key} className="flex flex-col">
+                                        {/* Badge MÁS POPULAR encima de la tarjeta */}
+                                        <div className="mb-2 h-6 flex justify-center">
+                                            {plan.popular && (
+                                                <span 
+                                                    className="text-[10px] font-bold tracking-widest rounded-full px-3 py-1"
+                                                    style={{
+                                                        background: 'oklch(0.85 0.18 110)',
+                                                        color: 'oklch(0.18 0.02 50)',
+                                                    }}
+                                                >
+                                                    MÁS POPULAR
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelected(plan.key)}
+                                            className="flex-1 relative flex flex-col items-center justify-center rounded-2xl p-5 gap-1.5 transition-all focus:outline-none"
+                                            style={{
+                                                background: isSelected
+                                                    ? 'oklch(0.20 0.04 120 / 0.5)'
+                                                    : 'oklch(0.19 0.02 50)',
+                                                border: isSelected
+                                                    ? '2px solid oklch(0.85 0.18 110 / 0.8)'
+                                                    : '1.5px solid oklch(0.30 0.02 55)',
+                                                transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                                            }}
+                                        >
+                                            <span className="text-2xl mb-1">{plan.emoji}</span>
+                                            <span className="text-[11px] font-bold tracking-widest text-muted-foreground uppercase">
+                                                {plan.label}
+                                            </span>
+                                            <div
+                                                className="font-display text-2xl font-bold leading-none mt-1"
+                                                style={{ color: isSelected ? 'oklch(0.85 0.18 110)' : 'white' }}
+                                            >
+                                                {plan.price}
+                                            </div>
+                                            <span className="text-[11px] text-muted-foreground">{plan.period}</span>
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Qué incluye el plan */}
                     <div className="w-full rounded-2xl p-4 text-left space-y-2" style={{ background: 'oklch(0.18 0.02 50)', border: '1px solid oklch(0.28 0.02 55)' }}>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">¿Qué incluye?</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {[
                                 'Carta digital con QR',
                                 'Gestión de pedidos en tiempo real',
@@ -220,6 +216,23 @@ function PlansModal({ onClose }: { onClose: () => void }) {
                                     <span>{f}</span>
                                 </div>
                             ))}
+
+                            {/* Elemento destacado Premium */}
+                            <div className="sm:col-span-2 mt-1">
+                                <div className="flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2.5 shadow-[0_0_15px_rgba(255,165,0,0.1)]">
+                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/20 animate-pulse">
+                                        <Sparkles className="h-3.5 w-3.5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-accent leading-tight">
+                                            👑 Premium: Marca Blanca + Publicidad Gratis
+                                        </p>
+                                        <p className="text-[10px] text-accent/80 leading-snug mt-0.5">
+                                            Tu marca 100% libre de logos y anuncios gratis en la vitrina de MenuGo.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

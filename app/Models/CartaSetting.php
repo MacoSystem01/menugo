@@ -120,4 +120,18 @@ class CartaSetting extends Model
 
         return $horaActual >= $minApertura && $horaActual <= $minCierre;
     }
+
+    /**
+     * Retrieve the cached instance of CartaSetting.
+     * Prevents multiple DB queries per request.
+     */
+    public static function cached(): self
+    {
+        $tenantId = function_exists('tenant') && tenant() ? tenant('id') : 'central';
+        return \Illuminate\Support\Facades\Cache::remember(
+            "tenant_{$tenantId}_carta_model",
+            300, // 5 minutes
+            fn() => self::firstOrCreate([])
+        );
+    }
 }

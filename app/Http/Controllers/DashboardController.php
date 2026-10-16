@@ -38,16 +38,17 @@ class DashboardController extends Controller
     {
         $today = now()->toDateString();
 
-        $ventasHoy = Order::whereDate('created_at', $today)
-            ->whereNotIn('status', ['cancelled'])->sum('total');
-
-        $pedidosHoy = Order::whereDate('created_at', $today)
-            ->whereNotIn('status', ['cancelled'])->count();
-
-        $clientesHoy = Order::whereDate('created_at', $today)
+        $stats = Order::whereDate('created_at', $today)
             ->whereNotIn('status', ['cancelled'])
-            ->distinct('customer_phone')->count('customer_phone');
+            ->selectRaw('
+                COUNT(id) as pedidos_hoy,
+                SUM(total) as ventas_hoy,
+                COUNT(DISTINCT customer_phone) as clientes_hoy
+            ')->first();
 
+        $ventasHoy = $stats->ventas_hoy ?? 0;
+        $pedidosHoy = $stats->pedidos_hoy ?? 0;
+        $clientesHoy = $stats->clientes_hoy ?? 0;
         $ticketPromedio = $pedidosHoy > 0 ? round($ventasHoy / $pedidosHoy, 2) : 0;
 
         $pedidosRecientes = Order::with(['items.dish', 'table'])
@@ -96,15 +97,20 @@ class DashboardController extends Controller
     {
         $today = now()->toDateString();
 
-        $ventasHoy = Order::whereDate('created_at', $today)
+        $stats = Order::whereDate('created_at', $today)
             ->whereIn('status', ['delivered', 'cancelled'])
-            ->where('amount_paid', '>', 0)->sum('amount_paid');
+            ->where('amount_paid', '>', 0)
+            ->selectRaw('
+                COUNT(id) as pedidos_cobrados,
+                SUM(amount_paid) as ventas_hoy
+            ')->first();
 
-        $pedidosCobrados = Order::whereDate('created_at', $today)
-            ->whereIn('status', ['delivered', 'cancelled'])
-            ->where('amount_paid', '>', 0)->count();
+        $ventasHoy = $stats->ventas_hoy ?? 0;
+        $pedidosCobrados = $stats->pedidos_cobrados ?? 0;
 
-        $pendientesCobro = Order::whereIn('status', ['at_cash'])->count();
+        $pendientesCobro = Order::where('status', '!=', 'cancelled')
+            ->whereColumn('amount_paid', '<', 'total')
+            ->count();
 
         $transacciones = Order::with(['table'])
             ->whereDate('created_at', $today)

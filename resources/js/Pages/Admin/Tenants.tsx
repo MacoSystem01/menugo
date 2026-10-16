@@ -12,7 +12,9 @@ interface Tenant {
     id:             string;
     name:           string;
     email:          string;
-    plan:           string;
+    plan:           string; // Legacy
+    tier:           string;
+    billing_cycle:  string;
     active:         boolean;
     payment_status: string;
     subdomain:      string;
@@ -30,21 +32,15 @@ function toSlug(str: string): string {
     return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '');
 }
 
-const PLAN_LABELS: Record<string, string> = {
-    starter:    'Starter (legacy)',
-    basico:     '1 mes',
-    trimestral: '3 meses',
-    semestral:  '6 meses',
-    anual:      '12 meses',
-    mensual:    'Mensual (legacy)', // compatibilidad con registros anteriores en DB
+const TIER_LABELS: Record<string, string> = {
+    starter: 'Básico',
+    pro:     'Pro',
+    premium: 'Premium',
 };
-const PLAN_COLORS: Record<string, string> = {
-    starter:    'bg-emerald-100 text-emerald-700',
-    basico:     'bg-zinc-100 text-zinc-700',
-    trimestral: 'bg-blue-100 text-blue-700',
-    semestral:  'bg-purple-100 text-purple-700',
-    anual:      'bg-indigo-100 text-indigo-700',
-    mensual:    'bg-zinc-100 text-zinc-600',   // legacy
+const TIER_COLORS: Record<string, string> = {
+    starter: 'bg-emerald-100 text-emerald-700',
+    pro:     'bg-blue-100 text-blue-700',
+    premium: 'bg-purple-100 text-purple-700',
 };
 
 // ── Modal de edición ──────────────────────────────────────────────────────────
@@ -58,17 +54,16 @@ function EditModal({ tenant, onClose }: EditModalProps) {
     const [form, setForm] = useState({
         name:               tenant.name,
         email:              tenant.email,
-        plan:               tenant.plan,
+        tier:               tenant.tier ?? 'starter',
+        billing_cycle:      tenant.billing_cycle ?? 'monthly',
         expires_at:         tenant.expires_at?.split('T')[0] ?? '',
         restaurant_address: tenant.address ?? '',
     });
     const [saving, setSaving] = useState(false);
 
-    const PLAN_DAYS: Record<string, number> = {
-        basico: 30,
-        trimestral: 90,
-        semestral: 180,
-        anual: 365,
+    const CYCLE_DAYS: Record<string, number> = {
+        monthly: 30,
+        yearly: 365,
     };
 
     const minDate = useMemo(() => {
@@ -77,14 +72,14 @@ function EditModal({ tenant, onClose }: EditModalProps) {
         const d = new Date(Number(year), Number(month) - 1, Number(day));
         if (isNaN(d.getTime())) return '';
         
-        const days = (PLAN_DAYS[form.plan] || 30) + 15;
+        const days = (CYCLE_DAYS[form.billing_cycle] || 30) + 15;
         d.setDate(d.getDate() + days);
         
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const dStr = String(d.getDate()).padStart(2, '0');
         return `${y}-${m}-${dStr}`;
-    }, [tenant.created_at, form.plan]);
+    }, [tenant.created_at, form.billing_cycle]);
 
     useEffect(() => {
         if (minDate && form.expires_at && form.expires_at < minDate) {
@@ -102,7 +97,7 @@ function EditModal({ tenant, onClose }: EditModalProps) {
                 baseDate = expDate;
             }
         }
-        const daysToAdd = PLAN_DAYS[form.plan] || 30;
+        const daysToAdd = CYCLE_DAYS[form.billing_cycle] || 30;
         baseDate.setDate(baseDate.getDate() + daysToAdd);
         
         const y = baseDate.getFullYear();
@@ -165,17 +160,26 @@ function EditModal({ tenant, onClose }: EditModalProps) {
                     {/* Plan + Vencimiento */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Plan</label>
-                            <select
-                                value={form.plan}
-                                onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}
-                                className="w-full rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                            >
-                                <option value="basico">1 mes · $20.000</option>
-                                <option value="trimestral">3 meses · $50.000</option>
-                                <option value="semestral">6 meses · $110.000</option>
-                                <option value="anual">12 meses · $200.000</option>
-                            </select>
+                            <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Plan y Ciclo</label>
+                            <div className="flex gap-2">
+                                <select
+                                    value={form.tier}
+                                    onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}
+                                    className="w-1/2 rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                >
+                                    <option value="starter">Básico</option>
+                                    <option value="pro">Pro</option>
+                                    <option value="premium">Premium</option>
+                                </select>
+                                <select
+                                    value={form.billing_cycle}
+                                    onChange={e => setForm(f => ({ ...f, billing_cycle: e.target.value }))}
+                                    className="w-1/2 rounded-xl border border-input bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                >
+                                    <option value="monthly">Mensual</option>
+                                    <option value="yearly">Anual</option>
+                                </select>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Vencimiento</label>
@@ -337,7 +341,8 @@ export default function Tenants({ tenants, flash }: Props) {
 
     const { data, setData, post, processing, errors, reset } = useForm({
         type:                  'restaurante' as 'restaurante' | 'puesto',
-        plan:                  'basico',
+        tier:                  'starter',
+        billing_cycle:         'monthly',
         name:                  '',
         subdomain:             '',
         owner_name:            '',
@@ -470,13 +475,18 @@ export default function Tenants({ tenants, flash }: Props) {
                                     placeholder="Ej. Parrilla Don Juan" className="input-modern" />
                             </Field>
 
-                            <Field label="Plan" error={errors.plan}>
-                                <select value={data.plan} onChange={e => setData('plan', e.target.value)} className="input-modern appearance-none">
-                                    <option value="basico">1 mes · $20.000</option>
-                                    <option value="trimestral">3 meses · $50.000</option>
-                                    <option value="semestral">6 meses · $110.000</option>
-                                    <option value="anual">12 meses · $200.000</option>
-                                </select>
+                            <Field label="Plan y Ciclo" error={errors.tier}>
+                                <div className="flex gap-2">
+                                    <select value={data.tier} onChange={e => setData('tier', e.target.value)} className="input-modern appearance-none w-1/2">
+                                        <option value="starter">Básico</option>
+                                        <option value="pro">Pro</option>
+                                        <option value="premium">Premium</option>
+                                    </select>
+                                    <select value={data.billing_cycle} onChange={e => setData('billing_cycle', e.target.value)} className="input-modern appearance-none w-1/2">
+                                        <option value="monthly">Mensual</option>
+                                        <option value="yearly">Anual</option>
+                                    </select>
+                                </div>
                             </Field>
 
                             <Field label="Subdominio" error={errors.subdomain} hint="Solo minúsculas, sin espacios ni caracteres especiales.">
@@ -559,10 +569,11 @@ export default function Tenants({ tenants, flash }: Props) {
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="bg-muted/30 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                            <tr className="bg-muted/30 text-[10px] uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">
                                 <th className="text-left px-6 py-5 font-bold">Identificación / Dirección</th>
                                 <th className="text-left px-6 py-5 font-bold">Acceso Directo</th>
-                                <th className="text-left px-6 py-5 font-bold">Estado</th>
+                                <th className="text-left px-6 py-5 font-bold">Acceso Sistema</th>
+                                <th className="text-left px-6 py-5 font-bold">Estado de Pago</th>
                                 <th className="text-left px-6 py-5 font-bold">Suscripción</th>
                                 <th className="text-right px-6 py-5 font-bold">Acciones</th>
                             </tr>
@@ -598,53 +609,63 @@ export default function Tenants({ tenants, flash }: Props) {
                                     </td>
 
                                     {/* Acceso */}
-                                    <td className="px-6 py-5">
+                                    <td className="px-6 py-5 whitespace-nowrap">
                                         <a href={`http://${tenant.subdomain}`} target="_blank"
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 text-primary text-xs font-bold hover:bg-primary/10 transition-colors">
                                             {tenant.subdomain}
-                                            <ExternalLink className="h-3 w-3" />
+                                            <ExternalLink className="h-3 w-3 shrink-0" />
                                         </a>
                                     </td>
 
-                                    {/* Estado */}
-                                    <td className="px-6 py-5">
+                                    {/* Acceso Sistema (Activo/Inactivo) */}
+                                    <td className="px-6 py-5 whitespace-nowrap">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit ${
+                                            tenant.active
+                                                ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                                                : 'bg-red-500/10 text-red-600 border-red-500/20'
+                                        }`}>
+                                            {tenant.active ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
+                                            {tenant.active ? 'Permitido' : 'Bloqueado'}
+                                        </span>
+                                    </td>
+
+                                    {/* Estado de Pago */}
+                                    <td className="px-6 py-5 whitespace-nowrap">
                                         <div className="flex flex-col gap-1.5">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit ${
-                                                tenant.active
-                                                    ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                                                    : 'bg-red-500/10 text-red-600 border-red-500/20'
-                                            }`}>
-                                                {tenant.active ? <ShieldCheck className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                                                {tenant.active ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                            {tenant.payment_status === 'trial' && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider w-fit bg-blue-500/15 text-blue-600 border border-blue-500/25">
-                                                    🎁 En prueba
+                                            {tenant.payment_status === 'trial' ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit bg-blue-500/10 text-blue-600 border-blue-500/20">
+                                                    <Clock className="h-3 w-3 shrink-0" />
+                                                    Prueba Gratuita
                                                 </span>
-                                            )}
-                                            {(tenant.payment_status === 'pending_payment' || tenant.payment_status === 'pending_review') && (
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider w-fit ${
-                                                    tenant.payment_status === 'pending_review'
-                                                        ? 'bg-amber-500/15 text-amber-600 border border-amber-500/25'
-                                                        : 'bg-muted text-muted-foreground border border-border'
-                                                }`}>
-                                                    <Clock className="h-2.5 w-2.5" />
-                                                    {tenant.payment_status === 'pending_review' ? 'Pago en revisión' : 'Pago pendiente'}
+                                            ) : tenant.payment_status === 'pending_review' ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit bg-purple-500/10 text-purple-600 border-purple-500/20">
+                                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                                    Pago en Revisión
+                                                </span>
+                                            ) : tenant.payment_status === 'pending_payment' ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                                    <ShieldAlert className="h-3 w-3" />
+                                                    Falta por Pagar
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm border w-fit bg-green-500/10 text-green-600 border-green-500/20">
+                                                    <ShieldCheck className="h-3 w-3" />
+                                                    Pagado
                                                 </span>
                                             )}
                                         </div>
                                     </td>
 
                                     {/* Suscripción */}
-                                    <td className="px-6 py-5">
+                                    <td className="px-6 py-5 whitespace-nowrap">
                                         <div className="flex flex-col gap-1">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded w-fit font-bold uppercase tracking-tight ${PLAN_COLORS[tenant.plan] ?? 'bg-zinc-100 text-zinc-700'}`}>
-                                                {PLAN_LABELS[tenant.plan] ?? tenant.plan}
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${TIER_COLORS[tenant.tier] || 'bg-muted text-muted-foreground'}`}>
+                                                {TIER_LABELS[tenant.tier] || tenant.tier} ({tenant.billing_cycle === 'yearly' ? 'Anual' : 'Mensual'})
                                             </span>
                                             {tenant.payment_status === 'trial' && tenant.expires_at && (
                                                 <div className="flex items-center gap-1 text-[10px] font-semibold text-blue-500 mt-1">
                                                     <span>🎁</span>
-                                                    Prueba hasta {new Date(tenant.expires_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                                                    Hasta el {new Date(tenant.expires_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
                                                 </div>
                                             )}
                                             {tenant.payment_status !== 'trial' && tenant.expires_at && (
@@ -657,15 +678,15 @@ export default function Tenants({ tenants, flash }: Props) {
                                     </td>
 
                                     {/* Acciones */}
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                                            {/* Activar pago — solo para cuentas pendientes */}
-                                            {(tenant.payment_status === 'pending_payment' || tenant.payment_status === 'pending_review') && (
+                                    <td className="px-6 py-5 whitespace-nowrap">
+                                        <div className="flex items-center justify-end gap-2">
+                                            {/* Activar pago — para cualquier cuenta que no esté pagada */}
+                                            {tenant.payment_status !== 'paid' && (
                                                 <button
                                                     onClick={() => activateTenant(tenant.id)}
                                                     disabled={activatingId === tenant.id}
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-bold hover:bg-accent/90 transition-colors disabled:opacity-50"
-                                                    title="Confirmar pago y activar cuenta"
+                                                    title="Confirmar pago y activar cuenta comercial"
                                                 >
                                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                                     {activatingId === tenant.id ? 'Activando…' : 'Activar'}

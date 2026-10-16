@@ -19,7 +19,7 @@
             @php
             $plans = [
                 [
-                    'name'     => 'Starter',
+                    'name'     => 'Básico',
                     'price'    => 'Gratis',
                     'period'   => 'para siempre',
                     'desc'     => 'Perfecto para puestos callejeros que están empezando.',

@@ -9,6 +9,7 @@ import {
     ChevronDown, ChevronUp, DollarSign,
     Clock, CreditCard, AlertCircle, History,
     Unlock, Power, AlertTriangle, Info, BadgeDollarSign, Ban,
+    Calendar,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -46,6 +47,7 @@ interface ActiveOrder {
     items: OrderItem[];
     created_at: string;
     delivered_at: string | null;
+    is_today?: boolean;
 }
 
 interface PaymentDetail {
@@ -183,6 +185,10 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
     // Pendiente real por cobrar: suma de lo que falta en pedidos activos
     const totalFalta = orders.reduce((s, o) => s + Math.max(0, o.total - o.amount_paid), 0);
 
+    // Cuentas por cobrar de días/jornadas anteriores
+    const cuentasAnteriores = orders.filter(o => !o.is_today && Math.max(0, o.total - o.amount_paid) > 0);
+    const totalFaltaAnteriores = cuentasAnteriores.reduce((s, o) => s + Math.max(0, o.total - o.amount_paid), 0);
+
     // Pagos Realizados: TODOS los pagos de pedidos activos + historial entregado (incluye propinas)
     const totalPagosRealizados =
         orders.reduce((s, o) => s + Math.min(o.amount_paid, o.total), 0) +
@@ -214,7 +220,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                 setAltOrder(null);
                 setAltMethod(null);
                 setAltWithTip(false);
-                if (altOrder.tipo === 'mesa' && altOrder.table_id) {
+                if (altOrder.tipo === 'mesa' && altOrder.table_id && altOrder.is_today) {
                     setLiberarOrder(altOrder);
                 }
             },
@@ -239,7 +245,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
             payment_method: order.payment_method ?? 'efectivo',
         }, {
             onSuccess: () => {
-                if (order.tipo === 'mesa' && order.table_id) {
+                if (order.tipo === 'mesa' && order.table_id && order.is_today) {
                     setLiberarOrder(order);
                 }
             },
@@ -297,7 +303,7 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                     Hora de cierre alcanzada{closing_time ? ` (${closing_time})` : ''}
                                 </p>
                                 <p className="text-xs text-red-300/70 mt-0.5">
-                                    El horario de trabajo indica que el restaurante debería estar cerrado. Ejecuta el cierre de jornada para archivar los pedidos y liberar mesas.
+                                    El horario de trabajo indica que el restaurante debería estar cerrado. Al ejecutar el cierre de jornada se archivarán los pedidos saldados y se liberarán las mesas. Las cuentas por cobrar pendientes se mantendrán registradas en Caja con su fecha de creación original.
                                 </p>
                             </div>
                         </div>
@@ -361,14 +367,32 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                 </div>
             ) : (
                 <div className="space-y-4">
+                    {/* Alerta de cuentas por cobrar de jornadas anteriores */}
+                    {cuentasAnteriores.length > 0 && (
+                        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <Calendar className="h-5 w-5 text-amber-400 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-semibold text-amber-300">
+                                        {cuentasAnteriores.length} cuenta{cuentasAnteriores.length !== 1 ? 's' : ''} por cobrar de jornadas anteriores ({fmt(totalFaltaAnteriores)})
+                                    </p>
+                                    <p className="text-xs text-amber-300/70 mt-0.5">
+                                        Estas cuentas pendientes se conservan en Caja para su cobro y están registradas en el día que fueron creadas.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {orders.map(order => {
                         const ps           = payStatus(order);
                         const isExpanded   = expanded === order.id;
                         const isReadyToPay = order_flow === 'cocina_primero' && order.status === 'ready' && ps !== 'paid';
                         const remaining    = Math.max(0, order.total - order.amount_paid);
+                        const isPreviousDebt = !order.is_today && remaining > 0;
 
                         return (
-                            <div key={order.id} className={`rounded-2xl border bg-card overflow-hidden transition-colors ${isReadyToPay ? 'border-accent/50 ring-1 ring-accent/20' : 'border-border'}`}>
+                            <div key={order.id} className={`rounded-2xl border bg-card overflow-hidden transition-colors ${isPreviousDebt ? 'border-amber-500/50 ring-1 ring-amber-500/20 bg-amber-500/[0.02]' : isReadyToPay ? 'border-accent/50 ring-1 ring-accent/20' : 'border-border'}`}>
 
                                 {/* ── Cabecera ── */}
                                 <div className="flex items-start gap-4 px-6 py-4">
@@ -406,6 +430,14 @@ export default function Caja({ orders, historial, paymentMethods, paymentDetails
                                                     title={`Reportado: ${order.payment_reported_at}`}
                                                 >
                                                     🔔 Cliente reportó pago
+                                                </span>
+                                            )}
+
+                                            {/* Cuenta por cobrar de jornada anterior */}
+                                            {!order.is_today && remaining > 0 && (
+                                                <span className="text-sm px-3 py-1 rounded-full font-semibold border bg-amber-500/15 text-amber-400 border-amber-500/40 inline-flex items-center gap-1.5">
+                                                    <Calendar className="h-3.5 w-3.5" />
+                                                    Cuenta anterior · {order.created_at.split(' ')[0]}
                                                 </span>
                                             )}
                                         </div>

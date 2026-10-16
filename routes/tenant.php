@@ -81,6 +81,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
     })->name('tenant.upgrade');
 
     // Usuarios y Roles─────────────────────────────────────────────────────────
+    Route::middleware('feature:roles_avanzados')->group(function () {
         Route::get('/usuarios',                   [UserController::class, 'index'])
             ->middleware('perm:usuarios.ver')
             ->name('usuarios');
@@ -100,6 +101,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
         Route::delete('/usuarios/{user}',         [UserController::class, 'destroy'])
             ->middleware('perm:usuarios.eliminar')
             ->name('usuarios.destroy');
+    });
 
         // ── Menu → Carta ─────────────────────────────────────────────────────
         Route::get('/menu/carta',                              [CartaController::class, 'admin'])
@@ -340,7 +342,7 @@ Route::domain('{tenant}.' . (parse_url(config('app.url'), PHP_URL_HOST) ?? 'menu
 
         // ── Auditoría ─────────────────────────────────────────────────────────
         Route::get('/auditoria', [AuditController::class, 'index'])
-            ->middleware('perm:auditoria.ver')
+            ->middleware(['perm:auditoria.ver', 'feature:reporte'])
             ->name('auditoria');
 
         // ── Gastos ────────────────────────────────────────────────────────────

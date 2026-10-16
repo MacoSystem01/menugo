@@ -59,7 +59,7 @@ class OrderController extends Controller
         ]);
 
         $tables         = \App\Models\RestaurantTable::orderBy('number')->get(['id', 'number']);
-        $deliveryZones  = CartaSetting::firstOrCreate([])->delivery_zones ?? [];
+        $deliveryZones  = CartaSetting::cached()->delivery_zones ?? [];
 
         return Inertia::render('Orders', [
             'orders'         => $orders,
@@ -99,15 +99,21 @@ class OrderController extends Controller
             ]),
             'created_at'       => $o->created_at->format('d/m/Y H:i'),
             'delivered_at'     => $o->delivered_at?->format('d/m/Y H:i'),
+            'is_today'         => $o->created_at->isToday(),
         ];
 
-        // Pedidos activos: jornada actual (no EOD), excluye delivered/cancelled salvo unpaid delivered
+        // Pedidos activos y cuentas por cobrar:
+        // 1. Pedidos activos de la jornada actual (no archivados por EOD y no delivered/cancelled).
+        // 2. O cualquier pedido pendiente de pago / cuenta por cobrar (status != 'cancelled' y amount_paid < total),
+        //    incluso de jornadas anteriores ("cuentas por cobrar").
         $orders = Order::with(['items.dish', 'table'])
-            ->whereNull('closed_at_eod')
             ->where(function ($q) {
-                $q->whereNotIn('status', ['delivered', 'cancelled'])
-                    ->orWhere(fn($q) => $q->where('status', 'delivered')
-                        ->whereColumn('amount_paid', '<', 'total'));
+                $q->whereNull('closed_at_eod')
+                  ->whereNotIn('status', ['delivered', 'cancelled']);
+            })
+            ->orWhere(function ($q) {
+                $q->where('status', '!=', 'cancelled')
+                  ->whereColumn('amount_paid', '<', 'total');
             })
             ->latest()
             ->get()
@@ -121,12 +127,15 @@ class OrderController extends Controller
                     ->whereColumn('amount_paid', '>=', 'total'))
                     ->orWhere('status', 'cancelled');
             })
-            ->whereDate('created_at', today())
+            ->where(function ($q) {
+                $q->whereDate('created_at', today())
+                  ->orWhereDate('updated_at', today());
+            })
             ->latest()
             ->get()
             ->map($mapOrder);
 
-        $cfg = \App\Models\CartaSetting::firstOrCreate([]);
+        $cfg = \App\Models\CartaSetting::cached();
 
         // Detect if EOD close is due
         $needsEod = false;
@@ -258,7 +267,7 @@ class OrderController extends Controller
     {
         $isPuesto  = tenant('type') === 'puesto';
         $orderFlow = $isPuesto
-            ? (\App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero')
+            ? (\App\Models\CartaSetting::cached()->order_flow ?? 'pago_primero')
             : 'cocina_primero'; // Restaurante: cocina primero siempre
 
         // Guardia: en cocina_primero el cobro solo es válido cuando el pedido está listo o entregado
@@ -296,7 +305,7 @@ class OrderController extends Controller
     public function registrarPago(Request $request, Order $order)
     {
         // Obtener métodos de pago dinámicamente desde la configuración del tenant
-        $allowedMethods = collect(\App\Models\CartaSetting::firstOrCreate([])->payment_methods ?? [])
+        $allowedMethods = collect(\App\Models\CartaSetting::cached()->payment_methods ?? [])
             ->merge(['efectivo']) // efectivo siempre disponible
             ->unique()
             ->values()
@@ -313,7 +322,7 @@ class OrderController extends Controller
 
         $isPuesto  = tenant('type') === 'puesto';
         $orderFlow = $isPuesto
-            ? (\App\Models\CartaSetting::firstOrCreate([])->order_flow ?? 'pago_primero')
+            ? (\App\Models\CartaSetting::cached()->order_flow ?? 'pago_primero')
             : 'cocina_primero'; // Restaurante: cocina primero siempre
 
         // Guardia: en cocina_primero el cobro solo es válido cuando el pedido está listo o entregado

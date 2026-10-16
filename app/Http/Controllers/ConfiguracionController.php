@@ -237,20 +237,43 @@ class ConfiguracionController extends Controller
     {
         $now = now();
 
-        $activeOrders = Order::whereNull('closed_at_eod')
-            ->with('table')
+        // 1. Pedidos completamente saldados o cancelados: archivarlos para que no aparezcan en la siguiente jornada
+        $ordersToArchive = Order::whereNull('closed_at_eod')
+            ->where(function ($q) {
+                $q->whereColumn('amount_paid', '>=', 'total')
+                  ->orWhere('status', 'cancelled');
+            })
             ->get();
 
-        $tablesFreed = 0;
-
-        foreach ($activeOrders as $order) {
+        foreach ($ordersToArchive as $order) {
             $order->update(['closed_at_eod' => $now]);
+        }
 
-            if ($order->table) {
-                // RestaurantTable usa el campo 'status', no 'is_occupied'
-                $order->table->update(['status' => 'free']);
-                $tablesFreed++;
+        // 2. Pedidos con saldo pendiente (Cuentas por cobrar):
+        // NO se les asigna closed_at_eod para que sigan existiendo en Caja para cobrar.
+        // Si estaban en preparación/cocina/mesa, se pasan a 'delivered' (consumido) para
+        // limpiar comandas en cocina al día siguiente, preservando la deuda en Caja con su fecha original.
+        $pendingDebtOrders = Order::whereNull('closed_at_eod')
+            ->where('status', '!=', 'cancelled')
+            ->whereColumn('amount_paid', '<', 'total')
+            ->where('total', '>', 0)
+            ->get();
+
+        foreach ($pendingDebtOrders as $order) {
+            if (in_array($order->status, ['pending', 'at_cash', 'in_kitchen', 'cooking', 'ready'])) {
+                $order->update([
+                    'status'       => 'delivered',
+                    'delivered_at' => $order->delivered_at ?? $now,
+                ]);
             }
+        }
+
+        // 3. Liberar mesas físicas para que en la próxima jornada estén disponibles
+        $tablesFreed = 0;
+        $occupiedTables = RestaurantTable::whereIn('status', ['occupied', 'reserved'])->get();
+        foreach ($occupiedTables as $table) {
+            $table->update(['status' => 'available']);
+            $tablesFreed++;
         }
 
         DailyClosing::create([
@@ -259,9 +282,14 @@ class ConfiguracionController extends Controller
             'tables_freed'     => $tablesFreed,
         ]);
 
-        AuditLog::registrar('eod', 'Sistema', null, "Cierre de jornada ejecutado: {$activeOrders->count()} pedido(s) archivados, {$tablesFreed} mesa(s) liberadas");
+        AuditLog::registrar('eod', 'Sistema', null, "Cierre de jornada ejecutado: {$ordersToArchive->count()} pedido(s) saldados archivados, {$pendingDebtOrders->count()} cuenta(s) por cobrar mantenida(s), {$tablesFreed} mesa(s) liberadas");
 
-        return back()->with('success', "Jornada cerrada. {$activeOrders->count()} pedido(s) archivados y {$tablesFreed} mesa(s) liberadas.");
+        $msg = "Jornada cerrada. {$ordersToArchive->count()} pedido(s) archivados y {$tablesFreed} mesa(s) liberadas.";
+        if ($pendingDebtOrders->count() > 0) {
+            $msg .= " Se mantuvieron {$pendingDebtOrders->count()} cuenta(s) por cobrar registradas en Caja.";
+        }
+
+        return back()->with('success', $msg);
     }
 
     // ── Mi Plan ───────────────────────────────────────────────────────────────
@@ -272,36 +300,28 @@ class ConfiguracionController extends Controller
         $expiresAt = tenant()?->expires_at;
 
         $features = [
-            'basico' => [
-                'name'     => '1 mes',
+            'starter' => [
+                'name'     => 'Básico',
                 'price'    => '$20.000',
                 'period'   => '/mes · COP',
                 'color'    => 'zinc',
-                'includes' => ['Menú ilimitado', 'QR ilimitados', 'Pedidos desde mesa', 'Delivery propio', 'Notif. WhatsApp', 'KDS cocina', 'Soporte por chat'],
-                'excludes' => ['Analytics avanzado'],
+                'includes' => ['Menú digital QR ilimitado', 'Soporte por chat'],
+                'excludes' => ['Pedidos desde mesa', 'Delivery propio', 'Analítica y reportes'],
             ],
-            'trimestral' => [
-                'name'     => '3 meses',
-                'price'    => '$50.000',
-                'period'   => '/3 meses · COP',
+            'pro' => [
+                'name'     => 'Pro',
+                'price'    => '$40.000',
+                'period'   => '/mes · COP',
                 'color'    => 'blue',
-                'includes' => ['Todo lo de 1 mes', 'Analytics de ventas', 'Reportes avanzados', 'Horas pico', 'Soporte prioritario'],
-                'excludes' => [],
+                'includes' => ['Menú digital QR ilimitado', 'Pedidos desde mesa', 'Analítica y reportes', 'Soporte por chat'],
+                'excludes' => ['Delivery propio'],
             ],
-            'semestral' => [
-                'name'     => '6 meses',
-                'price'    => '$110.000',
-                'period'   => '/6 meses · COP',
+            'premium' => [
+                'name'     => 'Premium',
+                'price'    => '$60.000',
+                'period'   => '/mes · COP',
                 'color'    => 'purple',
-                'includes' => ['Todo lo de 3 meses', 'Soporte prioritario', 'Asesoría inicial', 'Acceso anticipado'],
-                'excludes' => [],
-            ],
-            'anual' => [
-                'name'     => '12 meses',
-                'price'    => '$200.000',
-                'period'   => '/año · COP',
-                'color'    => 'amber',
-                'includes' => ['Todo lo de 6 meses', 'Delivery propio', 'Sin comisión', 'Página del restaurante', 'Soporte dedicado'],
+                'includes' => ['Menú digital QR ilimitado', 'Pedidos desde mesa', 'Delivery propio', 'Analítica y reportes', 'Soporte VIP'],
                 'excludes' => [],
             ],
         ];

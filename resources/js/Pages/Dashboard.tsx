@@ -100,26 +100,48 @@ function FullDashboard(props: FullDashboardProps) {
             </div>
 
             {/* Card de prueba gratuita */}
-            {(props as any).is_trial && (
-                <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 flex items-start gap-4">
-                    <div className="text-3xl shrink-0">🎁</div>
-                    <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground text-sm mb-1">
-                            Estás en período de prueba gratuita
-                        </h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                            Tienes acceso completo a todas las funciones de tu plan.
-                            Ve a <strong>Configuraciones → Mi Plan</strong> para activar
-                            tu suscripción antes de que venza la prueba.
-                        </p>
+            {(props as any).tenant_is_trial && (
+                (props as any).tenant_days_left <= 5 ? (
+                    <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 flex items-start gap-4">
+                        <div className="text-3xl shrink-0">⏳</div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-red-600 dark:text-red-400 text-sm mb-1">
+                                ¡Tu prueba gratuita está a punto de vencer!
+                            </h3>
+                            <p className="text-xs text-red-600/80 dark:text-red-400/80 leading-relaxed">
+                                Te quedan <strong>{(props as any).tenant_days_left} días</strong> de prueba. 
+                                Activa un plan ahora para no perder tu información. 
+                                <span className="block mt-1 font-semibold">Si no activas un plan, toda la información de tu portal se eliminará automáticamente al finalizar el periodo.</span>
+                            </p>
+                        </div>
+                        <a
+                            href="/mi-plan"
+                            className="shrink-0 rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-xs font-semibold shadow-sm transition"
+                        >
+                            Activar plan ahora →
+                        </a>
                     </div>
-                    <a
-                        href="/mi-plan"
-                        className="shrink-0 rounded-xl bg-blue-500 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-600 transition"
-                    >
-                        Ver mi plan →
-                    </a>
-                </div>
+                ) : (
+                    <div className="mt-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 flex items-start gap-4">
+                        <div className="text-3xl shrink-0">🎁</div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-foreground text-sm mb-1">
+                                Estás en período de prueba gratuita
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Tienes acceso completo a todas las funciones de tu plan.
+                                Ve a <strong>Configuraciones → Mi Plan</strong> para activar
+                                tu suscripción antes de que venza la prueba.
+                            </p>
+                        </div>
+                        <a
+                            href="/mi-plan"
+                            className="shrink-0 rounded-xl bg-blue-500 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-600 transition"
+                        >
+                            Ver mi plan →
+                        </a>
+                    </div>
+                )
             )}
 
             {/* Aviso plan starter: pedidos desactivados */}

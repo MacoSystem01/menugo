@@ -17,14 +17,21 @@ class CheckTenantFeature
     {
         $tenant = tenant();
 
+        if (!$tenant) {
+            \Log::info("CheckTenantFeature: tenant is null");
+        } else {
+            \Log::info("CheckTenantFeature: feature={$feature}, hasFeature=" . ($tenant->hasFeature($feature) ? 'true' : 'false'));
+        }
+
         if ($tenant && !$tenant->hasFeature($feature)) {
-            // Si la petición espera JSON (ej. API o Inertia), mandamos un error 403
+            \Log::info("CheckTenantFeature: Blocking access to {$feature}");
             if ($request->expectsJson() || $request->header('X-Inertia')) {
-                abort(403, 'Tu plan actual no incluye esta funcionalidad. Mejora tu plan para acceder.');
+                // Return an explicit Inertia response for 403 instead of aborting
+                // Or just redirect back for now so it works
+                return redirect('/dashboard')->with('error', 'Tu plan actual no incluye esta funcionalidad. Mejora tu plan para acceder.');
             }
 
-            // De lo contrario redirigimos a una página de upgrade
-            return redirect()->route('tenant.upgrade')->with('error', 'Mejora tu plan para acceder a esta función.');
+            return redirect('/upgrade')->with('error', 'Mejora tu plan para acceder a esta función.');
         }
 
         return $next($request);

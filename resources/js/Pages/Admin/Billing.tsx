@@ -63,28 +63,18 @@ interface Props {
 
 const PLAN_PRICES: Record<string, number> = {
     starter: 0,
-    basico: 20000,
-    trimestral: 50000,
-    semestral: 110000,
-    anual: 200000,
-    mensual: 20000,
     starter_monthly: 20000,
-    starter_yearly: 200000,
+    starter_yearly: 192000,
     pro_monthly: 40000,
-    pro_yearly: 400000,
+    pro_yearly: 384000,
     premium_monthly: 60000,
-    premium_yearly: 600000,
+    premium_yearly: 576000,
 };
 
 const PLAN_LABELS: Record<string, string> = {
-    starter: 'Starter (legacy)',
-    basico: '1 mes',
-    trimestral: '3 meses',
-    semestral: '6 meses',
-    anual: '12 meses',
-    mensual: 'Mensual (legacy)',
-    starter_monthly: 'Starter (Mensual)',
-    starter_yearly: 'Starter (Anual)',
+    starter: 'Básico (Prueba/Legacy)',
+    starter_monthly: 'Básico (Mensual)',
+    starter_yearly: 'Básico (Anual)',
     pro_monthly: 'Pro (Mensual)',
     pro_yearly: 'Pro (Anual)',
     premium_monthly: 'Premium (Mensual)',
@@ -297,7 +287,7 @@ export default function Billing({
     const plans = [
         { key: 'premium', name: 'Premium', icon: Crown, color: 'text-purple-500' },
         { key: 'pro', name: 'Pro', icon: CreditCard, color: 'text-blue-500' },
-        { key: 'starter', name: 'Starter', icon: Zap, color: 'text-emerald-500' },
+        { key: 'starter', name: 'Básico', icon: Zap, color: 'text-emerald-500' },
     ];
 
     function toggleMethod(id: number) {
@@ -354,11 +344,14 @@ export default function Billing({
             {/* ── Estadísticas de planes ─────────────────────────────────────── */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-10">
                 {plans.map(p => {
-                    // Agrupar monthly y yearly, e incluir legacy en starter
-                    const count = (stats.por_plan[`${p.key}_monthly`] || 0) + (stats.por_plan[`${p.key}_yearly`] || 0) + (p.key === 'starter' ? (stats.por_plan.basico || 0) + (stats.por_plan.mensual || 0) + (stats.por_plan.trimestral || 0) + (stats.por_plan.semestral || 0) + (stats.por_plan.anual || 0) + (stats.por_plan.starter || 0) : 0);
-                    const mrr = (stats.por_plan[`${p.key}_monthly`] || 0) * PLAN_PRICES[`${p.key}_monthly`] 
-                              + (stats.por_plan[`${p.key}_yearly`] || 0) * Math.round(PLAN_PRICES[`${p.key}_yearly`] / 12)
-                              + (p.key === 'starter' ? (stats.por_plan.basico || 0) * PLAN_PRICES.basico + (stats.por_plan.mensual || 0) * PLAN_PRICES.mensual + (stats.por_plan.trimestral || 0) * Math.round(PLAN_PRICES.trimestral / 3) + (stats.por_plan.semestral || 0) * Math.round(PLAN_PRICES.semestral / 6) + (stats.por_plan.anual || 0) * Math.round(PLAN_PRICES.anual / 12) : 0);
+                    const isStarter = p.key === 'starter';
+                    const mKey = isStarter ? 'starter_monthly' : `${p.key}_monthly`;
+                    const yKey = isStarter ? 'starter_yearly' : `${p.key}_yearly`;
+                    
+                    const count = (stats.por_plan[mKey] || 0) + (stats.por_plan[yKey] || 0) + (isStarter ? (stats.por_plan.starter || 0) : 0);
+                    
+                    const mrr = (stats.por_plan[mKey] || 0) * (PLAN_PRICES[mKey] || 0) 
+                              + (stats.por_plan[yKey] || 0) * Math.round((PLAN_PRICES[yKey] || 0) / 12);
 
                     return (
                         <div key={p.key} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
