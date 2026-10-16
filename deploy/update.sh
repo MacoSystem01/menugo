@@ -16,8 +16,9 @@ echo "   MenúGO — Actualizando en Producción"
 echo "══════════════════════════════════════════════════"
 
 # 1. Descargar últimos cambios de git
-echo "→ [1/6] Descargando cambios de git..."
-git pull origin master
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "antigravity/gemini")
+echo "→ [1/6] Descargando cambios de git (rama: $CURRENT_BRANCH)..."
+git pull origin "$CURRENT_BRANCH"
 
 # 2. Instalar/actualizar dependencias de Composer
 echo "→ [2/6] Actualizando dependencias de PHP..."
